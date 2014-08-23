@@ -1,0 +1,24 @@
+## UE4 Folders ##
+Saved
+Binaries
+Intermediate
+DerivedDataCache
+
+## Specific UE4 Files Go Here ##
+
+
+## Visual Studio Files ##
+#User Specific Files
+
+# ! IMPORTANT NOTE: THE PROJECT FILES ARE ACTUALLY NEEDED 
+# ! BY UE4, BUT ITS A PAIN IN THE ASS TO HAVE THEM UPDATE ALL THE TIME
+# ! INSTEAD, FIND THE .UPROJECT, RIGHT CLICK, AND PRESS "Generate VS Project"
+# ! WHEN SETTING THIS UP ON SOMEBODY'S WORKSTATION!
+# ! THEY WILL NEED VS2013 INSTALLED ON THEIR COMPUTER TO BUILD YOUR CODE!!!
+
+*.suo
+*.user
+*.sln.docstates
+*.sdf
+*.sln
+*.opensdf
