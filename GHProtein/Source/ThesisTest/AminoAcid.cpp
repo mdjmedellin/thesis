@@ -7,7 +7,11 @@
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 {
-
+	//if we have a static messh assigned, then add the static mesh component to the actor
+	if (StaticMeshAsset)
+	{
+		//MeshComponent->SetStaticMesh(StaticMeshAsset);
+	}
 }
 
 void AAminoAcid::ReceiveActorOnClicked()

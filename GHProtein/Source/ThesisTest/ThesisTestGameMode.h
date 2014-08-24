@@ -10,6 +10,10 @@ class AThesisTestGameMode : public AGameMode
 
 public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage);
+
+private:
+	/* Private data members */
+	UClass* DefaultAminoAcidClass;
 };
 
 

@@ -4,9 +4,11 @@
 #include "ThesisTestGameMode.h"
 #include "ThesisTestHUD.h"
 #include "CameraPlayerController.h"
-//#include "PdbParser.h"
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
+#include "AminoAcid.h"
+//#include "PdbParser.h"
+//#include "ProteinModel.h"
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -34,6 +36,17 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 		DefaultPawnClass = (UClass*)PlayerPawnObject.Object->GeneratedClass;
 	}
 
+	//Find the blueprint we are to use for the amino acids
+	static ConstructorHelpers::FObjectFinder<UBlueprint> AminoAcidBlueprint(TEXT("Blueprint'/Game/Blueprints/AminoAcid.AminoAcid'"));
+	if (AminoAcidBlueprint.Object)
+	{
+		DefaultAminoAcidClass = (UClass*)AminoAcidBlueprint.Object->GeneratedClass;
+	}
+	else
+	{
+		DefaultAminoAcidClass = nullptr;
+	}
+
 	// use our custom HUD class
 	HUDClass = AThesisTestHUD::StaticClass();
 	//use our custom controller
@@ -49,11 +62,22 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 	PdbFile->LoadFile(testString);
 	GHProtein::ProteinModel* currentProteinModel = PdbFile->GetCurrentProteinModel();
 
+
 	//check if we received a valid protein model
-	if (currentProteinModel)
+	if (currentProteinModel && DefaultAminoAcidClass)
 	{
 		UWorld* const World = GetWorld();
+		FVector locationOffset = FVector::ZeroVector;
+		locationOffset.Z = 900;
+		FRotator defaultRotation = FRotator::ZeroRotator;
+		currentProteinModel->SpawnAminoAcids<AAminoAcid>(World, DefaultAminoAcidClass, locationOffset);
 
-		currentProteinModel->SpawnAminoAcids(World);
+		FActorSpawnParameters spawnInfo;
+		spawnInfo.bNoCollisionFail = true;
+		spawnInfo.Owner = NULL;
+		spawnInfo.Instigator = NULL;
+		spawnInfo.bDeferConstruction = false;
+
+		//AAminoAcid* test = World->SpawnActor<AAminoAcid>(DefaultAminoAcidClass, locationOffset, defaultRotation, spawnInfo);
 	}
 }

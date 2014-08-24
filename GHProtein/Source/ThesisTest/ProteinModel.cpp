@@ -1,24 +1,10 @@
-#include "ProteinFoldingPrivatePCH.h"
+#include "ThesisTest.h"
 #include "ProteinModel.h"
 #include "Residue.h"
 #include "ResidueContainer.h"
 
 namespace GHProtein
 {
-	ProteinModel::ProteinModel()
-		: m_aminoAcidBlueprint(nullptr)
-	{
-		//at this point we should retrieve the base actor that we are going to use as an amino acid
-
-		//TEST
-		static ConstructorHelpers::FObjectFinder<UBlueprint> AminoAcidBlueprint(TEXT("Blueprint/Game/Blueprints/AminoAcid.AminoAcid"));
-
-		if (AminoAcidBlueprint.Object)
-		{
-			m_aminoAcidBlueprint = (UClass*)AminoAcidBlueprint.Object->GeneratedClass;
-		}
-	}
-
 	ProteinModel::~ProteinModel()
 	{
 		ResidueIDMap.Empty();
@@ -122,18 +108,5 @@ namespace GHProtein
 		currentResidue->SetNext(nullptr);
 
 		return;
-	}
-
-	void ProteinModel::SpawnAminoAcids(UWorld* const World)
-	{
-		//go through all of the amino acids and spawn a ball for each one of them
-		FActorSpawnParameters spawnParameters;
-		spawnParameters.Instigator = nullptr;
-
-		if(World
-			&& m_aminoAcidBlueprint)
-		{
-			//World->SpawnActor<
-		}
 	}
 }

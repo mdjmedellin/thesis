@@ -13,7 +13,7 @@ class Residue;
 
 /** JM: The protein builder class is intended to be used to create the models for the proteins
 	It contains functions that will load a file in order to create a protein model */
-class PROTEINFOLDING_API ProteinBuilder
+class ProteinBuilder
 {
 public:
 

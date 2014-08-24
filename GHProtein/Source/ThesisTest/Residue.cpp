@@ -1,7 +1,5 @@
-#include "ProteinFoldingPrivatePCH.h"
-
+#include "ThesisTest.h"
 #include "Residue.h"
-#include "Vector.h"
 #include "ProteinUtilities.h"
 #include <assert.h>
 

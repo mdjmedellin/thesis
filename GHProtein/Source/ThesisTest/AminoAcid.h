@@ -43,6 +43,8 @@ class AAminoAcid : public AActor
 	GENERATED_UCLASS_BODY()
 
 private:
+	/* constructor */
+	AAminoAcid();
 
 	//testing the clickable interface
 	virtual void ReceiveActorOnClicked();
@@ -51,4 +53,7 @@ public:
 	/** Whether actor/component click and touch events should be generated. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
 		TEnumAsByte<EAminoAcidType::Type> m_typeOfAminoAcid;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = StaticMeshAssets)
+		UStaticMesh* StaticMeshAsset;
 };

@@ -1,5 +1,4 @@
-#include "ProteinFoldingPrivatePCH.h"
-
+#include "ThesisTest.h"
 #include "Residue.h"
 #include "ResidueContainer.h"
 

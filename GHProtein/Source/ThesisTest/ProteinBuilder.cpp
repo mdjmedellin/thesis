@@ -1,7 +1,5 @@
-#include "ProteinFoldingPrivatePCH.h"
-
+#include "ThesisTest.h"
 #include "ProteinBuilder.h"
-#include "UniquePtr.h"
 #include "ProteinModel.h"
 #include "Residue.h"
 #include "ProteinUtilities.h"

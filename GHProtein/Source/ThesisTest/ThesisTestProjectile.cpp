@@ -3,14 +3,6 @@
 #include "ThesisTest.h"
 #include "ThesisTestProjectile.h"
 
-//#if WITH_PHYSX
-//#include "PhysXSupport.h"
-//#include "../Collision/PhysXCollision.h"
-//#include "../Collision/CollisionConversions.h"
-//#endif // WITH_PHYSX
-
-
-
 AThesisTestProjectile::AThesisTestProjectile(const class FPostConstructInitializeProperties& PCIP) 
 	: Super(PCIP)
 {
@@ -30,12 +22,7 @@ AThesisTestProjectile::AThesisTestProjectile(const class FPostConstructInitializ
 	ProjectileMovement->bShouldBounce = true;
 
 	// Die after 3 seconds by default
-	//InitialLifeSpan = 3.0f;
-//#if WITH_PHYSX
-//	PxRigidDynamic* PVehicleActor = CollisionComp->GetBodyInstance()->GetPxRigidDynamic();
-//	PVehicleActor->setMass(10.f);
-//#endif // WITH_PHYSX
-	
+	InitialLifeSpan = 3.0f;
 }
 
 void AThesisTestProjectile::OnOverlap(class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)

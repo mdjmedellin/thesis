@@ -1,4 +1,4 @@
-#include "ProteinFoldingPrivatePCH.h"
+#include "ThesisTest.h"
 #include "ProteinUtilities.h"
 
 namespace GHProtein
