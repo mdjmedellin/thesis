@@ -4,8 +4,7 @@
 
 #include "ThesisStaticLibrary.h"
 #include "AminoMovementComponent.h"
-
-class Residue;
+#include "Residue.h"
 
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
@@ -47,25 +46,29 @@ namespace GHProtein
 			else
 			{
 				FVector originLocation = FVector::ZeroVector;
-				originLocation.Z = 200;
-
 				FRotator originRotation = FRotator::ZeroRotator;
 
+				AminoAcidType* previousAminoAcid = nullptr;
 				AminoAcidType* currentAminoAcid = nullptr;
-				UAminoMovementComponent* movementComponent = nullptr;
+				Residue* currentResidue = nullptr;
+				FVector aminoAcidLocation = FVector::ZeroVector;
+
 				//iterate over all of the amino acids and spawn an actor for each one of them
 				for (int residueIndex = 0; residueIndex < m_residueVector.Num(); ++residueIndex)
 				{
-					originLocation.Z += 20;
-					currentAminoAcid = UThesisStaticLibrary::SpawnBP<AminoAcidType>(world, blueprint, originLocation, originRotation);
+					currentResidue = m_residueVector[residueIndex];
+					currentResidue->GetCALocation(aminoAcidLocation);
+					aminoAcidLocation += originLocation;
+					aminoAcidLocation *= 200;
+					currentAminoAcid = UThesisStaticLibrary::SpawnBP<AminoAcidType>(world, blueprint, aminoAcidLocation, originRotation);
 
-					//find the movement component and turn on gravity for the meantime
-					movementComponent = Cast<UAminoMovementComponent>(currentAminoAcid->FindComponentByClass<UAminoMovementComponent>());
-
-					if (movementComponent != nullptr)
+					//connect the beam particle if we had a precious aminoAcid
+					if (previousAminoAcid)
 					{
-						movementComponent->ToggleGravity();
+						previousAminoAcid->SpawnBeamParticle(currentAminoAcid);
 					}
+
+					previousAminoAcid = currentAminoAcid;
 				}
 			}
 		}

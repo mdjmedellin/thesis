@@ -1,6 +1,5 @@
 #include "ThesisTest.h"
 #include "ProteinModel.h"
-#include "Residue.h"
 #include "ResidueContainer.h"
 
 namespace GHProtein

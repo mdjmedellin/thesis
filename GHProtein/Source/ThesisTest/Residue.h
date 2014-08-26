@@ -302,6 +302,7 @@ public:
 	void				SetPhi(float inPhi)							{ mPhi = inPhi; }
 	void				SetPsi(float inPsi)							{ mPsi = inPsi; }
 	void				SetCALocation(FVector inLocation)			{ mCA.mLoc = inLocation; }
+	void				GetCALocation(FVector& out_location)		{ out_location.Set(mCA.mLoc.X, mCA.mLoc.Y, mCA.mLoc.Z); }
 
 	bool				IsBetaPartnerOf(Residue* partnerResidue);
 	static bool			NoChainBreak(const Residue* from, const Residue* to);

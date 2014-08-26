@@ -50,10 +50,22 @@ private:
 	virtual void ReceiveActorOnClicked();
 
 public:
-	/** Whether actor/component click and touch events should be generated. */
+	void SpawnBeamParticle(AAminoAcid* target);
+
+private:
+	//private data members
+	TArray<TSubobjectPtr<UParticleSystemComponent*>> ParticleComponentArray;
+
+public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
 		TEnumAsByte<EAminoAcidType::Type> m_typeOfAminoAcid;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = StaticMeshAssets)
-		UStaticMesh* StaticMeshAsset;
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+		TSubobjectPtr<USphereComponent> BaseCollisionComponent;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+		TSubobjectPtr<UStaticMeshComponent> MeshComponent;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Particles)
+		TSubobjectPtr<UParticleSystemComponent> BeamParticleTemplate;
 };
