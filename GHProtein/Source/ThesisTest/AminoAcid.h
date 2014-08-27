@@ -43,18 +43,28 @@ class AAminoAcid : public AActor
 	GENERATED_UCLASS_BODY()
 
 private:
-	/* constructor */
-	AAminoAcid();
-
+	void ClearNextAminoAcidPtr();
+	void ClearPreviousAminoAcidPtr();
 	//testing the clickable interface
 	virtual void ReceiveActorOnClicked();
 
 public:
-	void SpawnBeamParticle(AAminoAcid* target);
+	bool SpawnLinkParticleToNextAminoAcid();
+
+	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
+	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
+
+	bool GetDistanceToNextAminoAcid(FVector& out_vector);
+
+	AAminoAcid* GetNextAminoAcidPtr();
 
 private:
 	//private data members
-	TArray<TSubobjectPtr<UParticleSystemComponent*>> ParticleComponentArray;
+
+	UParticleSystemComponent* m_linkParticleToNextAminoAcid;
+
+	AAminoAcid* m_nextAminoAcid;
+	AAminoAcid* m_previousAminoAcid;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)

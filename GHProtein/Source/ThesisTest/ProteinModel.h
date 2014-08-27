@@ -48,6 +48,7 @@ namespace GHProtein
 				FVector originLocation = FVector::ZeroVector;
 				FRotator originRotation = FRotator::ZeroRotator;
 
+				AminoAcidType* headPtr = nullptr;
 				AminoAcidType* previousAminoAcid = nullptr;
 				AminoAcidType* currentAminoAcid = nullptr;
 				Residue* currentResidue = nullptr;
@@ -62,19 +63,30 @@ namespace GHProtein
 					aminoAcidLocation *= 200;
 					currentAminoAcid = UThesisStaticLibrary::SpawnBP<AminoAcidType>(world, blueprint, aminoAcidLocation, originRotation);
 
-					//connect the beam particle if we had a precious aminoAcid
 					if (previousAminoAcid)
 					{
-						previousAminoAcid->SpawnBeamParticle(currentAminoAcid);
+						previousAminoAcid->SetNextAminoAcid(currentAminoAcid);
 					}
 
 					previousAminoAcid = currentAminoAcid;
+
+					if (!headPtr)
+					{
+						headPtr = currentAminoAcid;
+					}
+				}
+
+				//iterate ove the chain of amino acids and spawn the link particle effect
+				currentAminoAcid = headPtr;
+				while (currentAminoAcid)
+				{
+					currentAminoAcid->SpawnLinkParticleToNextAminoAcid();
+					currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 				}
 			}
 		}
 
 	private:
-
 		/** Private utility methods go here */
 
 	public:

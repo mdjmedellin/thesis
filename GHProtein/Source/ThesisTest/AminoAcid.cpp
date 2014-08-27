@@ -6,6 +6,9 @@
 
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
+	, m_nextAminoAcid(nullptr)
+	, m_previousAminoAcid(nullptr)
+	, m_linkParticleToNextAminoAcid(nullptr)
 {
 
 	//Create the root SphereComponent to handle collision
@@ -27,48 +30,116 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	BeamParticleTemplate->DeactivateSystem();			//no matter what, we do not want the template particle to be active
 }
 
-void AAminoAcid::SpawnBeamParticle(AAminoAcid* target)
+bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 {
-	/*
-	UParticleSystemComponent* newBeamParticle = UGameplayStatics::SpawnEmitterAttached(BeamParticleTemplate->Template,
-		RootComponent,
-		NAME_None,
-		GetActorLocation(),
-		GetActorRotation(),
-		EAttachLocation::KeepWorldPosition,
-		false);
-		*/
-
-	UParticleSystemComponent* PSC = NULL;
-	UParticleSystem* EmitterTemplate = BeamParticleTemplate->Template;
-	UObject* Actor = this;
-
-	FVector actorLocation = GetActorLocation();
-	FVector beamTargetLocation = target->GetActorLocation();
-
-	if (EmitterTemplate)
+	if (m_linkParticleToNextAminoAcid || !m_nextAminoAcid)
 	{
-		PSC = ConstructObject<UParticleSystemComponent>(UParticleSystemComponent::StaticClass(), Actor);
-		PSC->bAutoDestroy = false;
-		PSC->SecondsBeforeInactive = 0.0f;
-		PSC->bAutoActivate = false;
-		PSC->SetTemplate(EmitterTemplate);
-		PSC->bOverrideLODMethod = false;
+		//we already have spawned the link particle to the next amino acid
+		//or we cannot spawn this type of particle because we do not have a valid ptr to the next amino acid on the chain
+		return false;
+	}
+	else
+	{
+		m_linkParticleToNextAminoAcid = UGameplayStatics::SpawnEmitterAttached(BeamParticleTemplate->Template,
+			RootComponent,
+			NAME_None,
+			GetActorLocation(),
+			GetActorRotation(),
+			EAttachLocation::KeepWorldPosition,
+			false);
 
-		PSC->RegisterComponentWithWorld(this->GetWorld());
+		FVector beamSourceLocation = GetActorLocation();
+		FVector beamTargetLocation = m_nextAminoAcid->GetActorLocation();
+		FVector tangentVector = FVector::ZeroVector;
+		tangentVector.X = 1.0;
 
-		PSC->AttachTo(RootComponent, NAME_None);
-		PSC->SetWorldLocationAndRotation(GetActorLocation(), GetActorRotation());
-		PSC->SetRelativeScale3D(FVector(1.f));
+		//The zero vector for the particle system is the place where the particle system is spawned
+		//In this case, the particle system is spawned at the location of the ball
+		//Therefore, in order to get the beam to point to the right location, we need to get the displacement
+		//vector from this actor's location to the targetActor's location
+		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamTargetLocation", (beamTargetLocation - beamSourceLocation));
 
-		PSC->ActivateSystem(true);
+		//Set the point tangents
+		GetDistanceToNextAminoAcid(tangentVector);
+		tangentVector.Normalize();
+		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamSourceTangent", tangentVector);
+
+		m_nextAminoAcid->GetDistanceToNextAminoAcid(tangentVector);
+		tangentVector.Normalize();
+		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamTargetTangent", tangentVector);
+
+		return true;
+	}
+}
+
+bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
+{
+	if (m_nextAminoAcid)
+	{
+		out_vector = m_nextAminoAcid->GetActorLocation() - GetActorLocation();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void AAminoAcid::SetNextAminoAcid(AAminoAcid* nextAminoAcid)
+{
+	if (m_nextAminoAcid)
+	{
+		//check if we are already pointing to the desired amino acid
+		if (m_nextAminoAcid == nextAminoAcid)
+		{
+			//no change
+			return;
+		}
+		else
+		{
+			m_nextAminoAcid->ClearPreviousAminoAcidPtr();
+			m_nextAminoAcid->SetPreviousAminoAcid(nextAminoAcid);
+		}
 	}
 
-	//The zero vector for the particle system is the place where the particle system is spawned
-	//In this case, the particle system is spawned at the location of the ball
-	//Therefore, in order to get the beam to point to the right location, we need to get the displacement
-	//vector from this actor's location to the targetActor's location
-	PSC->SetVectorParameter("TargetLocation", (beamTargetLocation - actorLocation));
+	m_nextAminoAcid = nextAminoAcid;
+	m_nextAminoAcid->SetPreviousAminoAcid(this);
+}
+
+void AAminoAcid::SetPreviousAminoAcid(AAminoAcid* previousAminoAcid)
+{
+	if (m_previousAminoAcid)
+	{
+		//check if we are alredy pointing to teh desired amino acid
+		if (m_previousAminoAcid == previousAminoAcid)
+		{
+			//produce no change on the pointer chain
+			return;
+		}
+		else
+		{
+			m_previousAminoAcid->ClearNextAminoAcidPtr();
+			m_previousAminoAcid->SetNextAminoAcid(previousAminoAcid);
+		}
+	}
+
+	m_previousAminoAcid = previousAminoAcid;
+	m_previousAminoAcid->SetNextAminoAcid(this);
+}
+
+void AAminoAcid::ClearNextAminoAcidPtr()
+{
+	m_nextAminoAcid = nullptr;
+}
+
+void AAminoAcid::ClearPreviousAminoAcidPtr()
+{
+	m_previousAminoAcid = nullptr;
+}
+
+AAminoAcid* AAminoAcid::GetNextAminoAcidPtr()
+{
+	return m_nextAminoAcid;
 }
 
 void AAminoAcid::ReceiveActorOnClicked()
