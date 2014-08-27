@@ -55,8 +55,12 @@ public:
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
 
 	bool GetDistanceToNextAminoAcid(FVector& out_vector);
+	void GetTangent(FVector& out_vector);
 
 	AAminoAcid* GetNextAminoAcidPtr();
+
+	//static functions
+	static void SetTangentTension(float newTension);
 
 private:
 	//private data members
@@ -65,6 +69,9 @@ private:
 
 	AAminoAcid* m_nextAminoAcid;
 	AAminoAcid* m_previousAminoAcid;
+
+	//static data members
+	static float s_tangentTension;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)

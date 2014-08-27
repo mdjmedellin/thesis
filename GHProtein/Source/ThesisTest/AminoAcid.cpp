@@ -4,6 +4,8 @@
 #include "AminoAcid.h"
 #include "ParticleDefinitions.h"
 
+float AAminoAcid::s_tangentTension = 0.0;
+
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_nextAminoAcid(nullptr)
@@ -51,7 +53,6 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 		FVector beamSourceLocation = GetActorLocation();
 		FVector beamTargetLocation = m_nextAminoAcid->GetActorLocation();
 		FVector tangentVector = FVector::ZeroVector;
-		tangentVector.X = 1.0;
 
 		//The zero vector for the particle system is the place where the particle system is spawned
 		//In this case, the particle system is spawned at the location of the ball
@@ -60,15 +61,30 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamTargetLocation", (beamTargetLocation - beamSourceLocation));
 
 		//Set the point tangents
-		GetDistanceToNextAminoAcid(tangentVector);
-		tangentVector.Normalize();
+		GetTangent(tangentVector);			//tangents are calculated by the use of cardinal splines
 		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamSourceTangent", tangentVector);
 
-		m_nextAminoAcid->GetDistanceToNextAminoAcid(tangentVector);
-		tangentVector.Normalize();
+		m_nextAminoAcid->GetTangent(tangentVector);
 		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamTargetTangent", tangentVector);
 
 		return true;
+	}
+}
+
+void AAminoAcid::GetTangent(FVector& out_vector)
+{
+	//we use cardinal splines to calculate the tangent
+	//Since cardinal splines need the previous and next point
+	//if this amino acid is the head or the tail of the chain, then
+	//we set the out_vector to zero
+	if (!m_previousAminoAcid || !m_nextAminoAcid)
+	{
+		out_vector = FVector::ZeroVector;
+	}
+	else
+	{
+		out_vector = m_nextAminoAcid->GetActorLocation() - m_previousAminoAcid->GetActorLocation();
+		out_vector *= (s_tangentTension * .5f);
 	}
 }
 
@@ -145,4 +161,9 @@ AAminoAcid* AAminoAcid::GetNextAminoAcidPtr()
 void AAminoAcid::ReceiveActorOnClicked()
 {
 	int x = 1;
+}
+
+void AAminoAcid::SetTangentTension(float newTension)
+{
+	s_tangentTension = newTension;
 }

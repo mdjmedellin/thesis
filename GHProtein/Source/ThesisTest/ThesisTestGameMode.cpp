@@ -57,6 +57,9 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
+	//set the initial tension for the spline we use to get the tangents of each amino acid
+	AAminoAcid::SetTangentTension(0.5);
+
 	ProteinBuilder* PdbFile = new ProteinBuilder();
 	FString testString = "../../../ThesisData/Lysozyme.dssp";
 	PdbFile->LoadFile(testString);
