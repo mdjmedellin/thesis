@@ -4,9 +4,11 @@
 #include "ThesisTestGameMode.h"
 #include "ThesisTestHUD.h"
 #include "CameraPlayerController.h"
-//#include "PdbParser.h"
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
+#include "AminoAcid.h"
+//#include "PdbParser.h"
+//#include "ProteinModel.h"
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -34,6 +36,17 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 		DefaultPawnClass = (UClass*)PlayerPawnObject.Object->GeneratedClass;
 	}
 
+	//Find the blueprint we are to use for the amino acids
+	static ConstructorHelpers::FObjectFinder<UBlueprint> AminoAcidBlueprint(TEXT("Blueprint'/Game/Blueprints/AminoAcid.AminoAcid'"));
+	if (AminoAcidBlueprint.Object)
+	{
+		DefaultAminoAcidClass = (UClass*)AminoAcidBlueprint.Object->GeneratedClass;
+	}
+	else
+	{
+		DefaultAminoAcidClass = nullptr;
+	}
+
 	// use our custom HUD class
 	HUDClass = AThesisTestHUD::StaticClass();
 	//use our custom controller
@@ -43,17 +56,28 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
+}
+
+void AThesisTestGameMode::StartMatch()
+{
+	Super::StartMatch();
+
+	//set the initial tension for the spline we use to get the tangents of each amino acid
+	AAminoAcid::SetTangentTension(0.5);
 
 	ProteinBuilder* PdbFile = new ProteinBuilder();
 	FString testString = "../../../ThesisData/Lysozyme.dssp";
 	PdbFile->LoadFile(testString);
 	GHProtein::ProteinModel* currentProteinModel = PdbFile->GetCurrentProteinModel();
 
+
 	//check if we received a valid protein model
-	if (currentProteinModel)
+	if (currentProteinModel && DefaultAminoAcidClass)
 	{
 		UWorld* const World = GetWorld();
-
-		currentProteinModel->SpawnAminoAcids(World);
+		FVector locationOffset = FVector::ZeroVector;
+		locationOffset.Z = 900;
+		FRotator defaultRotation = FRotator::ZeroRotator;
+		currentProteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, locationOffset);
 	}
 }

@@ -77,4 +77,30 @@ class UThesisStaticLibrary : public UObject
 		return (HitOut.GetActor() != NULL);
 	}
 	
+	//function used to spawn blueprint actors
+	template <typename BlueprintType>
+	static FORCEINLINE BlueprintType* SpawnBP(UWorld* world,
+												UClass* blueprint,
+												const FVector& location,
+												const FRotator& rotation,
+												AActor* owner = NULL,
+												const bool bNoCollisionFail = false,
+												APawn* instigator = NULL)
+	{
+		if (!world || !blueprint)
+		{
+			//we need to have a valid world and blueprint
+			return NULL;
+		}
+		else
+		{
+			FActorSpawnParameters spawnInfo;
+			spawnInfo.bNoCollisionFail = bNoCollisionFail;
+			spawnInfo.Owner = owner;
+			spawnInfo.Instigator = instigator;
+			spawnInfo.bDeferConstruction = false;
+
+			return world->SpawnActor<BlueprintType>(blueprint, location, rotation, spawnInfo);
+		}
+	}
 };

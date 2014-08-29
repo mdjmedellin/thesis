@@ -80,13 +80,7 @@ void ACameraCharacter::OnFire()
 	{
 		if (localCameraController->bCanPickupItem)
 		{
-			localCameraController->ActivatePhysicsOnActor();
-
-			//TODO: remove this debug code
-			//DEBUG
-			UWorld* localWorld = GetWorld();
-			// spawn the projectile at the muzzle
-			//localWorld->SpawnActor<AThesisTestProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
+			localCameraController->ActivatePhysicsOnActor();	
 		}
 	}
 }

@@ -9,7 +9,7 @@
 /**
  * 
  */
-UCLASS( dependson=UThesisStaticLibrary )
+UCLASS()
 class ACameraPlayerController : public APlayerController
 {
 	GENERATED_UCLASS_BODY()
