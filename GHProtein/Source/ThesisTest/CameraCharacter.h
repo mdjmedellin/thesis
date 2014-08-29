@@ -28,11 +28,6 @@ class ACameraCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
 		float DefaultUpMovementRate;
 
-	/** Projectile class to spawn */
-	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-		TSubclassOf<class AThesisTestProjectile> ProjectileClass;
-
-
 protected:
 
 	/** Handler for a touch input beginning. */

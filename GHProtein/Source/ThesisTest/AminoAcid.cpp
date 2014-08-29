@@ -2,7 +2,11 @@
 
 #include "ThesisTest.h"
 #include "AminoAcid.h"
+#include "ThesisStaticLibrary.h"
+#include "LinkFragment.h"
 #include "ParticleDefinitions.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Particles/ParticleSystem.h"
 
 float AAminoAcid::s_tangentTension = 0.0;
 
@@ -12,7 +16,6 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_previousAminoAcid(nullptr)
 	, m_linkParticleToNextAminoAcid(nullptr)
 {
-
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
 
@@ -21,9 +24,6 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 
 	//Create the static mesh component
 	MeshComponent = PCIP.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("MeshComponent"));
-
-	//turn physics on for the static mesh
-	//MeshComponent->SetSimulatePhysics(false);
 
 	//Attach the static mesh component to the root
 	MeshComponent->AttachTo(RootComponent);
@@ -34,41 +34,89 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 
 bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 {
-	if (m_linkParticleToNextAminoAcid || !m_nextAminoAcid)
+	//we only spawn the link particles if we have an amino acid to connect to
+	//and we have not spawned them before
+	if (m_nextAminoAcid && m_linkFragments.Num() == 0)
 	{
-		//we already have spawned the link particle to the next amino acid
-		//or we cannot spawn this type of particle because we do not have a valid ptr to the next amino acid on the chain
-		return false;
-	}
-	else
-	{
-		m_linkParticleToNextAminoAcid = UGameplayStatics::SpawnEmitterAttached(BeamParticleTemplate->Template,
-			RootComponent,
-			NAME_None,
-			GetActorLocation(),
-			GetActorRotation(),
-			EAttachLocation::KeepWorldPosition,
-			false);
+		int numberOfMeshes = 20;
+		float s = 0.f;
+		float t = 0.f;
+		float t_squared = 0.f;
+		float s_squared = 0.f;
+		float step = 1.0 / numberOfMeshes;
 
-		FVector beamSourceLocation = GetActorLocation();
-		FVector beamTargetLocation = m_nextAminoAcid->GetActorLocation();
-		FVector tangentVector = FVector::ZeroVector;
+		FVector linkScale3D(1.f, 1.f, 1.f);
+		FVector startTangent = FVector::ZeroVector;
+		GetTangent(startTangent);
+		FVector endTangent = FVector::ZeroVector;
+		m_nextAminoAcid->GetTangent(endTangent);
 
-		//The zero vector for the particle system is the place where the particle system is spawned
-		//In this case, the particle system is spawned at the location of the ball
-		//Therefore, in order to get the beam to point to the right location, we need to get the displacement
-		//vector from this actor's location to the targetActor's location
-		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamTargetLocation", (beamTargetLocation - beamSourceLocation));
+		FVector linkStartLocation = GetActorLocation();
+		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
-		//Set the point tangents
-		GetTangent(tangentVector);			//tangents are calculated by the use of cardinal splines
-		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamSourceTangent", tangentVector);
+		FVector A = FVector::ZeroVector;
+		FVector D = FVector::ZeroVector;
+		FVector U = FVector::ZeroVector;
+		FVector V = FVector::ZeroVector;
 
-		m_nextAminoAcid->GetTangent(tangentVector);
-		m_linkParticleToNextAminoAcid->SetVectorParameter("BeamTargetTangent", tangentVector);
+		FVector startLocation = FVector::ZeroVector;
+		FVector endLocation = FVector::ZeroVector;
+
+		FVector linkFragmentDirection = FVector::ZeroVector;
+		float linkFragmentLength = 0.f;
+
+		ALinkFragment* linkFragment = nullptr;
+
+		for (int i = 0; i < numberOfMeshes; ++i)
+		{
+			//calculate the start and end position of the link fragment
+			if (i != 0)
+			{
+				startLocation = endLocation;
+			}
+			else
+			{
+				s = (1.f - t);
+				t_squared = t * t;
+				s_squared = s * s;
+
+				A = s_squared * (1 + (2 * t)) * linkStartLocation;
+				D = t_squared * (1 + (2 * s)) * linkEndLocation;
+				U = (s_squared * t) * startTangent;
+				V = (t_squared * s) * endTangent;
+
+				startLocation = A + D + U - V;
+			}
+
+			//calculate the end location
+			t += step;
+			s = (1.f - t);
+			t_squared = t * t;
+			s_squared = s * s;
+
+			A = s_squared * (1 + (2 * t)) * linkStartLocation;
+			D = t_squared * (1 + (2 * s)) * linkEndLocation;
+			U = (s_squared * t) * startTangent;
+			V = (t_squared * s) * endTangent;
+
+			endLocation = A + D + U - V;
+
+			//calculate the size
+			(endLocation - startLocation).ToDirectionAndLength(linkFragmentDirection, linkFragmentLength);
+			linkScale3D.Z = linkFragmentLength * m_linkFragmentScalePerUnrealUnit;
+			FRotator linkFragmentRotation = linkFragmentDirection.Rotation();
+			linkFragmentRotation.Pitch += 90;
+
+			linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, startLocation, linkFragmentRotation);
+			linkFragment->SetActorScale3D(linkScale3D);
+
+			m_linkFragments.Add(linkFragment);
+		}
 
 		return true;
 	}
+
+	return false;
 }
 
 void AAminoAcid::GetTangent(FVector& out_vector)
@@ -84,7 +132,7 @@ void AAminoAcid::GetTangent(FVector& out_vector)
 	else
 	{
 		out_vector = m_nextAminoAcid->GetActorLocation() - m_previousAminoAcid->GetActorLocation();
-		out_vector *= (s_tangentTension * .5f);
+		out_vector *= .5f;
 	}
 }
 
@@ -166,4 +214,100 @@ void AAminoAcid::ReceiveActorOnClicked()
 void AAminoAcid::SetTangentTension(float newTension)
 {
 	s_tangentTension = newTension;
+}
+
+void AAminoAcid::BeginPlay()
+{
+	if (m_linkBlueprint)
+	{
+		DefaultLinkFragmentClass = (UClass*)m_linkBlueprint->GeneratedClass;
+	}
+	else
+	{
+		DefaultLinkFragmentClass = nullptr;
+	}
+
+	m_linkFragmentScalePerUnrealUnit = 1.0 / m_lengthOfLinkFragment;
+}
+
+void AAminoAcid::UpdateLinkToNextAminoAcid()
+{
+	if (m_nextAminoAcid)
+	{
+		int numberOfMeshes = m_linkFragments.Num();
+		float s = 0.f;
+		float t = 0.f;
+		float t_squared = 0.f;
+		float s_squared = 0.f;
+		float step = 1.0 / numberOfMeshes;
+
+		FVector scale3D(1.f, 1.f, 1.f);
+
+		FVector startTangent = FVector::ZeroVector;
+		GetTangent(startTangent);
+
+		FVector endTangent = FVector::ZeroVector;
+		m_nextAminoAcid->GetTangent(endTangent);
+
+		FVector linkStartLocation = GetActorLocation();
+		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
+
+		FVector A = FVector::ZeroVector;
+		FVector D = FVector::ZeroVector;
+		FVector U = FVector::ZeroVector;
+		FVector V = FVector::ZeroVector;
+
+		FVector startLocation = FVector::ZeroVector;
+		FVector endLocation = FVector::ZeroVector;
+
+		FVector linkFragmentDirection = FVector::ZeroVector;
+		float linkFragmentLength = 0.f;
+
+		ALinkFragment* linkFragment = nullptr;
+
+		for (int i = 0; i < numberOfMeshes; ++i)
+		{
+			//calculate the start and end position of the link fragment
+			if (i != 0)
+			{
+				startLocation = endLocation;
+			}
+			else
+			{
+				s = (1.f - t);
+				t_squared = t * t;
+				s_squared = s * s;
+
+				A = s_squared * (1 + (2 * t)) * linkStartLocation;
+				D = t_squared * (1 + (2 * s)) * linkEndLocation;
+				U = (s_squared * t) * startTangent;
+				V = (t_squared * s) * endTangent;
+
+				startLocation = A + D + U - V;
+			}
+
+			//calculate the end location
+			t += step;
+			s = (1.f - t);
+			t_squared = t * t;
+			s_squared = s * s;
+
+			A = s_squared * (1 + (2 * t)) * linkStartLocation;
+			D = t_squared * (1 + (2 * s)) * linkEndLocation;
+			U = (s_squared * t) * startTangent;
+			V = (t_squared * s) * endTangent;
+
+			endLocation = A + D + U - V;
+
+			//calculate the size
+			(endLocation - startLocation).ToDirectionAndLength(linkFragmentDirection, linkFragmentLength);
+			scale3D.Z = linkFragmentLength * m_linkFragmentScalePerUnrealUnit;
+			FRotator linkFragmentRotation = linkFragmentDirection.Rotation();
+			linkFragmentRotation.Pitch += 90;
+
+			linkFragment = m_linkFragments[i];
+			linkFragment->SetActorLocationAndRotation(startLocation, linkFragmentRotation);
+			linkFragment->SetActorScale3D(scale3D);
+		}
+	}
 }

@@ -10,6 +10,9 @@ class AThesisTestGameMode : public AGameMode
 
 public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage);
+	
+	/** Transition from WaitingToStart to InProgress. You can call this manually, will also get called if ReadyToStartMatch returns true */
+	virtual void StartMatch();
 
 private:
 	/* Private data members */

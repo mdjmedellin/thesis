@@ -56,6 +56,11 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
+}
+
+void AThesisTestGameMode::StartMatch()
+{
+	Super::StartMatch();
 
 	//set the initial tension for the spline we use to get the tangents of each amino acid
 	AAminoAcid::SetTangentTension(0.5);
@@ -74,13 +79,5 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 		locationOffset.Z = 900;
 		FRotator defaultRotation = FRotator::ZeroRotator;
 		currentProteinModel->SpawnAminoAcids<AAminoAcid>(World, DefaultAminoAcidClass, locationOffset);
-
-		FActorSpawnParameters spawnInfo;
-		spawnInfo.bNoCollisionFail = true;
-		spawnInfo.Owner = NULL;
-		spawnInfo.Instigator = NULL;
-		spawnInfo.bDeferConstruction = false;
-
-		//AAminoAcid* test = World->SpawnActor<AAminoAcid>(DefaultAminoAcidClass, locationOffset, defaultRotation, spawnInfo);
 	}
 }

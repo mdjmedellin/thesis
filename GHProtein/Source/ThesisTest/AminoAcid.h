@@ -37,6 +37,8 @@ namespace EAminoAcidType
 	};
 }
 
+class ALinkFragment;
+
 UCLASS()
 class AAminoAcid : public AActor
 {
@@ -49,6 +51,9 @@ private:
 	virtual void ReceiveActorOnClicked();
 
 public:
+
+	virtual void BeginPlay();
+
 	bool SpawnLinkParticleToNextAminoAcid();
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
@@ -58,6 +63,8 @@ public:
 	void GetTangent(FVector& out_vector);
 
 	AAminoAcid* GetNextAminoAcidPtr();
+
+	void UpdateLinkToNextAminoAcid();
 
 	//static functions
 	static void SetTangentTension(float newTension);
@@ -73,9 +80,18 @@ private:
 	//static data members
 	static float s_tangentTension;
 
+	float m_linkFragmentScalePerUnrealUnit;
+
+	UClass* DefaultLinkFragmentClass;
+
+	TArray<ALinkFragment*> m_linkFragments;
+
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
 		TEnumAsByte<EAminoAcidType::Type> m_typeOfAminoAcid;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+		float m_lengthOfLinkFragment;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		TSubobjectPtr<USphereComponent> BaseCollisionComponent;
@@ -85,4 +101,7 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Particles)
 		TSubobjectPtr<UParticleSystemComponent> BeamParticleTemplate;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+		UBlueprint* m_linkBlueprint;
 };

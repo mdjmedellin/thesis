@@ -4,7 +4,6 @@
 #include "CameraCharacter.h"
 #include "CameraPlayerController.h"
 #include "CustomMovementComponent.h"
-#include "ThesisTestProjectile.h"
 
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
