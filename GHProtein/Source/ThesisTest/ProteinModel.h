@@ -15,7 +15,7 @@ namespace GHProtein
 	{
 	public:
 		/** Constructor */
-		ProteinModel(){};
+		ProteinModel();
 
 		/** Destructor */
 		~ProteinModel();
@@ -31,63 +31,12 @@ namespace GHProtein
 		/** Public utility methods go here */
 		bool AddResidue(Residue* insertedResidue);
 		void BuildProteinModel();
-
-		/** Template function */
-		template <typename AminoAcidType>
-		void FORCEINLINE SpawnAminoAcids(UWorld* world,
-									UClass* blueprint,
-									const FVector& locationOffset)
-		{
-			if (!world || !blueprint)
-			{
-				//we need to have a valid world and blueprint
-				return;
-			}
-			else
-			{
-				FVector originLocation = FVector::ZeroVector;
-				FRotator originRotation = FRotator::ZeroRotator;
-
-				AminoAcidType* headPtr = nullptr;
-				AminoAcidType* previousAminoAcid = nullptr;
-				AminoAcidType* currentAminoAcid = nullptr;
-				Residue* currentResidue = nullptr;
-				FVector aminoAcidLocation = FVector::ZeroVector;
-
-				//iterate over all of the amino acids and spawn an actor for each one of them
-				for (int residueIndex = 0; residueIndex < m_residueVector.Num(); ++residueIndex)
-				{
-					currentResidue = m_residueVector[residueIndex];
-					currentResidue->GetCALocation(aminoAcidLocation);
-					aminoAcidLocation += originLocation;
-					aminoAcidLocation *= 200;
-					currentAminoAcid = UThesisStaticLibrary::SpawnBP<AminoAcidType>(world, blueprint, aminoAcidLocation, originRotation);
-
-					if (previousAminoAcid)
-					{
-						previousAminoAcid->SetNextAminoAcid(currentAminoAcid);
-					}
-
-					previousAminoAcid = currentAminoAcid;
-
-					if (!headPtr)
-					{
-						headPtr = currentAminoAcid;
-					}
-				}
-
-				//iterate ove the chain of amino acids and spawn the link particle effect
-				currentAminoAcid = headPtr;
-				while (currentAminoAcid)
-				{
-					currentAminoAcid->SpawnLinkParticleToNextAminoAcid();
-					currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
-				}
-			}
-		}
+		void SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& locationOffset);
 
 	private:
 		/** Private utility methods go here */
+		FVector m_minBounds3D;
+		FVector m_maxBounds3D;
 
 	public:
 		/** public data members go here */

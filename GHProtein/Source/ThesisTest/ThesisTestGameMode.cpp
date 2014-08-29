@@ -78,6 +78,6 @@ void AThesisTestGameMode::StartMatch()
 		FVector locationOffset = FVector::ZeroVector;
 		locationOffset.Z = 900;
 		FRotator defaultRotation = FRotator::ZeroRotator;
-		currentProteinModel->SpawnAminoAcids<AAminoAcid>(World, DefaultAminoAcidClass, locationOffset);
+		currentProteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, locationOffset);
 	}
 }
