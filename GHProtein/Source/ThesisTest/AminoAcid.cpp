@@ -311,3 +311,39 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 		}
 	}
 }
+
+void AAminoAcid::RotateFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
+{
+	//rotate the amino acid and the chain
+	FVector distanceFromRotationPoint = GetActorLocation() - rotationPoint;
+	distanceFromRotationPoint = rotation.RotateVector(distanceFromRotationPoint);
+
+	SetActorLocation(rotationPoint + distanceFromRotationPoint);
+
+	FVector rotationVector = FVector::ZeroVector;
+	FVector prevLocation = FVector::ZeroVector;
+	ALinkFragment* prevLinkFragment = nullptr;
+	ALinkFragment* linkFragment = nullptr;
+	for (int i = 0; i < m_linkFragments.Num(); ++i)
+	{
+		linkFragment = m_linkFragments[i];
+		distanceFromRotationPoint = rotation.RotateVector(linkFragment->GetActorLocation() - rotationPoint);
+		distanceFromRotationPoint += rotationPoint;
+		linkFragment->SetActorLocation(distanceFromRotationPoint);
+
+		if (prevLinkFragment)
+		{
+			rotationVector = distanceFromRotationPoint - prevLocation;
+			//set rotation for the previous link fragment
+			prevLinkFragment->SetActorRotation(rotationVector.Rotation().Add(90,0,0));
+		}
+
+		prevLocation = distanceFromRotationPoint;
+		prevLinkFragment = linkFragment;
+	}
+
+	if (prevLinkFragment)
+	{
+		prevLinkFragment->SetActorRotation(rotationVector.Rotation().Add(90, 0, 0));
+	}
+}

@@ -6,6 +6,8 @@
 #include "AminoMovementComponent.h"
 #include "Residue.h"
 
+class AAminoAcid;
+
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
 {
@@ -32,11 +34,14 @@ namespace GHProtein
 		bool AddResidue(Residue* insertedResidue);
 		void BuildProteinModel();
 		void SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& locationOffset);
+		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 
 	private:
 		/** Private utility methods go here */
 		FVector m_minBounds3D;
 		FVector m_maxBounds3D;
+		FVector m_centerOfBoundingBox;
+		AAminoAcid* m_headPtr;
 
 	public:
 		/** public data members go here */

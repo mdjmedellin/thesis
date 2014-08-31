@@ -66,6 +66,8 @@ public:
 
 	void UpdateLinkToNextAminoAcid();
 
+	void RotateFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
+
 	//static functions
 	static void SetTangentTension(float newTension);
 

@@ -8,6 +8,7 @@ namespace GHProtein
 	ProteinModel::ProteinModel()
 		: m_minBounds3D(FVector(0.f,0.f,0.f))
 		, m_maxBounds3D(FVector(0.f,0.f,0.f))
+		, m_headPtr(nullptr)
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -126,8 +127,6 @@ namespace GHProtein
 		{
 			FVector originLocation = FVector::ZeroVector;
 			FRotator originRotation = FRotator::ZeroRotator;
-
-			AAminoAcid* headPtr = nullptr;
 			AAminoAcid* previousAminoAcid = nullptr;
 			AAminoAcid* currentAminoAcid = nullptr;
 			Residue* currentResidue = nullptr;
@@ -148,7 +147,7 @@ namespace GHProtein
 				}
 				previousAminoAcid = currentAminoAcid;
 
-				if (headPtr)
+				if (m_headPtr)
 				{
 					m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
 					m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
@@ -160,30 +159,49 @@ namespace GHProtein
 				}
 				else
 				{
-					headPtr = currentAminoAcid;
+					m_headPtr = currentAminoAcid;
 					m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 				}
 			}
 
 			//get the center of the bounds
-			FVector centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
+			m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
 
 			//we want to bring everything to the center, so subtract the middle from all locations
-			currentAminoAcid = headPtr;
+			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
-				currentAminoAcid->SetActorLocation(currentAminoAcid->GetActorLocation() - centerOfBoundingBox);
+				currentAminoAcid->SetActorLocation(currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox);
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 
+			//offset the bounding box
+			m_minBounds3D -= m_centerOfBoundingBox;
+			m_maxBounds3D -= m_centerOfBoundingBox;
+			m_centerOfBoundingBox -= m_centerOfBoundingBox;
+
 			//iterate ove the chain of amino acids and spawn the link particle effect
-			currentAminoAcid = headPtr;
+			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
 				currentAminoAcid->SpawnLinkParticleToNextAminoAcid();
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
+		}
+	}
+
+	void ProteinModel::RotateModel(const FVector& anglesDegrees)
+	{
+		FVector distanceFromCenter = FVector::ZeroVector;
+
+		//iterate ove the chain of amino acids and rotate them from the model's center point
+		AAminoAcid* currentAminoAcid = m_headPtr;
+		FRotator rotation(anglesDegrees.X, anglesDegrees.Y, anglesDegrees.Z);
+		while (currentAminoAcid)
+		{
+			currentAminoAcid->RotateFromSpecifiedPoint(m_centerOfBoundingBox, rotation);
+			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
 	}
 }
