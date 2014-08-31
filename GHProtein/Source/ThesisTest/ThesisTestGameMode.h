@@ -3,6 +3,11 @@
 
 #include "ThesisTestGameMode.generated.h"
 
+namespace GHProtein
+{
+	class ProteinModel;
+}
+
 UCLASS(minimalapi)
 class AThesisTestGameMode : public AGameMode
 {
@@ -14,10 +19,9 @@ public:
 	/** Transition from WaitingToStart to InProgress. You can call this manually, will also get called if ReadyToStartMatch returns true */
 	virtual void StartMatch();
 
+public:
+	GHProtein::ProteinModel* m_proteinModel;
 private:
 	/* Private data members */
 	UClass* DefaultAminoAcidClass;
 };
-
-
-

@@ -5,6 +5,11 @@
 #include "GameFramework/Character.h"
 #include "CameraCharacter.generated.h"
 
+namespace GHProtein
+{
+	class ProteinModel;
+}
+
 /**
  * 
  */
@@ -27,6 +32,14 @@ class ACameraCharacter : public ACharacter
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera)
 		float DefaultUpMovementRate;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
+		float m_rotationSpeedDegreesPerSecond;
+
+	GHProtein::ProteinModel* m_proteinModel;
+	float m_rotationSpeedSecondsPerDegrees;
+	bool m_rotateProteinYaw;
+	bool m_rotateProteinPitch;
 
 protected:
 
@@ -57,14 +70,22 @@ protected:
 	*/
 	void LookUpAtRate(float Rate);
 
+
+	//Functions used to toggle rotation of the protein
+	void ToggleProteinYawRotation();
+	void ToggleProteinPitchRotation();
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) OVERRIDE;
 	virtual void PostInitializeComponents() OVERRIDE;
+	virtual void Restart() OVERRIDE;
 	// End of APawn interface
 
 
 public:
 	virtual void ClearJumpInput();
 	void CustomClearJumpInput();
+
+	virtual void Tick(float DeltaSeconds) OVERRIDE;
 };

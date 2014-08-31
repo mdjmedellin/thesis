@@ -4,10 +4,14 @@
 #include "CameraCharacter.h"
 #include "CameraPlayerController.h"
 #include "CustomMovementComponent.h"
-
+#include "ThesisTestGameMode.h"
+#include "ProteinModel.h"
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
-: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
+	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
+	, m_rotateProteinPitch(false)
+	, m_rotateProteinYaw(false)
+	, m_rotationSpeedDegreesPerSecond(0.f)
 {
 	// Set size for collision capsule
 	// We actually want the  player to be a floating camera
@@ -59,6 +63,13 @@ void ACameraCharacter::SetupPlayerInputComponent(class UInputComponent* InputCom
 	InputComponent->BindAxis("TurnRate", this, &ACameraCharacter::TurnAtRate);
 	InputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	InputComponent->BindAxis("LookUpRate", this, &ACameraCharacter::LookUpAtRate);
+
+
+	//Custom protein rotation input
+	InputComponent->BindAction("RotateProteinYaw", IE_Pressed, this, &ACameraCharacter::ToggleProteinYawRotation);
+	InputComponent->BindAction("RotateProteinYaw", IE_Released, this, &ACameraCharacter::ToggleProteinYawRotation);
+	InputComponent->BindAction("RotateProteinPitch", IE_Pressed, this, &ACameraCharacter::ToggleProteinPitchRotation);
+	InputComponent->BindAction("RotateProteinPitch", IE_Released, this, &ACameraCharacter::ToggleProteinPitchRotation);
 }
 
 void ACameraCharacter::ClearJumpInput()
@@ -70,6 +81,16 @@ void ACameraCharacter::ClearJumpInput()
 void ACameraCharacter::CustomClearJumpInput()
 {
 	Super::ClearJumpInput();
+}
+
+void ACameraCharacter::ToggleProteinYawRotation()
+{
+	m_rotateProteinYaw = !m_rotateProteinYaw;
+}
+
+void ACameraCharacter::ToggleProteinPitchRotation()
+{
+	m_rotateProteinPitch = !m_rotateProteinPitch;
 }
 
 void ACameraCharacter::OnFire()
@@ -155,4 +176,22 @@ void ACameraCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
+void ACameraCharacter::Restart()
+{
+	AThesisTestGameMode* gameMode = (AThesisTestGameMode*)GetWorld()->GetAuthGameMode();
 
+	m_proteinModel = gameMode->m_proteinModel;
+}
+
+void ACameraCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	float deltaDegrees = m_rotationSpeedDegreesPerSecond * DeltaSeconds;
+	FVector degreesRotated((deltaDegrees * m_rotateProteinPitch), (deltaDegrees * m_rotateProteinYaw), 0.f);
+
+	if (degreesRotated != FVector::ZeroVector)
+	{
+		m_proteinModel->RotateModel(degreesRotated);
+	}
+}

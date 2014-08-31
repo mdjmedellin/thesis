@@ -7,8 +7,6 @@
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
 #include "AminoAcid.h"
-//#include "PdbParser.h"
-//#include "ProteinModel.h"
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -56,28 +54,27 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-}
-
-void AThesisTestGameMode::StartMatch()
-{
-	Super::StartMatch();
-
+	
 	//set the initial tension for the spline we use to get the tangents of each amino acid
 	AAminoAcid::SetTangentTension(0.5);
 
 	ProteinBuilder* PdbFile = new ProteinBuilder();
 	FString testString = "../../../ThesisData/Lysozyme.dssp";
 	PdbFile->LoadFile(testString);
-	GHProtein::ProteinModel* currentProteinModel = PdbFile->GetCurrentProteinModel();
+	m_proteinModel = PdbFile->GetCurrentProteinModel();
+}
 
+void AThesisTestGameMode::StartMatch()
+{
+	Super::StartMatch();
 
 	//check if we received a valid protein model
-	if (currentProteinModel && DefaultAminoAcidClass)
+	if (m_proteinModel && DefaultAminoAcidClass)
 	{
 		UWorld* const World = GetWorld();
 		FVector locationOffset = FVector::ZeroVector;
 		locationOffset.Z = 900;
 		FRotator defaultRotation = FRotator::ZeroRotator;
-		currentProteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, locationOffset);
+		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, locationOffset);
 	}
 }
