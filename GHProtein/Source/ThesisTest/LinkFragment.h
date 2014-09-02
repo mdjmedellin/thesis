@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "Components/SplineMeshComponent.h"
 #include "LinkFragment.generated.h"
 
 /**
@@ -15,5 +16,5 @@ class THESISTEST_API ALinkFragment : public AActor
 
 public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
-		TSubobjectPtr<UStaticMeshComponent> MeshComponent;
+		TSubobjectPtr<USplineMeshComponent> SplineMeshComponent;
 };

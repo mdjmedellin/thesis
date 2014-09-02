@@ -66,7 +66,7 @@ public:
 
 	void UpdateLinkToNextAminoAcid();
 
-	void RotateFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
+	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
 
 	//static functions
 	static void SetTangentTension(float newTension);
@@ -86,7 +86,7 @@ private:
 
 	UClass* DefaultLinkFragmentClass;
 
-	TArray<ALinkFragment*> m_linkFragments;
+	ALinkFragment* m_linkFragment;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)

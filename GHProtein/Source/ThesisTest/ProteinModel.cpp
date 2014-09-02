@@ -198,9 +198,19 @@ namespace GHProtein
 		//iterate ove the chain of amino acids and rotate them from the model's center point
 		AAminoAcid* currentAminoAcid = m_headPtr;
 		FRotator rotation(anglesDegrees.X, anglesDegrees.Y, anglesDegrees.Z);
+		
+		//update position of the amino acids
 		while (currentAminoAcid)
 		{
-			currentAminoAcid->RotateFromSpecifiedPoint(m_centerOfBoundingBox, rotation);
+			currentAminoAcid->RotateAminoAcidFromSpecifiedPoint(m_centerOfBoundingBox, rotation);
+			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//update links
+		currentAminoAcid = m_headPtr;
+		while (currentAminoAcid)
+		{
+			currentAminoAcid->UpdateLinkToNextAminoAcid();
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
 	}

@@ -15,6 +15,7 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
 	, m_linkParticleToNextAminoAcid(nullptr)
+	, m_linkFragment(nullptr)
 {
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
@@ -36,16 +37,8 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 {
 	//we only spawn the link particles if we have an amino acid to connect to
 	//and we have not spawned them before
-	if (m_nextAminoAcid && m_linkFragments.Num() == 0)
+	if (m_nextAminoAcid)
 	{
-		int numberOfMeshes = 20;
-		float s = 0.f;
-		float t = 0.f;
-		float t_squared = 0.f;
-		float s_squared = 0.f;
-		float step = 1.0 / numberOfMeshes;
-
-		FVector linkScale3D(1.f, 1.f, 1.f);
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
 		FVector endTangent = FVector::ZeroVector;
@@ -54,64 +47,10 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 		FVector linkStartLocation = GetActorLocation();
 		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
-		FVector A = FVector::ZeroVector;
-		FVector D = FVector::ZeroVector;
-		FVector U = FVector::ZeroVector;
-		FVector V = FVector::ZeroVector;
-
-		FVector startLocation = FVector::ZeroVector;
-		FVector endLocation = FVector::ZeroVector;
-
-		FVector linkFragmentDirection = FVector::ZeroVector;
-		float linkFragmentLength = 0.f;
-
 		ALinkFragment* linkFragment = nullptr;
-
-		for (int i = 0; i < numberOfMeshes; ++i)
-		{
-			//calculate the start and end position of the link fragment
-			if (i != 0)
-			{
-				startLocation = endLocation;
-			}
-			else
-			{
-				s = (1.f - t);
-				t_squared = t * t;
-				s_squared = s * s;
-
-				A = s_squared * (1 + (2 * t)) * linkStartLocation;
-				D = t_squared * (1 + (2 * s)) * linkEndLocation;
-				U = (s_squared * t) * startTangent;
-				V = (t_squared * s) * endTangent;
-
-				startLocation = A + D + U - V;
-			}
-
-			//calculate the end location
-			t += step;
-			s = (1.f - t);
-			t_squared = t * t;
-			s_squared = s * s;
-
-			A = s_squared * (1 + (2 * t)) * linkStartLocation;
-			D = t_squared * (1 + (2 * s)) * linkEndLocation;
-			U = (s_squared * t) * startTangent;
-			V = (t_squared * s) * endTangent;
-
-			endLocation = A + D + U - V;
-
-			//calculate the size
-			(endLocation - startLocation).ToDirectionAndLength(linkFragmentDirection, linkFragmentLength);
-			linkScale3D.Z = linkFragmentLength * m_linkFragmentScalePerUnrealUnit;
-			FRotator linkFragmentRotation = linkFragmentDirection.Rotation();
-			linkFragmentRotation.Pitch += 90;
-
-			linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, startLocation, linkFragmentRotation);
-			linkFragment->SetActorScale3D(linkScale3D);
-
-			m_linkFragments.Add(linkFragment);
-		}
+		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
+		m_linkFragment = linkFragment;
 
 		return true;
 	}
@@ -232,118 +171,25 @@ void AAminoAcid::BeginPlay()
 
 void AAminoAcid::UpdateLinkToNextAminoAcid()
 {
-	if (m_nextAminoAcid)
+	if (m_nextAminoAcid && m_linkFragment)
 	{
-		int numberOfMeshes = m_linkFragments.Num();
-		float s = 0.f;
-		float t = 0.f;
-		float t_squared = 0.f;
-		float s_squared = 0.f;
-		float step = 1.0 / numberOfMeshes;
-
-		FVector scale3D(1.f, 1.f, 1.f);
-
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
-
 		FVector endTangent = FVector::ZeroVector;
 		m_nextAminoAcid->GetTangent(endTangent);
 
 		FVector linkStartLocation = GetActorLocation();
 		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
-		FVector A = FVector::ZeroVector;
-		FVector D = FVector::ZeroVector;
-		FVector U = FVector::ZeroVector;
-		FVector V = FVector::ZeroVector;
-
-		FVector startLocation = FVector::ZeroVector;
-		FVector endLocation = FVector::ZeroVector;
-
-		FVector linkFragmentDirection = FVector::ZeroVector;
-		float linkFragmentLength = 0.f;
-
-		ALinkFragment* linkFragment = nullptr;
-
-		for (int i = 0; i < numberOfMeshes; ++i)
-		{
-			//calculate the start and end position of the link fragment
-			if (i != 0)
-			{
-				startLocation = endLocation;
-			}
-			else
-			{
-				s = (1.f - t);
-				t_squared = t * t;
-				s_squared = s * s;
-
-				A = s_squared * (1 + (2 * t)) * linkStartLocation;
-				D = t_squared * (1 + (2 * s)) * linkEndLocation;
-				U = (s_squared * t) * startTangent;
-				V = (t_squared * s) * endTangent;
-
-				startLocation = A + D + U - V;
-			}
-
-			//calculate the end location
-			t += step;
-			s = (1.f - t);
-			t_squared = t * t;
-			s_squared = s * s;
-
-			A = s_squared * (1 + (2 * t)) * linkStartLocation;
-			D = t_squared * (1 + (2 * s)) * linkEndLocation;
-			U = (s_squared * t) * startTangent;
-			V = (t_squared * s) * endTangent;
-
-			endLocation = A + D + U - V;
-
-			//calculate the size
-			(endLocation - startLocation).ToDirectionAndLength(linkFragmentDirection, linkFragmentLength);
-			scale3D.Z = linkFragmentLength * m_linkFragmentScalePerUnrealUnit;
-			FRotator linkFragmentRotation = linkFragmentDirection.Rotation();
-			linkFragmentRotation.Pitch += 90;
-
-			linkFragment = m_linkFragments[i];
-			linkFragment->SetActorLocationAndRotation(startLocation, linkFragmentRotation);
-			linkFragment->SetActorScale3D(scale3D);
-		}
+		m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 	}
 }
 
-void AAminoAcid::RotateFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
+void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
 {
 	//rotate the amino acid and the chain
 	FVector distanceFromRotationPoint = GetActorLocation() - rotationPoint;
 	distanceFromRotationPoint = rotation.RotateVector(distanceFromRotationPoint);
 
-	SetActorLocation(rotationPoint + distanceFromRotationPoint);
-
-	FVector rotationVector = FVector::ZeroVector;
-	FVector prevLocation = FVector::ZeroVector;
-	ALinkFragment* prevLinkFragment = nullptr;
-	ALinkFragment* linkFragment = nullptr;
-	for (int i = 0; i < m_linkFragments.Num(); ++i)
-	{
-		linkFragment = m_linkFragments[i];
-		distanceFromRotationPoint = rotation.RotateVector(linkFragment->GetActorLocation() - rotationPoint);
-		distanceFromRotationPoint += rotationPoint;
-		linkFragment->SetActorLocation(distanceFromRotationPoint);
-
-		if (prevLinkFragment)
-		{
-			rotationVector = distanceFromRotationPoint - prevLocation;
-			//set rotation for the previous link fragment
-			prevLinkFragment->SetActorRotation(rotationVector.Rotation().Add(90,0,0));
-		}
-
-		prevLocation = distanceFromRotationPoint;
-		prevLinkFragment = linkFragment;
-	}
-
-	if (prevLinkFragment)
-	{
-		prevLinkFragment->SetActorRotation(rotationVector.Rotation().Add(90, 0, 0));
-	}
+	SetActorLocation(distanceFromRotationPoint + rotationPoint);
 }
