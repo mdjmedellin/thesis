@@ -8,7 +8,7 @@ ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCI
 	: Super(PCIP)
 {
 	//Create the static mesh component
-	MeshComponent = PCIP.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("MeshComponent"));
+	SplineMeshComponent = PCIP.CreateDefaultSubobject<USplineMeshComponent>(this, TEXT("SplineMeshComponent"));
 
-	RootComponent = MeshComponent;
+	RootComponent = SplineMeshComponent;
 }
