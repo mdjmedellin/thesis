@@ -163,6 +163,8 @@ namespace GHProtein
 					m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 				}
+
+				currentAminoAcid->SetSecondaryStructure(currentResidue->GetSecondaryStructure());
 			}
 
 			//get the center of the bounds

@@ -14,9 +14,6 @@ class ACameraPlayerController : public APlayerController
 {
 	GENERATED_UCLASS_BODY()
 
-private:
-	float MAX_PICKUP_DISTANCE;
-
 public:
 	AActor* m_actorHitByRayTrace;
 	bool bCanPickupItem;

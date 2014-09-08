@@ -37,7 +37,13 @@ namespace EAminoAcidType
 	};
 }
 
+namespace ESecondaryStructure
+{
+	enum Type;
+}
+
 class ALinkFragment;
+
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -47,8 +53,6 @@ class AAminoAcid : public AActor
 private:
 	void ClearNextAminoAcidPtr();
 	void ClearPreviousAminoAcidPtr();
-	//testing the clickable interface
-	virtual void ReceiveActorOnClicked();
 
 public:
 
@@ -68,16 +72,19 @@ public:
 
 	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
 
+	void Translate(const FVector& deltaLocation);
+
+	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
+
 	//static functions
 	static void SetTangentTension(float newTension);
 
 private:
 	//private data members
-
-	UParticleSystemComponent* m_linkParticleToNextAminoAcid;
-
 	AAminoAcid* m_nextAminoAcid;
 	AAminoAcid* m_previousAminoAcid;
+
+	UMaterialInstanceDynamic* m_dynamicMaterial;
 
 	//static data members
 	static float s_tangentTension;
@@ -87,6 +94,8 @@ private:
 	UClass* DefaultLinkFragmentClass;
 
 	ALinkFragment* m_linkFragment;
+
+	ESecondaryStructure::Type m_secondaryStructure;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
@@ -100,9 +109,6 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		TSubobjectPtr<UStaticMeshComponent> MeshComponent;
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Particles)
-		TSubobjectPtr<UParticleSystemComponent> BeamParticleTemplate;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		UBlueprint* m_linkBlueprint;
