@@ -28,7 +28,7 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	MeshComponent->AttachTo(RootComponent);
 }
 
-bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
+bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 {
 	//we only spawn the link particles if we have an amino acid to connect to
 	//and we have not spawned them before
@@ -44,6 +44,13 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 
 		ALinkFragment* linkFragment = nullptr;
 		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
+		FVector2D scale(1.f, 1.f);
+		scale.X = width / size.X;
+		scale.Y = height / size.Y;
+		linkFragment->SplineMeshComponent->SetStartScale(scale);
+		linkFragment->SplineMeshComponent->SetEndScale(scale);
+
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
 
@@ -143,6 +150,19 @@ AAminoAcid* AAminoAcid::GetNextAminoAcidPtr()
 void AAminoAcid::SetTangentTension(float newTension)
 {
 	s_tangentTension = newTension;
+}
+
+void AAminoAcid::SetAminoAcidSize(float aminoAcidSize)
+{
+	FVector dimensions = GetComponentsBoundingBox().GetSize();
+	if (dimensions.X > 0.f && dimensions.Y > 0.f && dimensions.Z > 0.f)
+	{
+		FVector scale = FVector::ZeroVector;
+		scale.X = aminoAcidSize / dimensions.X;
+		scale.Y = aminoAcidSize / dimensions.Y;
+		scale.Z = aminoAcidSize / dimensions.Z;
+		this->SetActorScale3D(scale);
+	}
 }
 
 void AAminoAcid::BeginPlay()

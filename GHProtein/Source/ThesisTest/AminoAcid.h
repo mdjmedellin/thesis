@@ -58,7 +58,7 @@ public:
 
 	virtual void BeginPlay();
 
-	bool SpawnLinkParticleToNextAminoAcid();
+	bool SpawnLinkParticleToNextAminoAcid(float width, float height);
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
@@ -76,6 +76,8 @@ public:
 
 	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
 
+	void SetAminoAcidSize(float aminoAcidSize);
+
 	//static functions
 	static void SetTangentTension(float newTension);
 
@@ -86,9 +88,6 @@ private:
 
 	UMaterialInstanceDynamic* m_dynamicMaterial;
 
-	//static data members
-	static float s_tangentTension;
-
 	float m_linkFragmentScalePerUnrealUnit;
 
 	UClass* DefaultLinkFragmentClass;
@@ -96,6 +95,9 @@ private:
 	ALinkFragment* m_linkFragment;
 
 	ESecondaryStructure::Type m_secondaryStructure;
+
+	//static data members
+	static float s_tangentTension;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)

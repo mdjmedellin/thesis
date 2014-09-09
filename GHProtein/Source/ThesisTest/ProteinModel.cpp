@@ -116,11 +116,13 @@ namespace GHProtein
 		return;
 	}
 
-	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& locationOffset)
+	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation
+		, float linkWidth, float linkHeight, float distanceScale)
 	{
-		if (!world || !blueprint)
+		if (!world || !blueprint || aminoAcidSize <= 0.f)
 		{
 			//we need to have a valid world and blueprint
+			//we can only spawn amino acids with a positive non-zero size
 			return;
 		}
 		else
@@ -138,8 +140,9 @@ namespace GHProtein
 				currentResidue = m_residueVector[residueIndex];
 				currentResidue->GetCALocation(aminoAcidLocation);
 				aminoAcidLocation += originLocation;
-				aminoAcidLocation *= 200; // this is done in order to space out the proteins
+				aminoAcidLocation *= distanceScale; // this is done in order to space out the proteins
 				currentAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, blueprint, aminoAcidLocation, originRotation);
+				currentAminoAcid->SetAminoAcidSize(aminoAcidSize);
 
 				if (previousAminoAcid)
 				{
@@ -187,7 +190,7 @@ namespace GHProtein
 			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
-				currentAminoAcid->SpawnLinkParticleToNextAminoAcid();
+				currentAminoAcid->SpawnLinkParticleToNextAminoAcid(linkWidth, linkHeight);
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 		}
