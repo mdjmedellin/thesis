@@ -4,9 +4,7 @@
 #include "AminoAcid.h"
 #include "ThesisStaticLibrary.h"
 #include "LinkFragment.h"
-#include "ParticleDefinitions.h"
-#include "Particles/ParticleSystemComponent.h"
-#include "Particles/ParticleSystem.h"
+#include "Residue.h"
 
 float AAminoAcid::s_tangentTension = 0.0;
 
@@ -14,8 +12,8 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
-	, m_linkParticleToNextAminoAcid(nullptr)
 	, m_linkFragment(nullptr)
+	, m_secondaryStructure(ESecondaryStructure::ssCount)
 {
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
@@ -28,16 +26,13 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 
 	//Attach the static mesh component to the root
 	MeshComponent->AttachTo(RootComponent);
-
-	BeamParticleTemplate = PCIP.CreateDefaultSubobject<UParticleSystemComponent>(this, TEXT("BeamParticleTemplate"));
-	BeamParticleTemplate->DeactivateSystem();			//no matter what, we do not want the template particle to be active
 }
 
-bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
+bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 {
 	//we only spawn the link particles if we have an amino acid to connect to
 	//and we have not spawned them before
-	if (m_nextAminoAcid)
+	if (m_nextAminoAcid && (m_linkFragment == nullptr))
 	{
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
@@ -49,6 +44,13 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 
 		ALinkFragment* linkFragment = nullptr;
 		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
+		FVector2D scale(1.f, 1.f);
+		scale.X = width / size.X;
+		scale.Y = height / size.Y;
+		linkFragment->SplineMeshComponent->SetStartScale(scale);
+		linkFragment->SplineMeshComponent->SetEndScale(scale);
+
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
 
@@ -145,14 +147,22 @@ AAminoAcid* AAminoAcid::GetNextAminoAcidPtr()
 	return m_nextAminoAcid;
 }
 
-void AAminoAcid::ReceiveActorOnClicked()
-{
-	int x = 1;
-}
-
 void AAminoAcid::SetTangentTension(float newTension)
 {
 	s_tangentTension = newTension;
+}
+
+void AAminoAcid::SetAminoAcidSize(float aminoAcidSize)
+{
+	FVector dimensions = GetComponentsBoundingBox().GetSize();
+	if (dimensions.X > 0.f && dimensions.Y > 0.f && dimensions.Z > 0.f)
+	{
+		FVector scale = FVector::ZeroVector;
+		scale.X = aminoAcidSize / dimensions.X;
+		scale.Y = aminoAcidSize / dimensions.Y;
+		scale.Z = aminoAcidSize / dimensions.Z;
+		this->SetActorScale3D(scale);
+	}
 }
 
 void AAminoAcid::BeginPlay()
@@ -167,6 +177,9 @@ void AAminoAcid::BeginPlay()
 	}
 
 	m_linkFragmentScalePerUnrealUnit = 1.0 / m_lengthOfLinkFragment;
+	
+	//create the dynamic material
+	m_dynamicMaterial = MeshComponent->CreateAndSetMaterialInstanceDynamic(0);
 }
 
 void AAminoAcid::UpdateLinkToNextAminoAcid()
@@ -185,6 +198,19 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 	}
 }
 
+void AAminoAcid::Translate(const FVector& deltaLocation)
+{
+	SetActorLocation(GetActorLocation() + deltaLocation);
+
+	//update the chains of the amino acids
+	if (m_previousAminoAcid)
+	{
+		m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+	}
+
+	UpdateLinkToNextAminoAcid();
+}
+
 void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
 {
 	//rotate the amino acid and the chain
@@ -192,4 +218,35 @@ void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint,
 	distanceFromRotationPoint = rotation.RotateVector(distanceFromRotationPoint);
 
 	SetActorLocation(distanceFromRotationPoint + rotationPoint);
+}
+
+void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
+{
+	m_secondaryStructure = secondaryStructure;
+
+
+
+
+	switch (m_secondaryStructure)
+	{
+	case ESecondaryStructure::ssAlphaHelix:
+		if (m_dynamicMaterial)
+		{
+			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.89f,0.05f,0.47f));
+		}
+		break;
+	case ESecondaryStructure::ssHelix_3:
+		if (m_dynamicMaterial)
+		{
+			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.6f, 0.f, 0.6f));
+		}
+		break;
+	case ESecondaryStructure::ssBetaBridge:
+		if (m_dynamicMaterial)
+		{
+			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.90f, 0.77f, 0.10f));
+		}
+	default:
+		break;
+	}
 }

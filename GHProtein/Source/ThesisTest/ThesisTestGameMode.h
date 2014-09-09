@@ -21,7 +21,26 @@ public:
 
 public:
 	GHProtein::ProteinModel* m_proteinModel;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameMode)
+		float m_aminoAcidSize;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameMode)
+		FVector m_proteinModelCenterLocation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = GameMode)
+		UBlueprint* m_aminoAcidBlueprint;
 private:
 	/* Private data members */
-	UClass* DefaultAminoAcidClass;
+	UPROPERTY(EditDefaultsOnly, Category = GameMode)
+		UClass* DefaultAminoAcidClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = GameMode)
+		float m_linkWidth;
+
+	UPROPERTY(EditDefaultsOnly, Category = GameMode)
+		float m_linkHeight;
+
+	UPROPERTY(EditDefaultsOnly, Category = GameMode)
+		float m_distanceScale;
 };

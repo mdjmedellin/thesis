@@ -12,7 +12,7 @@ ACameraPlayerController::ACameraPlayerController(const class FPostConstructIniti
 	bEnableClickEvents = true;
 	bCanPickupItem = false;
 	m_actorHitByRayTrace = nullptr;
-	MAX_PICKUP_DISTANCE = 256.f;
+	//MAX_PICKUP_DISTANCE = 256.f;
 }
 
 bool ACameraPlayerController::TogglePickup(bool CanPickup)
@@ -66,7 +66,7 @@ void ACameraPlayerController::TickActor(float DeltaSeconds, ELevelTick TickType,
 
 	//Perform a ray trace to see if we have the ability to pickup items
 	const FVector Start = GetFocalLocation();
-	const FVector End = Start + GetControlRotation().Vector() * MAX_PICKUP_DISTANCE;
+	const FVector End = Start + GetControlRotation().Vector() * 500;
 
 	FHitResult HitData(ForceInit);
 

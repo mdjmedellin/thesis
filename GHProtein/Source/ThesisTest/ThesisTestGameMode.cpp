@@ -10,6 +10,13 @@
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
+	, m_aminoAcidSize(0.f)
+	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
+	, DefaultAminoAcidClass(nullptr)
+	, m_aminoAcidBlueprint(nullptr)
+	, m_linkWidth(100.f)
+	, m_linkHeight(100.f)
+	, m_distanceScale(1.f)
 {
 	/*
 	FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt") );
@@ -28,6 +35,7 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	PdbFile->LoadFile(testString);*/
 
 	// set default pawn class to our Blueprinted character
+	/*
 	static ConstructorHelpers::FObjectFinder<UBlueprint> PlayerPawnObject(TEXT("/Game/Blueprints/ThesisCameraCharacter"));
 	if (PlayerPawnObject.Object != NULL)
 	{
@@ -49,15 +57,34 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	HUDClass = AThesisTestHUD::StaticClass();
 	//use our custom controller
 	PlayerControllerClass = ACameraPlayerController::StaticClass();
+	*/
+
+	/*
+	static ConstructorHelpers::FObjectFinder<UBlueprint> AminoAcidBlueprint(TEXT("Blueprint'/Game/Blueprints/AminoAcid.AminoAcid'"));
+	if (AminoAcidBlueprint.Object)
+	{
+		DefaultAminoAcidClass = (UClass*)AminoAcidBlueprint.Object->GeneratedClass;
+	}
+	else
+	{
+		DefaultAminoAcidClass = nullptr;
+	}
+	*/
 }
 
 void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 	
+	/*if (m_aminoAcidBlueprint)
+	{
+		DefaultAminoAcidClass = (UClass*)m_aminoAcidBlueprint->GeneratedClass;
+	}*/
+
 	//set the initial tension for the spline we use to get the tangents of each amino acid
 	AAminoAcid::SetTangentTension(0.5);
 
+	//Load the pdb file used to create the protein model and parse the data inside of it
 	ProteinBuilder* PdbFile = new ProteinBuilder();
 	FString testString = "../../../ThesisData/Lysozyme.dssp";
 	PdbFile->LoadFile(testString);
@@ -72,9 +99,7 @@ void AThesisTestGameMode::StartMatch()
 	if (m_proteinModel && DefaultAminoAcidClass)
 	{
 		UWorld* const World = GetWorld();
-		FVector locationOffset = FVector::ZeroVector;
-		locationOffset.Z = 900;
-		FRotator defaultRotation = FRotator::ZeroRotator;
-		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, locationOffset);
+		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
+			, m_linkWidth, m_linkHeight, m_distanceScale);
 	}
 }

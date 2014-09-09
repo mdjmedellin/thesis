@@ -10,6 +10,8 @@ namespace GHProtein
 	class ProteinModel;
 }
 
+class AAminoAcid;
+
 /**
  * 
  */
@@ -36,10 +38,16 @@ class ACameraCharacter : public ACharacter
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
 		float m_rotationSpeedDegreesPerSecond;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
+		float m_maxPickDistance;
+
 	GHProtein::ProteinModel* m_proteinModel;
 	float m_rotationSpeedSecondsPerDegrees;
 	bool m_rotateProteinYaw;
 	bool m_rotateProteinPitch;
+	bool m_allowCameraRotation;
+	AAminoAcid* m_selectedAminoAcid;
+	FVector m_prevLocation;
 
 protected:
 
@@ -70,10 +78,18 @@ protected:
 	*/
 	void LookUpAtRate(float Rate);
 
+public:
 
 	//Functions used to toggle rotation of the protein
-	void ToggleProteinYawRotation();
-	void ToggleProteinPitchRotation();
+	virtual void ToggleProteinYawRotation();
+	virtual void ToggleProteinPitchRotation();
+
+	//world interaction functions
+	virtual void StartInteraction();
+	virtual void StopInteraction();
+
+	virtual void HandleControllerYawInput(float deltaYaw);
+	virtual void HandleControllerPitchInput(float deltaPitch);
 
 protected:
 	// APawn interface
