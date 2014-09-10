@@ -14,6 +14,8 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_previousAminoAcid(nullptr)
 	, m_linkFragment(nullptr)
 	, m_secondaryStructure(ESecondaryStructure::ssCount)
+	, m_helixColor(FColor::White)
+	, m_betaStrandColor(FColor::White)
 {
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
@@ -48,6 +50,7 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 		FVector2D scale(1.f, 1.f);
 		scale.X = width / size.X;
 		scale.Y = height / size.Y;
+
 		linkFragment->SplineMeshComponent->SetStartScale(scale);
 		linkFragment->SplineMeshComponent->SetEndScale(scale);
 
@@ -223,30 +226,41 @@ void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint,
 void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
 {
 	m_secondaryStructure = secondaryStructure;
+}
 
+void AAminoAcid::SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
+	, float betaStrandLinkWidth)
+{
+	m_helixColor = helixColor;
+	m_betaStrandColor = betaStrandColor;
 
+	UpdateLinkFragmentRenderProperties(helixLinkWidth, betaStrandLinkWidth);
+}
 
-
-	switch (m_secondaryStructure)
+void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth)
+{
+	if (m_linkFragment)
 	{
-	case ESecondaryStructure::ssAlphaHelix:
-		if (m_dynamicMaterial)
+		FVector size = m_linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
+		FVector2D scale = m_linkFragment->SplineMeshComponent->GetStartScale();
+		FColor renderColor = FColor::White;
+
+		switch (m_secondaryStructure)
 		{
-			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.89f,0.05f,0.47f));
+		case ESecondaryStructure::ssAlphaHelix:
+			renderColor = m_helixColor;
+			scale.Y = helixLinkWidth / size.Y;
+			break;
+		case ESecondaryStructure::ssStrand:
+			renderColor = m_betaStrandColor;
+			scale.Y = betaStrandLinkWidth / size.Y;
+			break;
+		default:
+			break;
 		}
-		break;
-	case ESecondaryStructure::ssHelix_3:
-		if (m_dynamicMaterial)
-		{
-			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.6f, 0.f, 0.6f));
-		}
-		break;
-	case ESecondaryStructure::ssBetaBridge:
-		if (m_dynamicMaterial)
-		{
-			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.90f, 0.77f, 0.10f));
-		}
-	default:
-		break;
+		
+		m_linkFragment->SplineMeshComponent->SetStartScale(scale);
+		m_linkFragment->SplineMeshComponent->SetEndScale(scale);
+		m_linkFragment->setColor(renderColor);
 	}
 }

@@ -34,7 +34,8 @@ namespace GHProtein
 		bool AddResidue(Residue* insertedResidue);
 		void BuildProteinModel();
 		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation
-			, float linkWidth, float linkHeight, float distanceScale);
+			, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor
+			, float helixLinkWidth, float betaStrandLinkWidth);
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 
 	private:

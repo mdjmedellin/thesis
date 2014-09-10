@@ -43,4 +43,16 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		float m_distanceScale;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_helixColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_betaStrandColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		float m_betaStrandLinkWidth;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		float m_helixLinkWidth;
 };

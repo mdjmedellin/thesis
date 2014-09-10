@@ -76,6 +76,11 @@ public:
 
 	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
 
+	void SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
+		, float betaStrandLinkWidth);
+
+	void UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth);
+
 	void SetAminoAcidSize(float aminoAcidSize);
 
 	//static functions
@@ -95,6 +100,8 @@ private:
 	ALinkFragment* m_linkFragment;
 
 	ESecondaryStructure::Type m_secondaryStructure;
+	FColor m_helixColor;
+	FColor m_betaStrandColor;
 
 	//static data members
 	static float s_tangentTension;

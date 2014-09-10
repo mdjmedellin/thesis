@@ -117,7 +117,8 @@ namespace GHProtein
 	}
 
 	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation
-		, float linkWidth, float linkHeight, float distanceScale)
+		, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
+		, float betaStrandLinkWidth)
 	{
 		if (!world || !blueprint || aminoAcidSize <= 0.f)
 		{
@@ -191,6 +192,7 @@ namespace GHProtein
 			while (currentAminoAcid)
 			{
 				currentAminoAcid->SpawnLinkParticleToNextAminoAcid(linkWidth, linkHeight);
+				currentAminoAcid->SetRenderProperties(helixColor, betaStrandColor, helixLinkWidth, betaStrandLinkWidth);
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 		}
