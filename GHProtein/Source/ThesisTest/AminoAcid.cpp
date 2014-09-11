@@ -225,7 +225,20 @@ void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint,
 
 void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
 {
-	m_secondaryStructure = secondaryStructure;
+	if (secondaryStructure != ESecondaryStructure::ssAlphaHelix
+		&& secondaryStructure != ESecondaryStructure::ssStrand)
+	{
+		m_secondaryStructure = ESecondaryStructure::ssTurn;
+	}
+	else
+	{
+		m_secondaryStructure = secondaryStructure;
+	}
+}
+
+ESecondaryStructure::Type AAminoAcid::GetSecondaryStructure()
+{
+	return m_secondaryStructure;
 }
 
 void AAminoAcid::SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
@@ -235,6 +248,30 @@ void AAminoAcid::SetRenderProperties(const FColor& helixColor, const FColor& bet
 	m_betaStrandColor = betaStrandColor;
 
 	UpdateLinkFragmentRenderProperties(helixLinkWidth, betaStrandLinkWidth);
+}
+
+void AAminoAcid::SetLinkFragmentColor(const FColor& fragmentColor)
+{
+	if (m_linkFragment)
+	{
+		m_linkFragment->setColor(fragmentColor);
+	}
+}
+
+void AAminoAcid::ResetLinkFragmentColorToDefault()
+{
+	switch (m_secondaryStructure)
+	{
+	case ESecondaryStructure::ssAlphaHelix:
+		SetLinkFragmentColor(m_helixColor);
+		break;
+	case ESecondaryStructure::ssStrand:
+		SetLinkFragmentColor(m_betaStrandColor);
+		break;
+	default:
+		SetLinkFragmentColor(FColor::White);
+		break;
+	}
 }
 
 void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth)

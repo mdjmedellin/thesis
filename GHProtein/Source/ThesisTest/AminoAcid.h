@@ -71,13 +71,15 @@ public:
 	void UpdateLinkToNextAminoAcid();
 
 	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
-
 	void Translate(const FVector& deltaLocation);
 
 	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
-
 	void SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
 		, float betaStrandLinkWidth);
+	void SetLinkFragmentColor(const FColor& fragmentColor);
+	void ResetLinkFragmentColorToDefault();
+
+	ESecondaryStructure::Type GetSecondaryStructure();
 
 	void UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth);
 

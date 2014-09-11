@@ -7,6 +7,7 @@
 #include "Residue.h"
 
 class AAminoAcid;
+class SecondaryStructure;
 
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
@@ -32,11 +33,13 @@ namespace GHProtein
 	public:
 		/** Public utility methods go here */
 		bool AddResidue(Residue* insertedResidue);
+		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
 		void BuildProteinModel();
 		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation
 			, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor
 			, float helixLinkWidth, float betaStrandLinkWidth);
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
+		void HighlightSecondaryStructure(AAminoAcid* residueMember);
 
 	private:
 		/** Private utility methods go here */
@@ -53,6 +56,9 @@ namespace GHProtein
 		TMap< int, ResidueContainer* > ResidueIDMap;
 		TArray< Residue* > m_residueVector;
 		TArray< ResidueContainer* > m_residueContainers;
+
+		SecondaryStructure* m_headSecondaryStructure;
+		SecondaryStructure* m_tailSecondaryStructure;
 	};
 }
 
