@@ -73,6 +73,7 @@ public:
 	void GetTangent(FVector& out_vector);
 
 	AAminoAcid* GetNextAminoAcidPtr();
+	AAminoAcid* GetPreviousAminoAcidPtr();
 
 	void UpdateLinkToNextAminoAcid();
 	void UpdateHydrogenBonds(bool recurse = false);

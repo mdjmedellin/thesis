@@ -221,6 +221,11 @@ AAminoAcid* AAminoAcid::GetNextAminoAcidPtr()
 	return m_nextAminoAcid;
 }
 
+AAminoAcid* AAminoAcid::GetPreviousAminoAcidPtr()
+{
+	return m_previousAminoAcid;
+}
+
 void AAminoAcid::SetTangentTension(float newTension)
 {
 	s_tangentTension = newTension;
@@ -303,14 +308,30 @@ void AAminoAcid::Translate(const FVector& deltaLocation)
 {
 	SetActorLocation(GetActorLocation() + deltaLocation);
 
+	AAminoAcid* tempResidue = nullptr;
+
 	//update the chains of the amino acids
 	if (m_previousAminoAcid)
 	{
-		m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+		//update the chain handled by the previous amino acid of the previous amino acid
+		tempResidue = m_previousAminoAcid->GetPreviousAminoAcidPtr();
+		if (tempResidue)
+		{
+			tempResidue->UpdateLinkToNextAminoAcid();
+		}
 
+		//update the chain handled by the previous amino acid
+		m_previousAminoAcid->UpdateLinkToNextAminoAcid();
 	}
 
+	//update the cahin handled by this amino acid
 	UpdateLinkToNextAminoAcid();
+
+	//update the chain handled by the next amino acid
+	if (m_nextAminoAcid)
+	{
+		m_nextAminoAcid->UpdateLinkToNextAminoAcid();
+	}
 }
 
 void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
