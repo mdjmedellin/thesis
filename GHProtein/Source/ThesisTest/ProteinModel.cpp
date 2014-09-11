@@ -149,6 +149,8 @@ namespace GHProtein
 				aminoAcidLocation *= distanceScale; // this is done in order to space out the proteins
 				currentAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, blueprint, aminoAcidLocation, originRotation);
 				currentAminoAcid->SetAminoAcidSize(aminoAcidSize);
+				currentAminoAcid->SetResidueInformation(currentResidue);
+				currentAminoAcid->SetParentModel(this);
 
 				if (previousAminoAcid)
 				{
@@ -232,6 +234,28 @@ namespace GHProtein
 				break;
 			}
 		}
+	}
+
+	AAminoAcid* ProteinModel::GetAminoAcidWithSpecifiedId(int sequenceNumber)
+	{
+		SecondaryStructure* currentSecondaryStructure = m_headSecondaryStructure;
+		AAminoAcid* foundResidue = nullptr;
+
+		while (currentSecondaryStructure)
+		{
+			foundResidue = currentSecondaryStructure->GetAminoAcidWithSpecifiedId(sequenceNumber);
+
+			if (foundResidue)
+			{
+				break;
+			}
+			else
+			{
+				currentSecondaryStructure = currentSecondaryStructure->GetNextStructurePtr();
+			}
+		}
+
+		return foundResidue;
 	}
 
 	void ProteinModel::AppendSecondaryStructure(SecondaryStructure* secondaryStructure)

@@ -41,6 +41,8 @@ namespace GHProtein
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void HighlightSecondaryStructure(AAminoAcid* residueMember);
 
+		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
+
 	private:
 		/** Private utility methods go here */
 		FVector m_minBounds3D;

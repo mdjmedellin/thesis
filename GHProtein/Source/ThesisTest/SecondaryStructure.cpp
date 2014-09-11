@@ -28,6 +28,27 @@ void SecondaryStructure::SetSelected()
 	ChangeRibbonColor(FColor::Red);
 }
 
+AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
+{
+	AAminoAcid* foundResidue = nullptr;
+	AAminoAcid* currentResidue = m_headAminoAcid;
+
+	while (currentResidue && currentResidue != m_tailAminoAcid->GetNextAminoAcidPtr())
+	{
+		if (currentResidue->GetSequenceNumber() == sequenceNumber)
+		{
+			foundResidue = currentResidue;
+			break;
+		}
+		else
+		{
+			currentResidue = currentResidue->GetNextAminoAcidPtr();
+		}
+	}
+
+	return foundResidue;
+}
+
 void SecondaryStructure::Deselect()
 {
 	if (this == s_selectedStructure)

@@ -5,6 +5,7 @@
 #include "ThesisStaticLibrary.h"
 #include "LinkFragment.h"
 #include "Residue.h"
+#include "ProteinModel.h"
 
 float AAminoAcid::s_tangentTension = 0.0;
 
@@ -13,9 +14,15 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
 	, m_linkFragment(nullptr)
+	, m_betaPartner1(nullptr)
+	, m_betaPartner2(nullptr)
+	, m_betaPartnerResidue1(nullptr)
+	, m_betaPartnerResidue2(nullptr)
 	, m_secondaryStructure(ESecondaryStructure::ssCount)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
+	, m_residueInformation(nullptr)
+	, m_model(nullptr)
 {
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
@@ -57,6 +64,48 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
 
+		//spawn link to partner amino acid on the beta sheet
+		BridgePartner partner = m_residueInformation->GetBetaPartner(0);
+
+		scale *= .5f;
+
+		if (partner.residue)
+		{
+			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
+
+			if (betaPartner)
+			{
+				linkEndLocation = betaPartner->GetActorLocation();
+
+				m_betaPartnerResidue1 = betaPartner;
+				m_betaPartner1 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+
+				m_betaPartner1->SplineMeshComponent->SetStartScale(scale);
+				m_betaPartner1->SplineMeshComponent->SetEndScale(scale);
+				m_betaPartner1->SplineMeshComponent->SetStartPosition(linkStartLocation);
+				m_betaPartner1->SplineMeshComponent->SetEndPosition(linkEndLocation);
+			}
+		}
+
+		partner = m_residueInformation->GetBetaPartner(1);
+		if (partner.residue)
+		{
+			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
+
+			if (betaPartner)
+			{
+				linkEndLocation = betaPartner->GetActorLocation();
+
+				m_betaPartnerResidue2 = betaPartner;
+				m_betaPartner2 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+
+				m_betaPartner2->SplineMeshComponent->SetStartScale(scale);
+				m_betaPartner2->SplineMeshComponent->SetEndScale(scale);
+				m_betaPartner2->SplineMeshComponent->SetStartPosition(linkStartLocation);
+				m_betaPartner2->SplineMeshComponent->SetEndPosition(linkEndLocation);
+			}
+		}
+
 		return true;
 	}
 
@@ -80,6 +129,18 @@ void AAminoAcid::GetTangent(FVector& out_vector)
 	}
 }
 
+int AAminoAcid::GetSequenceNumber()
+{
+	if (m_residueInformation)
+	{
+		return m_residueInformation->GetSeqNumber();
+	}
+	else
+	{
+		return -1;
+	}
+}
+
 bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
 {
 	if (m_nextAminoAcid)
@@ -91,6 +152,16 @@ bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
 	{
 		return false;
 	}
+}
+
+void AAminoAcid::SetParentModel(GHProtein::ProteinModel* parentModel)
+{
+	m_model = parentModel;
+}
+
+void AAminoAcid::SetResidueInformation(Residue* residueInformation)
+{
+	m_residueInformation = residueInformation;
 }
 
 void AAminoAcid::SetNextAminoAcid(AAminoAcid* nextAminoAcid)
@@ -199,6 +270,33 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 
 		m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 	}
+
+	//update Hydrogen bonds here
+	UpdateHydrogenBonds(true);
+}
+
+void AAminoAcid::UpdateHydrogenBonds(bool recurse)
+{
+	if (m_betaPartnerResidue1)
+	{
+		m_betaPartner1->SplineMeshComponent->SetStartPosition(GetActorLocation());
+		m_betaPartner1->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue1->GetActorLocation());
+
+		if (recurse)
+		{
+			m_betaPartnerResidue1->UpdateHydrogenBonds();
+		}
+	}
+	if (m_betaPartnerResidue2)
+	{
+		m_betaPartner2->SplineMeshComponent->SetStartPosition(GetActorLocation());
+		m_betaPartner2->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue2->GetActorLocation());
+
+		if (recurse)
+		{
+			m_betaPartnerResidue2->UpdateHydrogenBonds();
+		}
+	}
 }
 
 void AAminoAcid::Translate(const FVector& deltaLocation)
@@ -209,6 +307,7 @@ void AAminoAcid::Translate(const FVector& deltaLocation)
 	if (m_previousAminoAcid)
 	{
 		m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+
 	}
 
 	UpdateLinkToNextAminoAcid();

@@ -19,6 +19,8 @@ public:
 	SecondaryStructure* GetNextStructurePtr();
 	bool ContainsSpecifiedResidue(AAminoAcid* residue);
 
+	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
+
 	static SecondaryStructure* GetSelectedStructure();
 
 private:
