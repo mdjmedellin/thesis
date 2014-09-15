@@ -20,6 +20,7 @@ bool ProteinBuilder::LoadFile(const FString& inFile)
 		//ErrorMessage += TEXT("\"");
 		//ErrorMessage += InFile;
 		//ErrorMessage += TEXT("\"");
+		fileReader->AtEnd();
 		return false;
 	}
 

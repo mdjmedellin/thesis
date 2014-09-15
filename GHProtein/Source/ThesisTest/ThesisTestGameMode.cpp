@@ -82,9 +82,29 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 
 	//Load the pdb file used to create the protein model and parse the data inside of it
 	ProteinBuilder* PdbFile = new ProteinBuilder();
-	FString testString = "../../../ThesisData/Lysozyme.dssp";
+	FString testString = "";
+	bool debug_file = true;
+
+	if (debug_file)
+	{
+		testString = "../../../ThesisData/Lysozyme.dssp";
+	}
+	else
+	{
+		testString = "./ThesisData/Lysozyme.dssp";
+	}
 	PdbFile->LoadFile(testString);
 	m_proteinModel = PdbFile->GetCurrentProteinModel();
+
+	/*FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt"));
+	if (SaveFile)
+	{
+		FString MyString = TEXT("TestString");
+		*SaveFile << MyString;
+		SaveFile->Close();
+		delete SaveFile;
+		SaveFile = NULL;
+	}*/
 }
 
 void AThesisTestGameMode::StartMatch()
