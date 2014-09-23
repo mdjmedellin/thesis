@@ -97,10 +97,12 @@ void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
 	if (m_headAminoAcid == nullptr)
 	{
 		m_headAminoAcid = residue;
+		m_tailAminoAcid = residue;
 	}
 	else
 	{
 		//if we already have a head amino acid, then we take the latest appended amino acid as the tail
+		m_tailAminoAcid->SetNextAminoAcid(residue);
 		m_tailAminoAcid = residue;
 	}
 }
