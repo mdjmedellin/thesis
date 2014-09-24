@@ -57,6 +57,13 @@ namespace GHProtein
 		m_expectedOutput[2] = output_2;
 		m_outputs.push_back(output_2);
 	}
+
+	void IrisData::GetInputValues(std::vector< std::vector<double> >& out_inputs) const
+	{
+		for (int i = 0; i < m_inputs.size(); ++i)
+		{
+		}
+	}
 	//==================================================================
 
 	//=========================NeuralNetData============================
@@ -78,6 +85,11 @@ namespace GHProtein
 	{
 		m_dataSets.push_back(dataSet);
 	}
+
+	IrisData* NeuralNetData::GetIrisDataFromSet(int dataSetIndex, int dataIndex)
+	{
+		return m_dataSets[dataSetIndex].GetIrisData(dataIndex);
+	}
 	//==================================================================
 	
 	//==========================NeuralNetDataSet========================
@@ -93,6 +105,15 @@ namespace GHProtein
 	void NeuralNetDataSet::AddFile(const std::string& fileName)
 	{
 		m_files.push_back(fileName);
+	}
+
+	IrisData* NeuralNetDataSet::GetIrisData(int dataIndex)
+	{
+		if (dataIndex > -1 && dataIndex < m_irisDataContainer.size())
+		{
+			return m_irisDataContainer[dataIndex];
+		}
+		return nullptr;
 	}
 
 	void NeuralNetDataSet::LoadProteinModels(ProteinBuilder* proteinBuilder, const std::string& dataRootLocation)
@@ -771,7 +792,7 @@ namespace GHProtein
 		m_data.AddDataSet(currentSet);
 	}
 
-	void TrainingData::GetRandomTrainingData(std::vector<IrisData>& out_container)
+	void TrainingData::GetRandomTrainingData(std::vector<const IrisData*>& out_container)
 	{
 		//we randomize the order of the outputs
 		int setA = 40;
@@ -795,21 +816,104 @@ namespace GHProtein
 				case 0:
 					if (setA > 0)
 					{
-						out_container.push_back(m_data.)
+						out_container.push_back(m_data.GetIrisDataFromSet(0, setA - 1));
+						--setA;
+						valueAdded = true;
+					}
+					else
+					{
+						randSetIndex = 1;
 					}
 					break;
 				case 1:
+					if (setB > 0)
+					{
+						out_container.push_back(m_data.GetIrisDataFromSet(1, setB - 1));
+						--setB;
+						valueAdded = true;
+					}
+					else
+					{
+						randSetIndex = 2;
+					}
 					break;
 				default:
+					if (setC > 0)
+					{
+						out_container.push_back(m_data.GetIrisDataFromSet(2, setC - 1));
+						--setC;
+						valueAdded = true;
+					}
+					else
+					{
+						randSetIndex = 0;
+					}
 					break;
 				}
 			}
 		}
 	}
 
-	void TrainingData::GetRandomValidationData(std::vector<IrisData>& out_container)
+	void TrainingData::GetRandomValidationData(std::vector< const IrisData* >& out_container)
 	{
+		//we randomize the order of the outputs
+		int setA = 10;
+		int setB = 10;
+		int setC = 10;
+		int sizeOfContainer = setA + setB + setC;
 
+		out_container.clear();
+		out_container.reserve(sizeOfContainer);
+
+		int randSetIndex = 0;
+		for (int i = 0; i < sizeOfContainer; ++i)
+		{
+			randSetIndex = RandNToN(6.0,3.0);
+
+			bool valueAdded = false;
+			while (!valueAdded)
+			{
+				switch (randSetIndex)
+				{
+				case 3:
+					if (setA > 0)
+					{
+						out_container.push_back(m_data.GetIrisDataFromSet(0, setA - 1));
+						--setA;
+						valueAdded = true;
+					}
+					else
+					{
+						randSetIndex = 4;
+					}
+					break;
+				case 4:
+					if (setB > 0)
+					{
+						out_container.push_back(m_data.GetIrisDataFromSet(1, setB - 1));
+						--setB;
+						valueAdded = true;
+					}
+					else
+					{
+						randSetIndex = 5;
+					}
+					break;
+				default:
+					if (setC > 0)
+					{
+						out_container.push_back(m_data.GetIrisDataFromSet(2, setC - 1));
+						--setC;
+						valueAdded = true;
+					}
+					else
+					{
+						randSetIndex = 3;
+					}
+					break;
+				}
+			}
+		}
 	}
 
 	/*

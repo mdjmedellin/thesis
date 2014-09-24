@@ -16,7 +16,8 @@ namespace GHProtein
 
 	static const double INVERSE_RAND_MAX = 1.0 / double(RAND_MAX);
 	
-	double RandZeroToN(double maxValue = 1.0) { return (rand() * INVERSE_RAND_MAX * maxValue); }
+	double RandZeroToN(double maxValue = 1.0);
+	double RandNToN(double maxValue = 1.0, double minValue = 0.0);
 
 	//String parsing utilities
 	static std::string whitespaces(" \t\f\v\n\r");

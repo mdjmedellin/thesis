@@ -8,13 +8,24 @@ int main(int argc, char* argv[])
 	GHProtein::TrainingData trainData("tmp/testTraining.txt");
 	GHProtein::NeuralNet* testNet = new GHProtein::NeuralNet(trainData.GetTopology(), true);
 
-	std::vector< GHProtein::IrisData > randomTrainingData;
-	std::vector< GHProtein::IrisData > randomValidationData;
+	std::vector< const GHProtein::IrisData* > randomTrainingData;
+	std::vector< const GHProtein::IrisData* > randomValidationData;
+
+	std::vector< std::vector<double> >inputVals;
+	int trainingDataLength = 0;
 
 	for (int trainingPass = 0; trainingPass < MAX_TRAINING; ++trainingPass)
 	{
 		trainData.GetRandomTrainingData(randomTrainingData);
 		trainData.GetRandomValidationData(randomValidationData);
+
+		//now that we have the randomized sets, lets train the neural network
+		trainingDataLength = randomTrainingData.size();
+		for (int i = 0; i < trainingDataLength; ++i)
+		{
+			randomTrainingData[i]->GetInputValues(inputVals);
+
+		}
 	}
 	// e.g., { 3, 2, 1 }
 	//gh::NeuralNet* testNet = new gh::NeuralNet(topology, true);
