@@ -17,6 +17,10 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_linkWidth(100.f)
 	, m_linkHeight(100.f)
 	, m_distanceScale(1.f)
+	, m_helixColor(FColor::White)
+	, m_betaStrandColor(FColor::White)
+	, m_helixLinkWidth(100.f)
+	, m_betaStrandLinkWidth(100.f)
 {
 	/*
 	FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt") );
@@ -75,20 +79,32 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
-	
-	/*if (m_aminoAcidBlueprint)
-	{
-		DefaultAminoAcidClass = (UClass*)m_aminoAcidBlueprint->GeneratedClass;
-	}*/
-
-	//set the initial tension for the spline we use to get the tangents of each amino acid
-	AAminoAcid::SetTangentTension(0.5);
 
 	//Load the pdb file used to create the protein model and parse the data inside of it
 	ProteinBuilder* PdbFile = new ProteinBuilder();
-	FString testString = "../../../ThesisData/Lysozyme.dssp";
+	FString testString = "";
+	bool debug_file = true;
+
+	if (debug_file)
+	{
+		testString = "../../../ThesisData/Lysozyme.dssp";
+	}
+	else
+	{
+		testString = "./ThesisData/Lysozyme.dssp";
+	}
 	PdbFile->LoadFile(testString);
 	m_proteinModel = PdbFile->GetCurrentProteinModel();
+
+	/*FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt"));
+	if (SaveFile)
+	{
+		FString MyString = TEXT("TestString");
+		*SaveFile << MyString;
+		SaveFile->Close();
+		delete SaveFile;
+		SaveFile = NULL;
+	}*/
 }
 
 void AThesisTestGameMode::StartMatch()
@@ -100,6 +116,6 @@ void AThesisTestGameMode::StartMatch()
 	{
 		UWorld* const World = GetWorld();
 		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
-			, m_linkWidth, m_linkHeight, m_distanceScale);
+			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth);
 	}
 }

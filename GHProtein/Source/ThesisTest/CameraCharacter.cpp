@@ -113,6 +113,9 @@ void ACameraCharacter::StartInteraction()
 			{
 				m_allowCameraRotation = false;
 				GetMovementComponent()->StopMovementImmediately();
+
+				//attempt to highlight the secondary structure this amino acid belongs to
+				m_proteinModel->HighlightSecondaryStructure(m_selectedAminoAcid);
 			}
 		}
 	}
