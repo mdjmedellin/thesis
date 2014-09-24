@@ -8,6 +8,57 @@
 
 namespace GHProtein
 {
+	//========================IrisData==================================
+	IrisData::IrisData()
+	: m_inputData(nullptr)
+	, m_expectedOutput(nullptr)
+	{}
+
+	IrisData::~IrisData()
+	{
+		if (m_inputData)
+		{
+			delete m_inputData;
+		}
+		if (m_expectedOutput)
+		{
+			delete m_expectedOutput;
+		}
+	}
+
+	void IrisData::SetInputData(float input_0, float input_1, float input_2, float input_3)
+	{
+		if (!m_inputData)
+		{
+			m_inputData = new float[4];
+		}
+
+		m_inputData[0] = input_0;
+		m_inputs.push_back(input_0);
+		m_inputData[1] = input_1;
+		m_inputs.push_back(input_1);
+		m_inputData[2] = input_2;
+		m_inputs.push_back(input_2);
+		m_inputData[3] = input_3;
+		m_inputs.push_back(input_3);
+	}
+
+	void IrisData::SetOutputData(float output_0, float output_1, float output_2)
+	{
+		if (!m_expectedOutput)
+		{
+			m_expectedOutput = new float[3];
+		}
+
+		m_expectedOutput[0] = output_0;
+		m_outputs.push_back(output_0);
+		m_expectedOutput[1] = output_1;
+		m_outputs.push_back(output_1);
+		m_expectedOutput[2] = output_2;
+		m_outputs.push_back(output_2);
+	}
+	//==================================================================
+
 	//=========================NeuralNetData============================
 	NeuralNetData::NeuralNetData()
 		: m_rootLocation("")
@@ -70,6 +121,61 @@ namespace GHProtein
 			m_proteinModels.push_back(currentProteinModel);
 		}
 	}
+
+	void NeuralNetDataSet::LoadIrisData(const std::string& dataRootLocation)
+	{
+		std::string rootPath = dataRootLocation;
+		if (!rootPath.empty())
+		{
+			rootPath.append("/");
+		}
+
+		if (!m_directory.empty())
+		{
+			rootPath.append(m_directory + "/");
+		}
+
+		//iterate through the files and load the proteins
+		std::string filePath = "";
+		IrisData* currentData = nullptr;
+		std::string currentLine = "";
+		std::ifstream dataFile;
+		std::vector<std::string> tempStringList;
+		std::vector<std::string> tempStringList2;
+		for (int fileIndex = 0; fileIndex < m_files.size(); ++fileIndex)
+		{
+			filePath = rootPath + m_files[fileIndex];
+
+			// Create file reader
+			dataFile.open(filePath);
+			if (dataFile.good())
+			{
+				while (getline(dataFile, currentLine))
+				{
+					currentData = new IrisData();
+
+					//we have the line of text, time to parse it
+					TokenizeString(tempStringList, currentLine, "|");
+
+					//now we have the input and expected out separated
+					//tokenize the input
+					TokenizeString(tempStringList2, tempStringList[0], ",");
+					currentData->SetInputData(std::atof(tempStringList2[0].c_str())
+						, std::atof(tempStringList2[1].c_str())
+						, std::atof(tempStringList2[2].c_str())
+						, std::atof(tempStringList2[3].c_str()));
+
+					//tokenize the output
+					TokenizeString(tempStringList2, tempStringList[1], ",");
+					currentData->SetOutputData(std::atof(tempStringList2[0].c_str())
+						, std::atof(tempStringList2[1].c_str())
+						, std::atof(tempStringList2[2].c_str()));
+
+					m_irisDataContainer.push_back(currentData);
+				}
+			}
+		}
+	}
 	//==================================================================
 
 	//=========================FNeuronConnection========================
@@ -82,7 +188,7 @@ namespace GHProtein
 	{
 		for (int i = 0; i < m_weight.size(); ++i)
 		{
-			m_weight[i] = S_RandomWeight();
+			m_weight[i] = RandZeroToN();
 		}
 	}
 
@@ -121,6 +227,9 @@ namespace GHProtein
 			//randomize all of the weights for the inputs
 			m_outputConnections.back().RandomizeWeights();
 		}
+
+		m_outputVals.resize(numberOfInputs);
+		std::fill_n(m_outputVals.begin(), numberOfInputs, 0.0);
 
 		m_myIndex = myIndex;
 	}
@@ -341,7 +450,7 @@ namespace GHProtein
 
 			unsigned numOutputs = layerNum == numLayers - 1 ? 0 : topology[layerNum + 1].first;
 
-			m_neuronLayers.push_back(FNeuronLayer(numberOfNeuronsInLayer, numOutputs, numberOfVariablesInInput, addBiasNeuron));
+			m_neuronLayers.push_back(new FNeuronLayer(numberOfNeuronsInLayer, numOutputs, numberOfVariablesInInput, addBiasNeuron));
 		}
 	}
 
@@ -350,26 +459,26 @@ namespace GHProtein
 		resultVals.clear();
 
 		//we do not take into account the bias in the result on the output layer
-		for (int n = 0; n < m_neuronLayers.back().m_neurons.size() - 1; ++n)
+		for (int n = 0; n < m_neuronLayers.back()->m_neurons.size() - 1; ++n)
 		{
-			resultVals.push_back(m_neuronLayers.back().m_neurons[n].GetOutputValue());
+			resultVals.push_back(m_neuronLayers.back()->m_neurons[n].GetOutputValue());
 		}
 	}
 
 	void NeuralNet::BackPropagation(const std::vector<double>& targetVals)
 	{
 		// Calculate overall net error (RMS of output neuron errors)
-		FNeuronLayer& outputLayer = m_neuronLayers.back();
+		FNeuronLayer* outputLayer = m_neuronLayers.back();
 		m_error = 0.0;
 
 		//we do not care about the bias neuron on calculating the RMS
-		for (int n = 0; n < outputLayer.m_neurons.size() - 1; ++n)
+		for (int n = 0; n < outputLayer->m_neurons.size() - 1; ++n)
 		{
-			double delta = targetVals[n] - outputLayer.m_neurons[n].GetOutputValue();
+			double delta = targetVals[n] - outputLayer->m_neurons[n].GetOutputValue();
 			m_error += delta * delta;
 		}
 
-		m_error /= outputLayer.m_neurons.size() - 1; // get average error squared
+		m_error /= outputLayer->m_neurons.size() - 1; // get average error squared
 		m_error = sqrt(m_error); // RMS
 
 		// Implement a recent average measurement
@@ -378,20 +487,20 @@ namespace GHProtein
 			/ (m_recentAverageSmoothingFactor + 1.0);
 
 		// Calculate output layer gradients
-		for (int n = 0; n < outputLayer.m_neurons.size() - 1; ++n)
+		for (int n = 0; n < outputLayer->m_neurons.size() - 1; ++n)
 		{
-			outputLayer.m_neurons[n].CalculateOutputGradients(targetVals[n]);
+			outputLayer->m_neurons[n].CalculateOutputGradients(targetVals[n]);
 		}
 
 		// Calculate hidden layer gradients
 		for (int layerNum = m_neuronLayers.size() - 2; layerNum > 0; --layerNum)
 		{
-			FNeuronLayer& hiddenLayer = m_neuronLayers[layerNum];
-			FNeuronLayer& nextLayer = m_neuronLayers[layerNum + 1];
+			FNeuronLayer* hiddenLayer = m_neuronLayers[layerNum];
+			FNeuronLayer* nextLayer = m_neuronLayers[layerNum + 1];
 
-			for (int n = 0; n < hiddenLayer.m_neurons.size(); ++n)
+			for (int n = 0; n < hiddenLayer->m_neurons.size(); ++n)
 			{
-				hiddenLayer.m_neurons[n].CalculateHiddenGradients(nextLayer);
+				hiddenLayer->m_neurons[n].CalculateHiddenGradients(*nextLayer);
 			}
 		}
 
@@ -399,43 +508,48 @@ namespace GHProtein
 		// update connection weights
 		for (int layerNum = m_neuronLayers.size() - 1; layerNum > 0; --layerNum)
 		{
-			FNeuronLayer& layer = m_neuronLayers[layerNum];
-			FNeuronLayer& prevLayer = m_neuronLayers[layerNum - 1];
+			FNeuronLayer* layer = m_neuronLayers[layerNum];
+			FNeuronLayer* prevLayer = m_neuronLayers[layerNum - 1];
 
-			for (int n = 0; n < layer.m_neurons.size() - 1; ++n)
+			for (int n = 0; n < layer->m_neurons.size() - 1; ++n)
 			{
-				layer.m_neurons[n].UpdateInputWeights(prevLayer);
+				layer->m_neurons[n].UpdateInputWeights(*prevLayer);
 			}
 		}
 	}
 
 	void NeuralNet::FeedForward(const std::vector< std::vector<double> >& inputVals)
 	{
-		assert(inputVals.size() == m_neuronLayers[0].m_neurons.size() - 1);
+		assert(inputVals.size() == m_neuronLayers[0]->m_neurons.size() - 1);
 
 		// Assign (latch) the input values into the input neurons
 		for (int i = 0; i < inputVals.size(); ++i)
 		{
-			m_neuronLayers[0].m_neurons[i].SetOutputValues(inputVals[i]);
+			m_neuronLayers[0]->m_neurons[i].SetOutputValues(inputVals[i]);
 		}
 
 		//forward propagate
 		//for every layer
 		for (int layerNum = 1; layerNum < m_neuronLayers.size(); ++layerNum)
 		{
-			FNeuronLayer& prevLayer = m_neuronLayers[layerNum - 1];
+			FNeuronLayer* prevLayer = m_neuronLayers[layerNum - 1];
 
 			//for every neuron in the layer
 			//NOTE: we do not feed forward into the last neuron, which is the bias
-			for (int n = 0; n < m_neuronLayers[layerNum].m_neurons.size() - 1; ++n)
+			for (int n = 0; n < m_neuronLayers[layerNum]->m_neurons.size() - 1; ++n)
 			{
-				m_neuronLayers[layerNum].m_neurons[n].FeedForward(prevLayer);
+				m_neuronLayers[layerNum]->m_neurons[n].FeedForward(*prevLayer);
 			}
 		}
 	}
 
 	NeuralNet::~NeuralNet()
 	{
+		for (int i = 0; i < m_neuronLayers.size(); ++i)
+		{
+			delete m_neuronLayers[i];
+			m_neuronLayers[i] = nullptr;
+		}
 	}
 	//========================================================================
 
@@ -457,11 +571,11 @@ namespace GHProtein
 
 	void TrainingData::LoadTrainingData()
 	{
-		GetTopology();
+		LoadTopology();
 		GetTrainingData();
 	}
 
-	void TrainingData::GetTopology()
+	void TrainingData::LoadTopology()
 	{
 		std::string line;
 		std::string label;
@@ -604,9 +718,98 @@ namespace GHProtein
 		}
 
 		//load the protein models from the information in the data set
-		currentSet.LoadProteinModels(m_proteinBuilder, m_data.GetRootLocation());
+		//currentSet.LoadProteinModels(m_proteinBuilder, m_data.GetRootLocation());
+		currentSet.LoadIrisData(m_data.GetRootLocation());
 
 		m_data.AddDataSet(currentSet);
+	}
+
+	void TrainingData::LoadIrisDataSet()
+	{
+		std::string line;
+		std::string label;
+
+		getline(m_trainingDataFile, line);
+		std::stringstream ss(line);
+		ss >> label;
+
+		if (this->isEOF() || label.compare("set:") != 0)
+		{
+			abort();
+		}
+
+		//get the data section of the line
+		std::vector<std::string> results;
+		TokenizeString(results, line, " ");
+
+		//at this point I should have the information about each one of the layers
+		std::string dataSubstring;
+		std::vector<std::string> tokenized_substring;
+
+		dataSubstring = results[1];
+		TokenizeString(tokenized_substring, dataSubstring, "|");
+
+		assert(tokenized_substring.size() > 0);
+
+		NeuralNetDataSet currentSet;
+		int numberOfFilesInSet = std::atoi(tokenized_substring[0].c_str());
+		if (tokenized_substring.size() > 1)
+		{
+			currentSet.SetDirectory(tokenized_substring[1]);
+		}
+
+		//get the name of the files
+		for (int fileIndex = 0; fileIndex < numberOfFilesInSet; ++fileIndex)
+		{
+			getline(m_trainingDataFile, line);
+			currentSet.AddFile(line);
+		}
+
+		//load the protein models from the information in the data set
+		currentSet.LoadIrisData(m_data.GetRootLocation());
+
+		m_data.AddDataSet(currentSet);
+	}
+
+	void TrainingData::GetRandomTrainingData(std::vector<IrisData>& out_container)
+	{
+		//we randomize the order of the outputs
+		int setA = 40;
+		int setB = 40;
+		int setC = 40;
+		int sizeOfContainer = setA + setB + setC;
+
+		out_container.clear();
+		out_container.reserve(sizeOfContainer);
+
+		int randSetIndex = 0;
+		for (int i = 0; i < sizeOfContainer; ++i)
+		{
+			randSetIndex = RandZeroToN(3.0);
+
+			bool valueAdded = false;
+			while (!valueAdded)
+			{
+				switch (randSetIndex)
+				{
+				case 0:
+					if (setA > 0)
+					{
+						out_container.push_back(m_data.)
+					}
+					break;
+				case 1:
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+
+	void TrainingData::GetRandomValidationData(std::vector<IrisData>& out_container)
+	{
+
 	}
 
 	/*

@@ -10,6 +10,21 @@ namespace GHProtein
 	class ProteinBuilder;
 	class ProteinModel;
 
+	struct IrisData
+	{
+	public:
+		IrisData();
+		~IrisData();
+		void SetInputData(float input_0, float input_1, float input_2, float input_3);
+		void SetOutputData(float output_0, float output_1, float output_2);
+
+	private:
+		float* m_inputData;
+		float* m_expectedOutput;
+		std::vector<float> m_inputs;
+		std::vector<float> m_outputs;
+	};
+
 	struct NeuralNetDataSet
 	{
 	public:
@@ -17,11 +32,13 @@ namespace GHProtein
 		void SetDirectory(const std::string& directoryName);
 		void AddFile(const std::string& fileName);
 		void LoadProteinModels(ProteinBuilder* proteinBuilder, const std::string& dataRootLocation);
+		void LoadIrisData(const std::string& dataRootLocation);
 
 	private:
 		std::string m_directory;
 		std::vector<std::string> m_files;
 		std::vector<ProteinModel*> m_proteinModels;
+		std::vector<IrisData*> m_irisDataContainer;
 	};
 
 	struct NeuralNetData
@@ -31,6 +48,7 @@ namespace GHProtein
 		void SetRootLocation(const std::string& rootLocation);
 		std::string GetRootLocation();
 		void AddDataSet(const NeuralNetDataSet& dataSet);
+		IrisData*
 
 	private:
 		std::string m_rootLocation;
@@ -46,7 +64,7 @@ namespace GHProtein
 		void AddToWeight(double amountToAdd, int weightIndex);
 
 	private:
-		static double S_RandomWeight(void) { return rand() / double(RAND_MAX); }
+
 
 	public:
 		std::vector<double> m_weight;
@@ -118,7 +136,7 @@ namespace GHProtein
 		int m_numberOfOutputs;
 		int m_numberOfHiddenLayers;
 
-		std::vector<FNeuronLayer> m_neuronLayers;
+		std::vector<FNeuronLayer*> m_neuronLayers;
 		double m_error;
 		double m_recentAverageError;
 		static double m_recentAverageSmoothingFactor;
@@ -130,11 +148,15 @@ namespace GHProtein
 		TrainingData(const std::string filename);
 		~TrainingData();
 		bool isEOF(void) { return m_trainingDataFile.eof(); }
+		std::vector< std::pair<int, int> > GetTopology() { return m_topology; }
+		void GetRandomTrainingData(std::vector<IrisData>& out_container);
+		void GetRandomValidationData(std::vector<IrisData>& out_container);
 
 	private:
-		void GetTopology();
+		void LoadTopology();
 		void GetTrainingData();
 		void LoadTrainingData();
+		void LoadIrisDataSet();
 		void LoadDataSet();
 
 	private:

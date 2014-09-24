@@ -13,7 +13,12 @@ namespace GHProtein
 		TrimBack,
 		TrimBoth
 	};
+
+	static const double INVERSE_RAND_MAX = 1.0 / double(RAND_MAX);
 	
+	double RandZeroToN(double maxValue = 1.0) { return (rand() * INVERSE_RAND_MAX * maxValue); }
+
+	//String parsing utilities
 	static std::string whitespaces(" \t\f\v\n\r");
 
 	void TokenizeString(std::vector<std::string>& out_list, const std::string& source,
