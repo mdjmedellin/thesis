@@ -60,8 +60,24 @@ namespace GHProtein
 
 	void IrisData::GetInputValues(std::vector< std::vector<double> >& out_inputs) const
 	{
+		out_inputs.clear();
+		std::vector<double> values;
+
 		for (int i = 0; i < m_inputs.size(); ++i)
 		{
+			values.clear();
+			values.push_back(m_inputData[i]);
+			out_inputs.push_back(values);
+		}
+	}
+
+	void IrisData::GetOutputValues(std::vector<double>& outputs) const
+	{
+		outputs.clear();
+
+		for (int i = 0; i < 3; ++i)
+		{
+			outputs.push_back(m_expectedOutput[i]);
 		}
 	}
 	//==================================================================
@@ -231,7 +247,7 @@ namespace GHProtein
 	//==================================================================
 
 	//=========================FNeuron==================================
-	double FNeuron::s_eta = 0.15;    // overall net learning rate, [0.0..1.0]
+	double FNeuron::s_eta = 0.075;    // In reality this should be .1 or less. Overall net learning rate, [0.0..1.0]
 	double FNeuron::s_alpha = 0.5;   // momentum, multiplier of last deltaWeight, [0.0..1.0]
 
 	FNeuron::FNeuron()
@@ -258,6 +274,10 @@ namespace GHProtein
 	//by default this will set the output value at 0 if no index is passed
 	void FNeuron::SetOutputValue(double value, int index)
 	{
+		if (std::isinf(value))
+		{
+			int x = 1;
+		}
 		m_outputVals[index] = value;
 	}
 
@@ -406,19 +426,24 @@ namespace GHProtein
 	double FNeuron::S_TransferFunction(double x)
 	{
 		//we use logsig as the transfer function
-		double dividend = 1.f + exp(-x);
+		double dividend = 1.0 + exp(-x);
 
-		return (1.f - dividend);
+		return (1.0 / dividend);
 	}
 
 	double FNeuron::S_TransferFunctionDerivative(double x)
 	{
+		//Test something that i realize while reading more documentation on neural networks
+		double result = x * (1.0 - x);
+		return result;
+		/*
 		//logsig derivative
 		double logsigValue = S_TransferFunction(x);
 
-		double result = logsigValue * (1.f - logsigValue);
+		double result = logsigValue * (1.0 - logsigValue);
 
 		return result;
+		*/
 	}
 
 	void FNeuron::FeedForward(const FNeuronLayer& prevLayer)
@@ -430,6 +455,9 @@ namespace GHProtein
 		for (int n = 0; n < prevLayer.m_neurons.size(); ++n)
 		{
 			sum += prevLayer.m_neurons[n].GetOutputValue() * prevLayer.m_neurons[n].GetWeight(m_myIndex);
+			//std::cout << "Output Value of Neuron [" << n << "] = " << prevLayer.m_neurons[n].GetOutputValue() << std::endl;
+			//std::cout << "Weight of Neuron [" << n << "] = " << prevLayer.m_neurons[n].GetWeight(m_myIndex) << std::endl;
+
 		}
 
 		SetOutputValue(FNeuron::S_TransferFunction(sum));
@@ -455,7 +483,7 @@ namespace GHProtein
 	//===================================================================
 
 	//===========================NEURALNET===============================
-	double NeuralNet::m_recentAverageSmoothingFactor = 100.0; // Number of training samples to average over
+	double NeuralNet::m_recentAverageSmoothingFactor = 1.0; // Number of training samples to average over
 
 	NeuralNet::NeuralNet(const std::vector< std::pair<int,int> >& topology, bool addBiasNeuron)
 	{
@@ -496,16 +524,26 @@ namespace GHProtein
 		for (int n = 0; n < outputLayer->m_neurons.size() - 1; ++n)
 		{
 			double delta = targetVals[n] - outputLayer->m_neurons[n].GetOutputValue();
+			//std::cout << targetVals[n] << std::endl;
+			//std::cout << outputLayer->m_neurons[n].GetOutputValue() << std::endl;
 			m_error += delta * delta;
+			/*if (std::isinf(m_error))
+			{
+				int x = 1;
+			}
+			outputLayer->m_neurons[n].GetOutputValue();
+			*/
 		}
 
-		m_error /= outputLayer->m_neurons.size() - 1; // get average error squared
+		m_error /= (outputLayer->m_neurons.size() - 1); // get average error squared
 		m_error = sqrt(m_error); // RMS
 
 		// Implement a recent average measurement
 		m_recentAverageError =
 			(m_recentAverageError * m_recentAverageSmoothingFactor + m_error)
 			/ (m_recentAverageSmoothingFactor + 1.0);
+
+		//std::cout << m_recentAverageError << std::endl;
 
 		// Calculate output layer gradients
 		for (int n = 0; n < outputLayer->m_neurons.size() - 1; ++n)
@@ -959,15 +997,4 @@ namespace GHProtein
 		return targetOutputVals.size();
 	}
 	*/
-
-	void showVectorVals(std::string label, std::vector<double> &v)
-	{
-		std::cout << label << " ";
-		for (unsigned i = 0; i < v.size(); ++i)
-		{
-			std::cout << v[i] << " ";
-		}
-
-		std::cout << std::endl;
-	}
 }

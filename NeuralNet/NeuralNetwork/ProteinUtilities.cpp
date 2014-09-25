@@ -1,5 +1,7 @@
 #include "ProteinUtilities.hpp"
 
+#include <iostream>
+
 namespace GHProtein
 {
 	void Trim(std::string& in_string, ETrim trimDetails)
@@ -80,5 +82,17 @@ namespace GHProtein
 	double RandNToN(double maxValue, double minValue)
 	{
 		return (rand() * INVERSE_RAND_MAX * (maxValue - minValue)) + minValue;
+	}
+
+	void ShowVectorVals(const std::string& label, const std::vector<double>& values)
+	{
+		std::cout << label.c_str() << " ";
+
+		for (unsigned i = 0; i < values.size(); ++i)
+		{
+			std::cout << values[i] << " ";
+		}
+
+		std::cout << std::endl;
 	}
 }

@@ -31,6 +31,8 @@ namespace GHProtein
 	void GetFloatFromString(float& out_float, const std::string& in_stringLine);
 
 	void ReadFromLine(const std::string& lineToReadFrom, std::string& out_substringDestination, int& startingIndex, int charactersToRead);
+
+	void ShowVectorVals(const std::string& label, const std::vector<double>& values);
 }
 
 #endif

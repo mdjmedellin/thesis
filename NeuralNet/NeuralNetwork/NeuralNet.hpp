@@ -18,6 +18,7 @@ namespace GHProtein
 		void SetInputData(float input_0, float input_1, float input_2, float input_3);
 		void SetOutputData(float output_0, float output_1, float output_2);
 		void GetInputValues(std::vector< std::vector<double> >& out_inputs) const;
+		void GetOutputValues(std::vector<double>& outputs) const;
 
 	private:
 		float* m_inputData;
