@@ -46,6 +46,10 @@ class ACameraCharacter : public ACharacter
 	bool m_rotateProteinYaw;
 	bool m_rotateProteinPitch;
 	bool m_allowCameraRotation;
+	bool m_enableZoom;
+	float m_zoomDirection;
+	float m_zoomStep;
+	float m_zoomBuffer;
 	AAminoAcid* m_selectedAminoAcid;
 	FVector m_prevLocation;
 
@@ -65,6 +69,9 @@ protected:
 
 	/** Handles stafing movement, left and right */
 	void MoveRight(float Val);
+
+	/** Handles moving the protein closer and farther away from the player */
+	void Zoom(float Value);
 
 	/**
 	* Called via input to turn at a given rate.

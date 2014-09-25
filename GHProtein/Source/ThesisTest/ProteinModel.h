@@ -40,6 +40,9 @@ namespace GHProtein
 			, float helixLinkWidth, float betaStrandLinkWidth);
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void HighlightSecondaryStructure(AAminoAcid* residueMember);
+		FVector GetDirectionFromCenter(const FVector& currentLocation);
+		void TranslateModel(const FVector& displacement);
+		FVector GetBoundingBoxDimensions() const;
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 

@@ -17,6 +17,10 @@ ACameraCharacter::ACameraCharacter(const class FPostConstructInitializePropertie
 	, m_allowCameraRotation(true)
 	, m_selectedAminoAcid(nullptr)
 	, m_prevLocation(FVector::ZeroVector)
+	, m_enableZoom(false)
+	, m_zoomDirection(0.f)
+	, m_zoomStep(100.f)
+	, m_zoomBuffer(100.f)
 {
 	// Set size for collision capsule
 	// We actually want the  player to be a floating camera
@@ -79,6 +83,9 @@ void ACameraCharacter::SetupPlayerInputComponent(class UInputComponent* InputCom
 	//Pick the structure
 	InputComponent->BindAction("StartInteraction", IE_Pressed, this, &ACameraCharacter::StartInteraction);
 	InputComponent->BindAction("StartInteraction", IE_Released, this, &ACameraCharacter::StopInteraction);
+
+	//Custom protein zoom
+	InputComponent->BindAxis("ZoomIn", this, &ACameraCharacter::Zoom);
 }
 
 void ACameraCharacter::HandleControllerYawInput(float deltaYaw)
@@ -159,6 +166,23 @@ void ACameraCharacter::OnFire()
 			localCameraController->ActivatePhysicsOnActor();	
 		}
 	}
+}
+
+void ACameraCharacter::Zoom(float Value)
+{
+	static bool wasPreviouslyZero = (Value == 0.f);
+
+	if (Value != 0.f)
+	{
+		m_zoomDirection = Value;
+		m_enableZoom = true;
+	}
+	else
+	{
+		m_enableZoom = false;
+	}
+
+	wasPreviouslyZero = (Value == 0.f);
 }
 
 void ACameraCharacter::MoveUp(float Value)
@@ -291,6 +315,27 @@ void ACameraCharacter::Tick(float DeltaSeconds)
 	}
 
 	FVector currentLocation = GetActorLocation();
+
+	//check if the model is zooming in or out
+	if (m_enableZoom)
+	{
+		FVector direction = m_proteinModel->GetDirectionFromCenter(currentLocation);
+
+		//check if we should some in more
+		FVector halfDimensions = m_proteinModel->GetBoundingBoxDimensions() * 0.5f;
+		float maxDimension = halfDimensions.GetMax() + m_zoomBuffer;
+
+		maxDimension *= maxDimension;
+
+		if (direction.SizeSquared() > maxDimension
+			|| m_zoomDirection < 0.f)
+		{
+			direction.Normalize();
+			direction *= m_zoomDirection;
+			direction *= m_zoomStep;
+			m_proteinModel->TranslateModel(direction);
+		}
+	}
 
 	//check if we have something we want to drag
 	if (m_selectedAminoAcid)

@@ -294,10 +294,90 @@ namespace GHProtein
 
 		//update links
 		currentAminoAcid = m_headPtr;
+		FVector aminoAcidLocation;
 		while (currentAminoAcid)
 		{
 			currentAminoAcid->UpdateLinkToNextAminoAcid();
+			aminoAcidLocation = currentAminoAcid->GetActorLocation();
+
+			if (currentAminoAcid != m_headPtr)
+			{
+				m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
+				m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
+				m_minBounds3D.Z = m_minBounds3D.Z < aminoAcidLocation.Z ? m_minBounds3D.Z : aminoAcidLocation.Z;
+
+				m_maxBounds3D.X = m_maxBounds3D.X > aminoAcidLocation.X ? m_maxBounds3D.X : aminoAcidLocation.X;
+				m_maxBounds3D.Y = m_maxBounds3D.Y > aminoAcidLocation.Y ? m_maxBounds3D.Y : aminoAcidLocation.Y;
+				m_maxBounds3D.Z = m_maxBounds3D.Z > aminoAcidLocation.Z ? m_maxBounds3D.Z : aminoAcidLocation.Z;
+			}
+			else
+			{
+				m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+				m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+			}
+
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
+
+		//get the center of the bounds
+		m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
+	}
+
+	FVector ProteinModel::GetDirectionFromCenter(const FVector& currentLocation)
+	{
+		FVector returnVector = currentLocation;
+		returnVector -= m_centerOfBoundingBox;
+		return returnVector;
+	}
+
+	void ProteinModel::TranslateModel(const FVector& displacement)
+	{
+		FVector distanceFromCenter = FVector::ZeroVector;
+
+		//iterate ove the chain of amino acids and rotate them from the model's center point
+		AAminoAcid* currentAminoAcid = m_headPtr;
+
+		//update position of the amino acids
+		while (currentAminoAcid)
+		{
+			currentAminoAcid->Translate(displacement);
+			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//update links
+		currentAminoAcid = m_headPtr;
+		FVector aminoAcidLocation;
+		while (currentAminoAcid)
+		{
+			currentAminoAcid->UpdateLinkToNextAminoAcid();
+
+			aminoAcidLocation = currentAminoAcid->GetActorLocation();
+
+			if (currentAminoAcid != m_headPtr)
+			{
+				m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
+				m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
+				m_minBounds3D.Z = m_minBounds3D.Z < aminoAcidLocation.Z ? m_minBounds3D.Z : aminoAcidLocation.Z;
+
+				m_maxBounds3D.X = m_maxBounds3D.X > aminoAcidLocation.X ? m_maxBounds3D.X : aminoAcidLocation.X;
+				m_maxBounds3D.Y = m_maxBounds3D.Y > aminoAcidLocation.Y ? m_maxBounds3D.Y : aminoAcidLocation.Y;
+				m_maxBounds3D.Z = m_maxBounds3D.Z > aminoAcidLocation.Z ? m_maxBounds3D.Z : aminoAcidLocation.Z;
+			}
+			else
+			{
+				m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+				m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+			}
+
+			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//get the center of the bounds
+		m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
+	}
+
+	FVector ProteinModel::GetBoundingBoxDimensions() const
+	{
+		return m_maxBounds3D - m_minBounds3D;
 	}
 }
