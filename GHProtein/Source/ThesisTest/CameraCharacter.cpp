@@ -350,3 +350,13 @@ void ACameraCharacter::Tick(float DeltaSeconds)
 
 	m_prevLocation = currentLocation;
 }
+
+void ACameraCharacter::TranslateProteinModel(const FVector& translation)
+{
+	m_proteinModel->TranslateModel(translation);
+}
+
+FVector ACameraCharacter::GetProteinModelLocation()
+{
+	return m_proteinModel->GetCenterLocation();
+}

@@ -43,6 +43,7 @@ namespace GHProtein
 		FVector GetDirectionFromCenter(const FVector& currentLocation);
 		void TranslateModel(const FVector& displacement);
 		FVector GetBoundingBoxDimensions() const;
+		FVector GetCenterLocation() const;
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 

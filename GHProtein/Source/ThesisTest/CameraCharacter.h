@@ -86,6 +86,12 @@ protected:
 	void LookUpAtRate(float Rate);
 
 public:
+	//Functions used to modify the model the player can access
+	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
+		void TranslateProteinModel(const FVector& translation);
+
+	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
+		FVector GetProteinModelLocation();
 
 	//Functions used to toggle rotation of the protein
 	virtual void ToggleProteinYawRotation();

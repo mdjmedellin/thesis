@@ -131,7 +131,6 @@ namespace GHProtein
 		}
 		else
 		{
-			FVector originLocation = FVector::ZeroVector;
 			FRotator originRotation = FRotator::ZeroRotator;
 			AAminoAcid* previousAminoAcid = nullptr;
 			AAminoAcid* currentAminoAcid = nullptr;
@@ -145,7 +144,6 @@ namespace GHProtein
 			{
 				currentResidue = m_residueVector[residueIndex];
 				currentResidue->GetCALocation(aminoAcidLocation);
-				aminoAcidLocation += originLocation;
 				aminoAcidLocation *= distanceScale; // this is done in order to space out the proteins
 				currentAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, blueprint, aminoAcidLocation, originRotation);
 				currentAminoAcid->SetAminoAcidSize(aminoAcidSize);
@@ -201,14 +199,14 @@ namespace GHProtein
 			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
-				currentAminoAcid->SetActorLocation(currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox);
+				currentAminoAcid->SetActorLocation(currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox + proteinModelCenterLocation);
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 
 			//offset the bounding box
-			m_minBounds3D -= m_centerOfBoundingBox;
-			m_maxBounds3D -= m_centerOfBoundingBox;
-			m_centerOfBoundingBox -= m_centerOfBoundingBox;
+			m_minBounds3D = m_minBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
+			m_maxBounds3D = m_maxBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
+			m_centerOfBoundingBox = proteinModelCenterLocation;
 
 			//iterate ove the chain of amino acids and spawn the link particle effect
 			currentAminoAcid = m_headPtr;
@@ -379,5 +377,10 @@ namespace GHProtein
 	FVector ProteinModel::GetBoundingBoxDimensions() const
 	{
 		return m_maxBounds3D - m_minBounds3D;
+	}
+
+	FVector ProteinModel::GetCenterLocation() const
+	{
+		return m_centerOfBoundingBox;
 	}
 }

@@ -7,6 +7,7 @@
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
 #include "AminoAcid.h"
+#include "ProteinModelSpawnPoint.h"
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
@@ -111,11 +112,37 @@ void AThesisTestGameMode::StartMatch()
 {
 	Super::StartMatch();
 
+	//Get the spawn location of the protein
+	AProteinModelSpawnPoint* bestModelSpawnPoint = GetBestProteinModelSpawnPoint();
+
 	//check if we received a valid protein model
-	if (m_proteinModel && DefaultAminoAcidClass)
+	if (m_proteinModel && DefaultAminoAcidClass && bestModelSpawnPoint)
 	{
+		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
+
 		UWorld* const World = GetWorld();
 		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
 			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth);
 	}
+}
+
+AProteinModelSpawnPoint* AThesisTestGameMode::GetBestProteinModelSpawnPoint()
+{
+	//at the moment we only expect to have one protein model spawn point
+	if (ProteinModelSpawnPoints.Num() > 0)
+	{
+		return ProteinModelSpawnPoints[0];
+	}
+
+	return nullptr;
+}
+
+void AThesisTestGameMode::AddProteinModelSpawnPoint(AProteinModelSpawnPoint* NewProteinModelSpawnPoint)
+{
+	ProteinModelSpawnPoints.AddUnique(NewProteinModelSpawnPoint);
+}
+
+void AThesisTestGameMode::RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint)
+{
+	ProteinModelSpawnPoints.Remove(RemovedProteinModelSpawnPoint);
 }
