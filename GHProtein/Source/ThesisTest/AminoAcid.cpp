@@ -5,6 +5,7 @@
 #include "ThesisStaticLibrary.h"
 #include "LinkFragment.h"
 #include "Residue.h"
+#include "ProteinModel.h"
 
 float AAminoAcid::s_tangentTension = 0.0;
 
@@ -13,7 +14,15 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
 	, m_linkFragment(nullptr)
+	, m_betaPartner1(nullptr)
+	, m_betaPartner2(nullptr)
+	, m_betaPartnerResidue1(nullptr)
+	, m_betaPartnerResidue2(nullptr)
 	, m_secondaryStructure(ESecondaryStructure::ssCount)
+	, m_helixColor(FColor::White)
+	, m_betaStrandColor(FColor::White)
+	, m_residueInformation(nullptr)
+	, m_model(nullptr)
 {
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
@@ -48,11 +57,54 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 		FVector2D scale(1.f, 1.f);
 		scale.X = width / size.X;
 		scale.Y = height / size.Y;
+
 		linkFragment->SplineMeshComponent->SetStartScale(scale);
 		linkFragment->SplineMeshComponent->SetEndScale(scale);
 
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
+
+		//spawn link to partner amino acid on the beta sheet
+		BridgePartner partner = m_residueInformation->GetBetaPartner(0);
+
+		scale *= .5f;
+
+		if (partner.residue)
+		{
+			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
+
+			if (betaPartner)
+			{
+				linkEndLocation = betaPartner->GetActorLocation();
+
+				m_betaPartnerResidue1 = betaPartner;
+				m_betaPartner1 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+
+				m_betaPartner1->SplineMeshComponent->SetStartScale(scale);
+				m_betaPartner1->SplineMeshComponent->SetEndScale(scale);
+				m_betaPartner1->SplineMeshComponent->SetStartPosition(linkStartLocation);
+				m_betaPartner1->SplineMeshComponent->SetEndPosition(linkEndLocation);
+			}
+		}
+
+		partner = m_residueInformation->GetBetaPartner(1);
+		if (partner.residue)
+		{
+			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
+
+			if (betaPartner)
+			{
+				linkEndLocation = betaPartner->GetActorLocation();
+
+				m_betaPartnerResidue2 = betaPartner;
+				m_betaPartner2 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+
+				m_betaPartner2->SplineMeshComponent->SetStartScale(scale);
+				m_betaPartner2->SplineMeshComponent->SetEndScale(scale);
+				m_betaPartner2->SplineMeshComponent->SetStartPosition(linkStartLocation);
+				m_betaPartner2->SplineMeshComponent->SetEndPosition(linkEndLocation);
+			}
+		}
 
 		return true;
 	}
@@ -77,6 +129,18 @@ void AAminoAcid::GetTangent(FVector& out_vector)
 	}
 }
 
+int AAminoAcid::GetSequenceNumber()
+{
+	if (m_residueInformation)
+	{
+		return m_residueInformation->GetSeqNumber();
+	}
+	else
+	{
+		return -1;
+	}
+}
+
 bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
 {
 	if (m_nextAminoAcid)
@@ -88,6 +152,16 @@ bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
 	{
 		return false;
 	}
+}
+
+void AAminoAcid::SetParentModel(GHProtein::ProteinModel* parentModel)
+{
+	m_model = parentModel;
+}
+
+void AAminoAcid::SetResidueInformation(Residue* residueInformation)
+{
+	m_residueInformation = residueInformation;
 }
 
 void AAminoAcid::SetNextAminoAcid(AAminoAcid* nextAminoAcid)
@@ -147,6 +221,11 @@ AAminoAcid* AAminoAcid::GetNextAminoAcidPtr()
 	return m_nextAminoAcid;
 }
 
+AAminoAcid* AAminoAcid::GetPreviousAminoAcidPtr()
+{
+	return m_previousAminoAcid;
+}
+
 void AAminoAcid::SetTangentTension(float newTension)
 {
 	s_tangentTension = newTension;
@@ -196,19 +275,63 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 
 		m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 	}
+
+	//update Hydrogen bonds here
+	UpdateHydrogenBonds(true);
+}
+
+void AAminoAcid::UpdateHydrogenBonds(bool recurse)
+{
+	if (m_betaPartnerResidue1)
+	{
+		m_betaPartner1->SplineMeshComponent->SetStartPosition(GetActorLocation());
+		m_betaPartner1->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue1->GetActorLocation());
+
+		if (recurse)
+		{
+			m_betaPartnerResidue1->UpdateHydrogenBonds();
+		}
+	}
+	if (m_betaPartnerResidue2)
+	{
+		m_betaPartner2->SplineMeshComponent->SetStartPosition(GetActorLocation());
+		m_betaPartner2->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue2->GetActorLocation());
+
+		if (recurse)
+		{
+			m_betaPartnerResidue2->UpdateHydrogenBonds();
+		}
+	}
 }
 
 void AAminoAcid::Translate(const FVector& deltaLocation)
 {
 	SetActorLocation(GetActorLocation() + deltaLocation);
 
+	AAminoAcid* tempResidue = nullptr;
+
 	//update the chains of the amino acids
 	if (m_previousAminoAcid)
 	{
+		//update the chain handled by the previous amino acid of the previous amino acid
+		tempResidue = m_previousAminoAcid->GetPreviousAminoAcidPtr();
+		if (tempResidue)
+		{
+			tempResidue->UpdateLinkToNextAminoAcid();
+		}
+
+		//update the chain handled by the previous amino acid
 		m_previousAminoAcid->UpdateLinkToNextAminoAcid();
 	}
 
+	//update the cahin handled by this amino acid
 	UpdateLinkToNextAminoAcid();
+
+	//update the chain handled by the next amino acid
+	if (m_nextAminoAcid)
+	{
+		m_nextAminoAcid->UpdateLinkToNextAminoAcid();
+	}
 }
 
 void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
@@ -222,31 +345,79 @@ void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint,
 
 void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
 {
-	m_secondaryStructure = secondaryStructure;
+	if (secondaryStructure != ESecondaryStructure::ssAlphaHelix
+		&& secondaryStructure != ESecondaryStructure::ssStrand)
+	{
+		m_secondaryStructure = ESecondaryStructure::ssTurn;
+	}
+	else
+	{
+		m_secondaryStructure = secondaryStructure;
+	}
+}
 
+ESecondaryStructure::Type AAminoAcid::GetSecondaryStructure()
+{
+	return m_secondaryStructure;
+}
 
+void AAminoAcid::SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
+	, float betaStrandLinkWidth)
+{
+	m_helixColor = helixColor;
+	m_betaStrandColor = betaStrandColor;
 
+	UpdateLinkFragmentRenderProperties(helixLinkWidth, betaStrandLinkWidth);
+}
 
+void AAminoAcid::SetLinkFragmentColor(const FColor& fragmentColor)
+{
+	if (m_linkFragment)
+	{
+		m_linkFragment->setColor(fragmentColor);
+	}
+}
+
+void AAminoAcid::ResetLinkFragmentColorToDefault()
+{
 	switch (m_secondaryStructure)
 	{
 	case ESecondaryStructure::ssAlphaHelix:
-		if (m_dynamicMaterial)
-		{
-			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.89f,0.05f,0.47f));
-		}
+		SetLinkFragmentColor(m_helixColor);
 		break;
-	case ESecondaryStructure::ssHelix_3:
-		if (m_dynamicMaterial)
-		{
-			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.6f, 0.f, 0.6f));
-		}
+	case ESecondaryStructure::ssStrand:
+		SetLinkFragmentColor(m_betaStrandColor);
 		break;
-	case ESecondaryStructure::ssBetaBridge:
-		if (m_dynamicMaterial)
-		{
-			m_dynamicMaterial->SetVectorParameterValue("color", FLinearColor(0.90f, 0.77f, 0.10f));
-		}
 	default:
+		SetLinkFragmentColor(FColor::White);
 		break;
+	}
+}
+
+void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth)
+{
+	if (m_linkFragment)
+	{
+		FVector size = m_linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
+		FVector2D scale = m_linkFragment->SplineMeshComponent->GetStartScale();
+		FColor renderColor = FColor::White;
+
+		switch (m_secondaryStructure)
+		{
+		case ESecondaryStructure::ssAlphaHelix:
+			renderColor = m_helixColor;
+			scale.Y = helixLinkWidth / size.Y;
+			break;
+		case ESecondaryStructure::ssStrand:
+			renderColor = m_betaStrandColor;
+			scale.Y = betaStrandLinkWidth / size.Y;
+			break;
+		default:
+			break;
+		}
+		
+		m_linkFragment->SplineMeshComponent->SetStartScale(scale);
+		m_linkFragment->SplineMeshComponent->SetEndScale(scale);
+		m_linkFragment->setColor(renderColor);
 	}
 }

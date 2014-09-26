@@ -264,6 +264,8 @@ Residue::Residue()
 	mCA.mICode = ' ';
 	mCA.mResSeq = -1;
 	mCA.mChainID = 'A';
+
+	mBetaPartner[0].residue = mBetaPartner[1].residue = nullptr;
 }
 
 void Residue::SetSeqNumber(uint16 inSeqNumber)

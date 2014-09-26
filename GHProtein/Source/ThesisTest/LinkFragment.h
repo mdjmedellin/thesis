@@ -17,4 +17,11 @@ class THESISTEST_API ALinkFragment : public AActor
 public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		TSubobjectPtr<USplineMeshComponent> SplineMeshComponent;
+
+private:
+	UMaterialInstanceDynamic* m_dynamicMaterial;
+
+public:
+	virtual void BeginPlay();
+	void setColor(const FColor& linkColor);
 };

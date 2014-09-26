@@ -43,7 +43,12 @@ namespace ESecondaryStructure
 }
 
 class ALinkFragment;
+class Residue;
 
+namespace GHProtein
+{
+	class ProteinModel;
+}
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -63,18 +68,30 @@ public:
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
 
+	int GetSequenceNumber();
 	bool GetDistanceToNextAminoAcid(FVector& out_vector);
 	void GetTangent(FVector& out_vector);
 
 	AAminoAcid* GetNextAminoAcidPtr();
+	AAminoAcid* GetPreviousAminoAcidPtr();
 
 	void UpdateLinkToNextAminoAcid();
+	void UpdateHydrogenBonds(bool recurse = false);
 
 	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
-
 	void Translate(const FVector& deltaLocation);
 
+	void SetParentModel(GHProtein::ProteinModel* parentModel);
+	void SetResidueInformation(Residue* residueInformation);
 	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
+	void SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
+		, float betaStrandLinkWidth);
+	void SetLinkFragmentColor(const FColor& fragmentColor);
+	void ResetLinkFragmentColorToDefault();
+
+	ESecondaryStructure::Type GetSecondaryStructure();
+
+	void UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth);
 
 	void SetAminoAcidSize(float aminoAcidSize);
 
@@ -93,8 +110,19 @@ private:
 	UClass* DefaultLinkFragmentClass;
 
 	ALinkFragment* m_linkFragment;
+	ALinkFragment* m_betaPartner1;
+	ALinkFragment* m_betaPartner2;
+
+	AAminoAcid* m_betaPartnerResidue1;
+	AAminoAcid* m_betaPartnerResidue2;
 
 	ESecondaryStructure::Type m_secondaryStructure;
+	FColor m_helixColor;
+	FColor m_betaStrandColor;
+
+	Residue* m_residueInformation;
+
+	GHProtein::ProteinModel* m_model;
 
 	//static data members
 	static float s_tangentTension;

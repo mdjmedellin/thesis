@@ -8,6 +8,8 @@ namespace GHProtein
 	class ProteinModel;
 }
 
+class AProteinModelSpawnPoint;
+
 UCLASS(minimalapi)
 class AThesisTestGameMode : public AGameMode
 {
@@ -18,6 +20,11 @@ public:
 	
 	/** Transition from WaitingToStart to InProgress. You can call this manually, will also get called if ReadyToStartMatch returns true */
 	virtual void StartMatch();
+
+	virtual void AddProteinModelSpawnPoint(AProteinModelSpawnPoint* NewProteinModelSpawnPoint);
+	virtual void RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint);
+
+	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint();
 
 public:
 	GHProtein::ProteinModel* m_proteinModel;
@@ -43,4 +50,19 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		float m_distanceScale;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_helixColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_betaStrandColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		float m_betaStrandLinkWidth;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		float m_helixLinkWidth;
+
+	UPROPERTY()
+		TArray<class AProteinModelSpawnPoint*> ProteinModelSpawnPoints;
 };
