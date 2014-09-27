@@ -1,9 +1,6 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 #pragma once
 
-#ifndef __ProteinBuilder_h__
-#define __ProteinBuilder_h__
-
 namespace GHProtein
 {
 	class ProteinModel;
@@ -64,5 +61,3 @@ private:
 	/** Array that keeps the file's information separated by lines */
 	TArray<FString> m_inputLines;
 };
-
-#endif

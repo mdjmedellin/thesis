@@ -1,6 +1,4 @@
 #pragma once
-#ifndef __Protein_Model_h__
-#define __Protein_Model_h__
 
 #include "ThesisStaticLibrary.h"
 #include "AminoMovementComponent.h"
@@ -67,5 +65,3 @@ namespace GHProtein
 		SecondaryStructure* m_tailSecondaryStructure;
 	};
 }
-
-#endif

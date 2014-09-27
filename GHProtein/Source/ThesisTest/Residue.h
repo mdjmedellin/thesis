@@ -1,7 +1,6 @@
 #pragma once
-
-#ifndef __Residue_h__
-#define __Residue_h__
+#include "UObjectBaseUtility.h"
+#include "Residue.generated.h"
 
 //JM: Globals that seem to be used thorughout
 // --------------------------------------------------------------------
@@ -81,6 +80,7 @@ struct Atom
 	operator FVector&()						{ return mLoc; }
 };
 
+UENUM()
 namespace EResidueType
 {
 	enum Type
@@ -118,12 +118,14 @@ struct ResidueInfo
 	EResidueType::Type		type;
 	char				code;
 	char				name[4];
+	FString				fullName;
 };
 
 // a residue number to info mapping
 extern const ResidueInfo kResidueInfo[];
 
 EResidueType::Type MapResidue(FString inName);
+ResidueInfo MapResidueInfo(EResidueType::Type ResidueType);
 
 struct HBond
 {
@@ -191,6 +193,7 @@ ESecondaryStructure::Type MapSecondaryStructure(char inSSCharLabel);
 
 class Residue
 {
+
 public:
 	Residue();
 	//Residue(const Residue& residue);
@@ -202,6 +205,7 @@ public:
 	char				GetChainID() const							{ return mChainID; }
 	EResidueType::Type	GetType() const								{ return mType; }
 	void				SetType(char inResidueType);
+	void				SetType(EResidueType::Type inResidueType);
 	const Atom&			GetCAlpha() const							{ return mCA; }
 	const Atom&			GetC() const								{ return mC; }
 	const Atom&			GetN() const								{ return mN; }
@@ -343,9 +347,4 @@ protected:
 	//FVector				mBox[2];		// The 3D box containing all atoms
 	//FVector				mCenter;		// and the 3d Sphere containing all atoms
 	//double				mRadius;
-
-private:
-	Residue&			operator=(const Residue& residue);
 };
-
-#endif

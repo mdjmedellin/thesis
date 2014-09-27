@@ -1,6 +1,4 @@
 #pragma once
-#ifndef __Residue_Container_h__
-#define __Residue_Container_h__
 
 class Residue;
 
@@ -20,5 +18,3 @@ namespace GHProtein
 		TMap< Residue*, int > PointerResidueIDMap;
 	};
 }
-
-#endif
