@@ -7,6 +7,7 @@
 #include "ThesisTestGameMode.h"
 #include "AminoAcid.h"
 #include "ProteinModel.h"
+#include "ThesisStaticLibrary.h"
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -359,4 +360,91 @@ void ACameraCharacter::TranslateProteinModel(const FVector& translation)
 FVector ACameraCharacter::GetProteinModelLocation()
 {
 	return m_proteinModel->GetCenterLocation();
+}
+
+void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> residueType, bool translateOtherResidues, int32 index)
+{
+	//add the residue at the back of the chain
+	UWorld* world = GetWorld();
+	AThesisTestGameMode* gameMode = nullptr;
+	if (world)
+	{
+		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+
+		if (gameMode)
+		{
+			FVector dimensions = FVector::ZeroVector;
+			FVector location = FVector::ZeroVector;
+			if (m_customChain.Num() != 0)
+			{
+				if (index < 0 || index >= m_customChain.Num())
+				{
+					//add to the end of the chain
+					location = m_customChain.Last()->GetActorLocation();
+					//check if we are to slide the other amino acids or just offset the amino acid that is added to the chain
+					if (translateOtherResidues)
+					{
+						SlideCustomChain(1);
+					}
+					else
+					{
+						dimensions.Set(m_customChainResidueDiameter, m_customChainResidueDiameter, m_customChainResidueDiameter);
+					}
+				}
+				else
+				{
+					location = m_customChain[index]->GetActorLocation();
+
+					//slide all of the other actors coming after this location
+					SlideCustomChain(1, index);
+				}
+			}
+
+			dimensions *= m_customChainSlidingAxis;
+			location += dimensions;
+
+			AAminoAcid* newAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, gameMode->DefaultAminoAcidClass
+				, location, FRotator::ZeroRotator);
+
+			newAminoAcid->SetAminoAcidType(residueType);
+			newAminoAcid->SetAminoAcidSize(m_customChainResidueDiameter);
+
+			//
+			m_customChain.Add(newAminoAcid);
+		}
+	}
+}
+
+void ACameraCharacter::TranslateCustomChain(const FVector& translation, int32 indexOfLastTranslatedResidue)
+{
+	if (indexOfLastTranslatedResidue < 0 || indexOfLastTranslatedResidue >= m_customChain.Num())
+	{
+		indexOfLastTranslatedResidue = m_customChain.Num() - 1;
+	}
+
+	for (int i = 0; i <= indexOfLastTranslatedResidue; ++i)
+	{
+		m_customChain[i]->Translate(translation);
+	}
+}
+
+void ACameraCharacter::SlideCustomChain(int32 residuesToSlide, int32 index)
+{
+	FVector translationOffset(-m_customChainResidueDiameter, -m_customChainResidueDiameter, -m_customChainResidueDiameter);
+	translationOffset *= m_customChainSlidingAxis;
+
+	translationOffset *= residuesToSlide;
+	TranslateCustomChain(translationOffset, index);
+}
+
+AAminoAcid* ACameraCharacter::GetResidueAtSpecifiedIndex(int32 index)
+{
+	if (index < 0 || index >= m_customChain.Num())
+	{
+		return nullptr;
+	}
+	else
+	{
+		return m_customChain[index];
+	}
 }

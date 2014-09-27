@@ -3,52 +3,20 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "Residue.h"
 #include "AminoAcid.generated.h"
-
-/**
- * 
- */
-UENUM()
-namespace EAminoAcidType
-{
-	enum Type
-	{
-		Alanine
-		, Cysteine
-		, AsparticAcid
-		, GlutamicAcid
-		, Phenylalanine
-		, Glycine
-		, Histidine
-		, Isoleucine
-		, Lysine
-		, Leucine
-		, Methionine
-		, Asparagine
-		, Proline
-		, Glutamine
-		, Arginine
-		, Serine
-		, Threonine
-		, Valine
-		, Tryptophan
-		, Tyrosine
-		, Count						UMETA(Hidden)
-	};
-}
 
 namespace ESecondaryStructure
 {
 	enum Type;
 }
 
-class ALinkFragment;
-class Residue;
-
 namespace GHProtein
 {
 	class ProteinModel;
 }
+
+class ALinkFragment;
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -95,8 +63,13 @@ public:
 
 	void SetAminoAcidSize(float aminoAcidSize);
 
-	//static functions
-	static void SetTangentTension(float newTension);
+	ResidueInfo GetAminoAcidInfo() const;
+
+	UFUNCTION(BlueprintCallable, Category = Residue)
+		FString GetResidueTypeString() const;
+
+	UFUNCTION(BlueprintCallable, Category = Residue)
+		void SetAminoAcidType(TEnumAsByte<EResidueType::Type> aminoAcidType);
 
 private:
 	//private data members
@@ -124,13 +97,8 @@ private:
 
 	GHProtein::ProteinModel* m_model;
 
-	//static data members
-	static float s_tangentTension;
-
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
-		TEnumAsByte<EAminoAcidType::Type> m_typeOfAminoAcid;
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		float m_lengthOfLinkFragment;
 
@@ -139,6 +107,9 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		TSubobjectPtr<UStaticMeshComponent> MeshComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
+		TSubobjectPtr<UTextRenderComponent> TextRenderComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		UBlueprint* m_linkBlueprint;

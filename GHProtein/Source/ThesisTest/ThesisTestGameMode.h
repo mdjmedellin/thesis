@@ -26,6 +26,9 @@ public:
 
 	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint();
 
+	UFUNCTION(exec)
+		void JesseTestConsoleCommand();
+
 public:
 	GHProtein::ProteinModel* m_proteinModel;
 
@@ -35,13 +38,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameMode)
 		FVector m_proteinModelCenterLocation;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = GameMode)
-		UBlueprint* m_aminoAcidBlueprint;
-private:
-	/* Private data members */
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		UClass* DefaultAminoAcidClass;
 
+private:
+	/* Private data members */
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		float m_linkWidth;
 

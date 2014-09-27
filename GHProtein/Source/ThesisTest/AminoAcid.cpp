@@ -7,8 +7,6 @@
 #include "Residue.h"
 #include "ProteinModel.h"
 
-float AAminoAcid::s_tangentTension = 0.0;
-
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_nextAminoAcid(nullptr)
@@ -35,6 +33,10 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 
 	//Attach the static mesh component to the root
 	MeshComponent->AttachTo(RootComponent);
+
+	TextRenderComponent = PCIP.CreateDefaultSubobject<UTextRenderComponent>(this, TEXT("TextRenderComponent"));
+
+	TextRenderComponent->AttachTo(RootComponent);
 }
 
 bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
@@ -226,11 +228,6 @@ AAminoAcid* AAminoAcid::GetPreviousAminoAcidPtr()
 	return m_previousAminoAcid;
 }
 
-void AAminoAcid::SetTangentTension(float newTension)
-{
-	s_tangentTension = newTension;
-}
-
 void AAminoAcid::SetAminoAcidSize(float aminoAcidSize)
 {
 	FVector dimensions = GetComponentsBoundingBox().GetSize();
@@ -420,4 +417,36 @@ void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float 
 		m_linkFragment->SplineMeshComponent->SetEndScale(scale);
 		m_linkFragment->setColor(renderColor);
 	}
+}
+
+//function maps the type of amino acid to a string that is returned
+FString AAminoAcid::GetResidueTypeString() const
+{
+	if (m_residueInformation)
+	{
+		return MapResidueInfo(m_residueInformation->GetType()).fullName;
+	}
+	else
+	{
+		return "INVALID DATA";
+	}
+}
+
+ResidueInfo AAminoAcid::GetAminoAcidInfo() const
+{
+	if (m_residueInformation)
+	{
+		return MapResidueInfo(m_residueInformation->GetType());
+	}
+	return kResidueInfo[0];
+}
+
+void AAminoAcid::SetAminoAcidType(TEnumAsByte<EResidueType::Type> aminoAcidType)
+{
+	if (!m_residueInformation)
+	{
+		m_residueInformation = new Residue();
+	}
+
+	m_residueInformation->SetType(aminoAcidType);
 }
