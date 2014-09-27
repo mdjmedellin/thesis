@@ -1,6 +1,4 @@
 #pragma once
-#ifndef __ProteinUtilities_h__
-#define __ProteinUtilities_h__
 
 namespace GHProtein
 {
@@ -47,5 +45,3 @@ namespace GHProtein
 
 	void ReadFromLine(const FString& lineToReadFrom, FString& out_substringDestination, int& startingIndex, int charactersToRead);
 }
-
-#endif

@@ -7,6 +7,7 @@
 #include "ThesisTestGameMode.h"
 #include "AminoAcid.h"
 #include "ProteinModel.h"
+#include "ThesisStaticLibrary.h"
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -359,4 +360,37 @@ void ACameraCharacter::TranslateProteinModel(const FVector& translation)
 FVector ACameraCharacter::GetProteinModelLocation()
 {
 	return m_proteinModel->GetCenterLocation();
+}
+
+void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EAminoAcidType::Type> residueType, int32 index)
+{
+	if (index < 0 || index >= m_customChain.Num())
+	{
+		//add the residue at the back of the chain
+		UWorld* world = GetWorld();
+		AThesisTestGameMode* gameMode = nullptr;
+		if (world)
+		{
+			gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+
+			if (gameMode)
+			{
+				FVector dimensions = FVector::ZeroVector;
+				FVector location = FVector::ZeroVector;
+				if (m_customChain.Num() != 0)
+				{
+					location = m_customChain.Last()->GetActorLocation();
+					dimensions.Set(m_customChainResidueDiameter, m_customChainResidueDiameter, m_customChainResidueDiameter);
+				}
+
+				dimensions *= m_customChainSlidingAxis;
+				location += dimensions;
+				AAminoAcid* newAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, gameMode->DefaultAminoAcidClass
+					, location, FRotator::ZeroRotator);
+
+				newAminoAcid->SetAminoAcidSize(m_customChainResidueDiameter);
+				m_customChain.Add(newAminoAcid);
+			}
+		}
+	}
 }

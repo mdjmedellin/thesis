@@ -3,14 +3,13 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "AminoAcid.h"
 #include "CameraCharacter.generated.h"
 
 namespace GHProtein
 {
 	class ProteinModel;
 }
-
-class AAminoAcid;
 
 /**
  * 
@@ -41,6 +40,12 @@ class ACameraCharacter : public ACharacter
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
 		float m_maxPickDistance;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = CustomChain)
+		FVector m_customChainSlidingAxis;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = CustomChain)
+		float m_customChainResidueDiameter;
+
 	GHProtein::ProteinModel* m_proteinModel;
 	float m_rotationSpeedSecondsPerDegrees;
 	bool m_rotateProteinYaw;
@@ -52,6 +57,7 @@ class ACameraCharacter : public ACharacter
 	float m_zoomBuffer;
 	AAminoAcid* m_selectedAminoAcid;
 	FVector m_prevLocation;
+	TArray<AAminoAcid*> m_customChain;
 
 protected:
 
@@ -117,4 +123,7 @@ public:
 	void CustomClearJumpInput();
 
 	virtual void Tick(float DeltaSeconds) OVERRIDE;
+
+	UFUNCTION(exec)
+		void AddResidueToCustomChain(TEnumAsByte<EAminoAcidType::Type> residueType, int32 index = -1);
 };

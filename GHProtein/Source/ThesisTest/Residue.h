@@ -1,7 +1,7 @@
 #pragma once
+
 #ifndef __Residue_h__
 #define __Residue_h__
-
 
 //JM: Globals that seem to be used thorughout
 // --------------------------------------------------------------------
