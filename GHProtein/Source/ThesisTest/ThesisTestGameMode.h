@@ -1,14 +1,13 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 #pragma once
 
+#include "ProteinModelSpawnPoint.h"
 #include "ThesisTestGameMode.generated.h"
 
 namespace GHProtein
 {
 	class ProteinModel;
 }
-
-class AProteinModelSpawnPoint;
 
 UCLASS(minimalapi)
 class AThesisTestGameMode : public AGameMode
@@ -24,10 +23,7 @@ public:
 	virtual void AddProteinModelSpawnPoint(AProteinModelSpawnPoint* NewProteinModelSpawnPoint);
 	virtual void RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint);
 
-	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint();
-
-	UFUNCTION(exec)
-		void JesseTestConsoleCommand();
+	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType);
 
 public:
 	GHProtein::ProteinModel* m_proteinModel;

@@ -112,7 +112,7 @@ void AThesisTestGameMode::StartMatch()
 	Super::StartMatch();
 
 	//Get the spawn location of the protein
-	AProteinModelSpawnPoint* bestModelSpawnPoint = GetBestProteinModelSpawnPoint();
+	AProteinModelSpawnPoint* bestModelSpawnPoint = GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_ProteinModel);
 
 	//check if we received a valid protein model
 	if (m_proteinModel && DefaultAminoAcidClass && bestModelSpawnPoint)
@@ -125,12 +125,19 @@ void AThesisTestGameMode::StartMatch()
 	}
 }
 
-AProteinModelSpawnPoint* AThesisTestGameMode::GetBestProteinModelSpawnPoint()
+AProteinModelSpawnPoint* AThesisTestGameMode::GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType)
 {
 	//at the moment we only expect to have one protein model spawn point
 	if (ProteinModelSpawnPoints.Num() > 0)
 	{
-		return ProteinModelSpawnPoints[0];
+		for (int i = 0; i < ProteinModelSpawnPoints.Num(); ++i)
+		{
+			if (ProteinModelSpawnPoints[i]->m_typeOfSpawnPoint == spawnType)
+			{
+				return ProteinModelSpawnPoints[i];
+			}
+		}
+		return nullptr;
 	}
 
 	return nullptr;
@@ -144,10 +151,4 @@ void AThesisTestGameMode::AddProteinModelSpawnPoint(AProteinModelSpawnPoint* New
 void AThesisTestGameMode::RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint)
 {
 	ProteinModelSpawnPoints.Remove(RemovedProteinModelSpawnPoint);
-}
-
-void AThesisTestGameMode::JesseTestConsoleCommand()
-{
-	ACameraPlayerController* localPlayerController = (ACameraPlayerController*)GetWorld()->GetFirstPlayerController();
-	//localPlayerController->Get
 }
