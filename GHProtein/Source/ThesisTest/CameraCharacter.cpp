@@ -399,6 +399,16 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 					SlideCustomChain(1, index);
 				}
 			}
+			else
+			{
+				//if the chain is empty, then we spawn the custom peptyde chain at the best spawn point
+				AProteinModelSpawnPoint* bestSpawnPoint = gameMode->GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_CustomPolypeptide);
+
+				if (bestSpawnPoint)
+				{
+					location = bestSpawnPoint->GetActorLocation();
+				}
+			}
 
 			dimensions *= m_customChainSlidingAxis;
 			location += dimensions;
