@@ -14,7 +14,6 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
-	, m_aminoAcidBlueprint(nullptr)
 	, m_linkWidth(100.f)
 	, m_linkHeight(100.f)
 	, m_distanceScale(1.f)
@@ -145,4 +144,10 @@ void AThesisTestGameMode::AddProteinModelSpawnPoint(AProteinModelSpawnPoint* New
 void AThesisTestGameMode::RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint)
 {
 	ProteinModelSpawnPoints.Remove(RemovedProteinModelSpawnPoint);
+}
+
+void AThesisTestGameMode::JesseTestConsoleCommand()
+{
+	ACameraPlayerController* localPlayerController = (ACameraPlayerController*)GetWorld()->GetFirstPlayerController();
+	//localPlayerController->Get
 }

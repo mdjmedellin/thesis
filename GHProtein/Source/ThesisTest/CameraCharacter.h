@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "Residue.h"
 #include "CameraCharacter.generated.h"
 
 namespace GHProtein
@@ -41,6 +42,12 @@ class ACameraCharacter : public ACharacter
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
 		float m_maxPickDistance;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = CustomChain)
+		FVector m_customChainSlidingAxis;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = CustomChain)
+		float m_customChainResidueDiameter;
+
 	GHProtein::ProteinModel* m_proteinModel;
 	float m_rotationSpeedSecondsPerDegrees;
 	bool m_rotateProteinYaw;
@@ -52,6 +59,7 @@ class ACameraCharacter : public ACharacter
 	float m_zoomBuffer;
 	AAminoAcid* m_selectedAminoAcid;
 	FVector m_prevLocation;
+	TArray<AAminoAcid*> m_customChain;
 
 protected:
 
@@ -93,6 +101,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
 		FVector GetProteinModelLocation();
 
+	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
+		void TranslateCustomChain(const FVector& translation, int32 indexOfLastTranslatedResidue = -1);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void SlideCustomChain(int32 residuesToSlide = 1, int32 index = -1);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> residueType, bool translateOtherResidues = true, int32 index = -1);
+
+	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
+		AAminoAcid* GetResidueAtSpecifiedIndex(int32 index = -1);
+
+	void CustomClearJumpInput();
+	virtual void ClearJumpInput();
+	virtual void Tick(float DeltaSeconds) OVERRIDE;
+
 	//Functions used to toggle rotation of the protein
 	virtual void ToggleProteinYawRotation();
 	virtual void ToggleProteinPitchRotation();
@@ -110,11 +134,4 @@ protected:
 	virtual void PostInitializeComponents() OVERRIDE;
 	virtual void Restart() OVERRIDE;
 	// End of APawn interface
-
-
-public:
-	virtual void ClearJumpInput();
-	void CustomClearJumpInput();
-
-	virtual void Tick(float DeltaSeconds) OVERRIDE;
 };
