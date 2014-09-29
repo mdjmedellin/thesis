@@ -6,8 +6,9 @@
 
 SecondaryStructure* SecondaryStructure::s_selectedStructure = nullptr;
 
-SecondaryStructure::SecondaryStructure()
-: m_nextSecondaryStructure(nullptr)
+SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStructureType)
+: m_secondaryStructureType(secondaryStructureType)
+, m_nextSecondaryStructure(nullptr)
 , m_headAminoAcid(nullptr)
 , m_tailAminoAcid(nullptr)
 {}

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "ThesisStaticLibrary.h"
 #include "Residue.h"
 #include "AminoAcid.generated.h"
 

@@ -1,4 +1,5 @@
 #include "ThesisTest.h"
+#include "ProteinUtilities.h"
 #include "ProteinModel.h"
 #include "ResidueContainer.h"
 #include "AminoAcid.h"
@@ -62,6 +63,28 @@ namespace GHProtein
 		return true;
 	}
 
+	Residue* ProteinModel::GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue)
+	{
+		ResidueContainer** residues = ResidueIDMap.Find(residueNumber);
+		Residue* foundResidue = nullptr;
+
+		if (residues && *residues)
+		{
+			//we have found the appropriate residue container
+			//if we have a partner residue specified, then we return the residue whose partner is the specified residue
+			if (partnerResidue)
+			{
+				foundResidue = (*residues)->FindBetaPartnerToResidue(partnerResidue);
+			}
+			else
+			{
+				foundResidue = (*residues)->GetFirstResidue();
+			}
+		}
+
+		return foundResidue;
+	}
+
 	void ProteinModel::BuildProteinModel()
 	{
 		int numberOfResidues = m_residueVector.Num();
@@ -86,19 +109,8 @@ namespace GHProtein
 				{
 					//at this point we know that we have a beta partner
 					//now we need to get the right reference to it
-
-					ResidueContainer** residues = ResidueIDMap.Find(currentBridgePartner.number);
-
-					if (residues && *residues)
-					{
-						//we found the residue container that contains the bridge partner
-						betaPartnerResidue = (*residues)->FindBetaPartnerToResidue(currentResidue);
-					}
-					else
-					{
-						betaPartnerResidue = nullptr;
-					}
-
+					betaPartnerResidue = GetResidueWithSpecifiedID(currentBridgePartner.number, currentResidue);
+					
 					//set the beta partner residue
 					currentResidue->SetBetaPartnerResidue(betaPartnerID, betaPartnerResidue);
 				}
@@ -117,6 +129,40 @@ namespace GHProtein
 		currentResidue->SetNext(nullptr);
 
 		return;
+	}
+
+	void ProteinModel::UpdateMinAndMaxBounds(const FVector& newPoint)
+	{
+		m_minBounds3D.X = GetMin(m_minBounds3D.X, newPoint.X);
+		m_minBounds3D.Y = GetMin(m_minBounds3D.Y, newPoint.Y);
+		m_minBounds3D.Z = GetMin(m_minBounds3D.Z, newPoint.Z);
+
+		m_maxBounds3D.X = GetMax(m_maxBounds3D.X, newPoint.X);
+		m_maxBounds3D.Y = GetMax(m_maxBounds3D.Y, newPoint.Y);
+		m_maxBounds3D.Z = GetMax(m_maxBounds3D.Z, newPoint.Z);
+
+		//get the center of the bounds
+		m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
+	}
+
+	void ProteinModel::MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation)
+	{
+		//translate all amino acids
+		AAminoAcid* currentAminoAcid = m_headPtr;
+		FVector newResidueLocation = FVector::ZeroVector;
+		while (currentAminoAcid)
+		{
+			newResidueLocation = currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox;		//this brings the residue centered at 0,0,0
+			newResidueLocation += proteinModelCenterLocation;										//this centers the residue about the new location
+
+			currentAminoAcid->SetActorLocation(newResidueLocation);
+			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//offset the bounding box
+		m_minBounds3D = m_minBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
+		m_maxBounds3D = m_maxBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
+		m_centerOfBoundingBox = proteinModelCenterLocation;
 	}
 
 	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation
@@ -145,6 +191,7 @@ namespace GHProtein
 				currentResidue = m_residueVector[residueIndex];
 				currentResidue->GetCALocation(aminoAcidLocation);
 				aminoAcidLocation *= distanceScale; // this is done in order to space out the proteins
+
 				currentAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, blueprint, aminoAcidLocation, originRotation);
 				currentAminoAcid->SetAminoAcidSize(aminoAcidSize);
 				currentAminoAcid->SetResidueInformation(currentResidue);
@@ -156,15 +203,10 @@ namespace GHProtein
 				}
 				previousAminoAcid = currentAminoAcid;
 
+				//update bounding box
 				if (m_headPtr)
 				{
-					m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
-					m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
-					m_minBounds3D.Z = m_minBounds3D.Z < aminoAcidLocation.Z ? m_minBounds3D.Z : aminoAcidLocation.Z;
-
-					m_maxBounds3D.X = m_maxBounds3D.X > aminoAcidLocation.X ? m_maxBounds3D.X : aminoAcidLocation.X;
-					m_maxBounds3D.Y = m_maxBounds3D.Y > aminoAcidLocation.Y ? m_maxBounds3D.Y : aminoAcidLocation.Y;
-					m_maxBounds3D.Z = m_maxBounds3D.Z > aminoAcidLocation.Z ? m_maxBounds3D.Z : aminoAcidLocation.Z;
+					UpdateMinAndMaxBounds(aminoAcidLocation);
 				}
 				else
 				{
@@ -173,13 +215,13 @@ namespace GHProtein
 					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 				}
 
+				//set the residues secondary structure and updates the current secondary structure
 				currentAminoAcid->SetSecondaryStructure(currentResidue->GetSecondaryStructure());
 
-				if (currentSecondaryStructureType == ESecondaryStructure::ssCount
-					|| currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
+				if (currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
 				{
 					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
-					currentSecondaryStructure = new SecondaryStructure();
+					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType);
 
 					if (currentSecondaryStructure)
 					{
@@ -191,22 +233,10 @@ namespace GHProtein
 			}
 
 			AppendSecondaryStructure(currentSecondaryStructure);
+			//CreateBetaSheets();
 
-			//get the center of the bounds
-			m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
-
-			//we want to bring everything to the center, so subtract the middle from all locations
-			currentAminoAcid = m_headPtr;
-			while (currentAminoAcid)
-			{
-				currentAminoAcid->SetActorLocation(currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox + proteinModelCenterLocation);
-				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
-			}
-
-			//offset the bounding box
-			m_minBounds3D = m_minBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
-			m_maxBounds3D = m_maxBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
-			m_centerOfBoundingBox = proteinModelCenterLocation;
+			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
+			MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
 
 			//iterate ove the chain of amino acids and spawn the link particle effect
 			currentAminoAcid = m_headPtr;
@@ -217,6 +247,10 @@ namespace GHProtein
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 		}
+	}
+
+	void ProteinModel::CreateBetaSheets()
+	{
 	}
 
 	void ProteinModel::HighlightSecondaryStructure(AAminoAcid* residueMember)
@@ -236,6 +270,7 @@ namespace GHProtein
 
 	AAminoAcid* ProteinModel::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	{
+		//search through all of the secondary structures and grab the residue with the specified sequence number
 		SecondaryStructure* currentSecondaryStructure = m_headSecondaryStructure;
 		AAminoAcid* foundResidue = nullptr;
 
@@ -300,13 +335,7 @@ namespace GHProtein
 
 			if (currentAminoAcid != m_headPtr)
 			{
-				m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
-				m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
-				m_minBounds3D.Z = m_minBounds3D.Z < aminoAcidLocation.Z ? m_minBounds3D.Z : aminoAcidLocation.Z;
-
-				m_maxBounds3D.X = m_maxBounds3D.X > aminoAcidLocation.X ? m_maxBounds3D.X : aminoAcidLocation.X;
-				m_maxBounds3D.Y = m_maxBounds3D.Y > aminoAcidLocation.Y ? m_maxBounds3D.Y : aminoAcidLocation.Y;
-				m_maxBounds3D.Z = m_maxBounds3D.Z > aminoAcidLocation.Z ? m_maxBounds3D.Z : aminoAcidLocation.Z;
+				UpdateMinAndMaxBounds(aminoAcidLocation);
 			}
 			else
 			{
@@ -316,9 +345,6 @@ namespace GHProtein
 
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
-
-		//get the center of the bounds
-		m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
 	}
 
 	FVector ProteinModel::GetDirectionFromCenter(const FVector& currentLocation)
@@ -348,30 +374,13 @@ namespace GHProtein
 		while (currentAminoAcid)
 		{
 			currentAminoAcid->UpdateLinkToNextAminoAcid();
-
-			aminoAcidLocation = currentAminoAcid->GetActorLocation();
-
-			if (currentAminoAcid != m_headPtr)
-			{
-				m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
-				m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
-				m_minBounds3D.Z = m_minBounds3D.Z < aminoAcidLocation.Z ? m_minBounds3D.Z : aminoAcidLocation.Z;
-
-				m_maxBounds3D.X = m_maxBounds3D.X > aminoAcidLocation.X ? m_maxBounds3D.X : aminoAcidLocation.X;
-				m_maxBounds3D.Y = m_maxBounds3D.Y > aminoAcidLocation.Y ? m_maxBounds3D.Y : aminoAcidLocation.Y;
-				m_maxBounds3D.Z = m_maxBounds3D.Z > aminoAcidLocation.Z ? m_maxBounds3D.Z : aminoAcidLocation.Z;
-			}
-			else
-			{
-				m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
-				m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
-			}
-
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
 
-		//get the center of the bounds
-		m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
+		//translate the bounding box min and max
+		m_minBounds3D += displacement;
+		m_maxBounds3D += displacement;
+		m_centerOfBoundingBox += displacement;
 	}
 
 	FVector ProteinModel::GetBoundingBoxDimensions() const

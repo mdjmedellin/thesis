@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "ThesisStaticLibrary.h"
+#include "Residue.h"
 class AAminoAcid;
 /**
  * 
@@ -9,7 +11,7 @@ class AAminoAcid;
 class THESISTEST_API SecondaryStructure
 {
 public:
-	SecondaryStructure();
+	SecondaryStructure(ESecondaryStructure::Type secondaryStructureType);
 	~SecondaryStructure();
 
 	void SetNextStructurePtr(SecondaryStructure* nextStructure);
@@ -28,6 +30,7 @@ private:
 	void ResetRibbonColor();
 
 private:
+	ESecondaryStructure::Type m_secondaryStructureType;
 	SecondaryStructure* m_nextSecondaryStructure;
 
 	AAminoAcid* m_headAminoAcid;

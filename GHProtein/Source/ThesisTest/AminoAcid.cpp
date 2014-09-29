@@ -34,8 +34,10 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	//Attach the static mesh component to the root
 	MeshComponent->AttachTo(RootComponent);
 
+	//Create the text render component
 	TextRenderComponent = PCIP.CreateDefaultSubobject<UTextRenderComponent>(this, TEXT("TextRenderComponent"));
 
+	//attach the text render component to the root
 	TextRenderComponent->AttachTo(RootComponent);
 }
 
@@ -45,16 +47,21 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 	//and we have not spawned them before
 	if (m_nextAminoAcid && (m_linkFragment == nullptr))
 	{
+		//get the start and end tangent
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
 		FVector endTangent = FVector::ZeroVector;
 		m_nextAminoAcid->GetTangent(endTangent);
 
+		//get the endpoint location of the link fragment
 		FVector linkStartLocation = GetActorLocation();
 		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
+		//spawn the link fragment
 		ALinkFragment* linkFragment = nullptr;
 		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		
+		//scale the fragment to the size specified to it
 		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
 		FVector2D scale(1.f, 1.f);
 		scale.X = width / size.X;
@@ -66,7 +73,8 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
 
-		//spawn link to partner amino acid on the beta sheet
+		/*
+		m_model->AddHydrogenBond(m_residueInformation->GetNumber(), )
 		BridgePartner partner = m_residueInformation->GetBetaPartner(0);
 
 		scale *= .5f;
@@ -107,6 +115,7 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 				m_betaPartner2->SplineMeshComponent->SetEndPosition(linkEndLocation);
 			}
 		}
+		*/
 
 		return true;
 	}

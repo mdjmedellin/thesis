@@ -364,7 +364,7 @@ void Residue::SetBridgeLabels(char* inBridgeLabels)
 {
 	//JM
 	//TODO:
-	//This needs to be revisited because we cannot extract all teh information about the
+	//This needs to be revisited because we cannot extract all the information about the
 	//beta partners at this moment
 	BridgePartner* currentBridgePartner;
 

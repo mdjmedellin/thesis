@@ -28,16 +28,21 @@ namespace GHProtein
 		/** No assignment allowed */
 		ProteinModel& operator=(const ProteinModel& rhs) { return *this; };
 
+		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
+		void MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation);
+		void UpdateMinAndMaxBounds(const FVector& newPoint);
+		void CreateBetaSheets();
+
 	public:
 		/** Public utility methods go here */
 		bool AddResidue(Residue* insertedResidue);
-		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
 		void BuildProteinModel();
 		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation
 			, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor
 			, float helixLinkWidth, float betaStrandLinkWidth);
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void HighlightSecondaryStructure(AAminoAcid* residueMember);
+		Residue* GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue = nullptr);
 		FVector GetDirectionFromCenter(const FVector& currentLocation);
 		void TranslateModel(const FVector& displacement);
 		FVector GetBoundingBoxDimensions() const;
