@@ -1,9 +1,7 @@
-
-
 #pragma once
 
 #include "ThesisStaticLibrary.h"
-#include "Residue.h"
+
 class AAminoAcid;
 /**
  * 
@@ -20,12 +18,14 @@ public:
 	void Deselect();
 	SecondaryStructure* GetNextStructurePtr();
 	bool ContainsSpecifiedResidue(AAminoAcid* residue);
-
+	ESecondaryStructure::Type GetSecondaryStructureType() const;
+	void GetBridgeLabels(TArray<uint32>& out_bridgeLabels) const;
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 
 	static SecondaryStructure* GetSelectedStructure();
 
 private:
+	void AddBridgeLabel(uint32 bridgeLabel);
 	void ChangeRibbonColor(const FColor& ribbonColor);
 	void ResetRibbonColor();
 
@@ -35,6 +35,8 @@ private:
 
 	AAminoAcid* m_headAminoAcid;
 	AAminoAcid* m_tailAminoAcid;
+
+	TArray<uint32> m_bridgeLabels;
 
 	static SecondaryStructure* s_selectedStructure;
 public:

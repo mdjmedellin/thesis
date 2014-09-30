@@ -5,6 +5,108 @@
 #include "Object.h"
 #include "ThesisStaticLibrary.generated.h"
 
+// a limited set of known atoms.
+UENUM()
+namespace EAtomType
+{
+	enum Type
+	{
+		kUnknownAtom,
+		kHydrogen,
+		// ...
+		kCarbon,
+		kNitrogen,
+		kOxygen,
+		kFluorine,
+		// ...
+		kPhosphorus,
+		kSulfur,
+		kChlorine,
+		kMagnesium,
+		kPotassium,
+		kCalcium,
+		kZinc,
+		kSelenium,
+
+		kAtomTypeCount
+	};
+}
+
+UENUM()
+namespace EHelixFlag
+{
+	enum Type
+	{
+		helixNone
+		, helixStart
+		, helixEnd
+		, helixStartAndEnd
+		, helixMiddle
+		, helixCount
+	};
+}
+
+UENUM()
+namespace ESecondaryStructure
+{
+	enum Type
+	{
+		ssLoop			//' '
+		, ssAlphaHelix	// H
+		, ssBetaBridge	// B
+		, ssStrand		// E
+		, ssHelix_3		// G
+		, ssHelix_5		// I
+		, ssTurn		// T
+		, ssBend		// S
+		, ssCount
+	};
+}
+
+UENUM()
+namespace EResidueType
+{
+	enum Type
+	{
+		kUnknownResidue,
+
+		//
+		kAlanine,				// A	ala
+		kArginine,				// R	arg
+		kAsparagine,			// N	asn
+		kAsparticAcid,			// D	asp
+		kCysteine,				// C	cys
+		kGlutamicAcid,			// E	glu
+		kGlutamine,				// Q	gln
+		kGlycine,				// G	gly
+		kHistidine,				// H	his
+		kIsoleucine,			// I	ile
+		kLeucine,				// L	leu
+		kLysine,				// K	lys
+		kMethionine,			// M	met
+		kPhenylalanine,			// F	phe
+		kProline,				// P	pro
+		kSerine,				// S	ser
+		kThreonine,				// T	thr
+		kTryptophan,			// W	trp
+		kTyrosine,				// Y	tyr
+		kValine,				// V	val
+
+		kResidueTypeCount
+	};
+}
+
+UENUM()
+namespace EBridgeType
+{
+	enum Type
+	{
+		btNoBridge
+		, btParallel
+		, btAntiParallel
+		, btCount
+	};
+}
 
 /**
  * 

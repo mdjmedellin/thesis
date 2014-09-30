@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "ThesisStaticLibrary.h"
 #include "Residue.h"
 #include "CameraCharacter.generated.h"
 

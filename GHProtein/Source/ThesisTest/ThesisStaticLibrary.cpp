@@ -3,11 +3,6 @@
 #include "ThesisTest.h"
 #include "ThesisStaticLibrary.h"
 
-
 UThesisStaticLibrary::UThesisStaticLibrary(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
-{
-
-}
-
-
+{}

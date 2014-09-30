@@ -1,8 +1,8 @@
 #include "ThesisTest.h"
+#include "AminoAcid.h"
 #include "ProteinUtilities.h"
 #include "ProteinModel.h"
 #include "ResidueContainer.h"
-#include "AminoAcid.h"
 #include "SecondaryStructure.h"
 
 namespace GHProtein
@@ -233,7 +233,6 @@ namespace GHProtein
 			}
 
 			AppendSecondaryStructure(currentSecondaryStructure);
-			//CreateBetaSheets();
 
 			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
 			MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
@@ -247,10 +246,6 @@ namespace GHProtein
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 		}
-	}
-
-	void ProteinModel::CreateBetaSheets()
-	{
 	}
 
 	void ProteinModel::HighlightSecondaryStructure(AAminoAcid* residueMember)
@@ -308,7 +303,27 @@ namespace GHProtein
 			m_headSecondaryStructure = secondaryStructure;
 			m_tailSecondaryStructure = m_headSecondaryStructure;
 		}
+
+		//check if it is a beta strand
+		if (secondaryStructure->GetSecondaryStructureType() == ESecondaryStructure::ssStrand)
+		{
+			TArray<uint32> bridgeLabels;
+			secondaryStructure->GetBridgeLabels(bridgeLabels);
+
+			//look for other beta strands that share the same beta bridge label
+			for (int betaStrandIndex = 0; betaStrandIndex < m_betaStrands.Num(); ++betaStrandIndex)
+			{
+				//m_betaStrands[betaStrandIndex]->IsPartOfSpecifiedBridgeLabels(bridgeLabels);
+
+				//if it is part of the same bridge label, then add it to the current beta strand collection for the beta sheet
+
+			}
+
+			//AddBetaStrand(secondaryStructure);
+		}
 	}
+
+
 
 	void ProteinModel::RotateModel(const FVector& anglesDegrees)
 	{

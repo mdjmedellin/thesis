@@ -1,6 +1,6 @@
 #pragma once
 #include "UObjectBaseUtility.h"
-#include "Residue.generated.h"
+#include "ThesisStaticLibrary.h"
 
 //JM: Globals that seem to be used thorughout
 // --------------------------------------------------------------------
@@ -25,33 +25,6 @@ kRadiusWater = 1.4;
 // --------------------------------------------------------------------
 
 class Residue;
-
-// a limited set of known atoms. This is an obvious candidate for improvement of DSSP.
-namespace EAtomType
-{
-	enum Type
-	{
-		kUnknownAtom,
-		kHydrogen,
-		// ...
-		kCarbon,
-		kNitrogen,
-		kOxygen,
-		kFluorine,
-		// ...
-		kPhosphorus,
-		kSulfur,
-		kChlorine,
-		kMagnesium,
-		kPotassium,
-		kCalcium,
-		kZinc,
-		kSelenium,
-
-		kAtomTypeCount
-	};
-}
-
 EAtomType::Type MapElement(FString inElement);
 
 // for now, Atom contains exactly what the ATOM line contains in a PDB file
@@ -80,42 +53,9 @@ struct Atom
 	operator FVector&()						{ return mLoc; }
 };
 
-UENUM()
-namespace EResidueType
-{
-	enum Type
-	{
-		kUnknownResidue,
-
-		//
-		kAlanine,				// A	ala
-		kArginine,				// R	arg
-		kAsparagine,			// N	asn
-		kAsparticAcid,			// D	asp
-		kCysteine,				// C	cys
-		kGlutamicAcid,			// E	glu
-		kGlutamine,				// Q	gln
-		kGlycine,				// G	gly
-		kHistidine,				// H	his
-		kIsoleucine,			// I	ile
-		kLeucine,				// L	leu
-		kLysine,				// K	lys
-		kMethionine,			// M	met
-		kPhenylalanine,			// F	phe
-		kProline,				// P	pro
-		kSerine,				// S	ser
-		kThreonine,				// T	thr
-		kTryptophan,			// W	trp
-		kTyrosine,				// Y	tyr
-		kValine,				// V	val
-
-		kResidueTypeCount
-	};
-}
-
 struct ResidueInfo
 {
-	EResidueType::Type		type;
+	EResidueType::Type	type;
 	char				code;
 	char				name[4];
 	FString				fullName;
@@ -133,17 +73,6 @@ struct HBond
 	double			energy;
 };
 
-namespace EBridgeType
-{
-	enum Type
-	{
-		btNoBridge
-		,btParallel
-		,btAntiParallel
-		,btCount
-	};
-}
-
 struct BridgePartner
 {
 	BridgePartner()
@@ -158,35 +87,6 @@ struct BridgePartner
 	bool			parallel;
 	int				number;
 };
-
-namespace EHelixFlag
-{
-	enum Type
-	{
-		helixNone
-		,helixStart
-		,helixEnd
-		,helixStartAndEnd
-		,helixMiddle
-		,helixCount
-	};
-}
-
-namespace ESecondaryStructure
-{
-	enum Type
-	{
-		ssLoop			//' '
-		, ssAlphaHelix	// H
-		, ssBetaBridge	// B
-		, ssStrand		// E
-		, ssHelix_3		// G
-		, ssHelix_5		// I
-		, ssTurn		// T
-		, ssBend		// S
-		,ssCount		
-	};
-}
 
 extern const char SecondaryStructureInfo[];
 ESecondaryStructure::Type MapSecondaryStructure(char inSSCharLabel);

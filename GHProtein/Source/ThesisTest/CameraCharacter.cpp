@@ -7,7 +7,6 @@
 #include "ThesisTestGameMode.h"
 #include "AminoAcid.h"
 #include "ProteinModel.h"
-#include "ThesisStaticLibrary.h"
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))

@@ -1,16 +1,10 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "GameFramework/Actor.h"
 #include "ThesisStaticLibrary.h"
 #include "Residue.h"
 #include "AminoAcid.generated.h"
-
-namespace ESecondaryStructure
-{
-	enum Type;
-}
 
 namespace GHProtein
 {
@@ -43,6 +37,8 @@ public:
 
 	AAminoAcid* GetNextAminoAcidPtr();
 	AAminoAcid* GetPreviousAminoAcidPtr();
+
+	const Residue* GetResidueInformation() const;
 
 	void UpdateLinkToNextAminoAcid();
 	void UpdateHydrogenBonds(bool recurse = false);

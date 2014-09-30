@@ -1,11 +1,10 @@
 #pragma once
 
 #include "ThesisStaticLibrary.h"
-#include "AminoMovementComponent.h"
-#include "Residue.h"
 
 class AAminoAcid;
 class SecondaryStructure;
+class Residue;
 
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
@@ -31,7 +30,6 @@ namespace GHProtein
 		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
 		void MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation);
 		void UpdateMinAndMaxBounds(const FVector& newPoint);
-		void CreateBetaSheets();
 
 	public:
 		/** Public utility methods go here */
@@ -68,5 +66,7 @@ namespace GHProtein
 
 		SecondaryStructure* m_headSecondaryStructure;
 		SecondaryStructure* m_tailSecondaryStructure;
+
+		TArray<SecondaryStructure*> m_betaStrands;
 	};
 }

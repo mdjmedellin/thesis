@@ -2,9 +2,7 @@
 
 #include "ThesisTest.h"
 #include "AminoAcid.h"
-#include "ThesisStaticLibrary.h"
 #include "LinkFragment.h"
-#include "Residue.h"
 #include "ProteinModel.h"
 
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
@@ -121,6 +119,11 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 	}
 
 	return false;
+}
+
+const Residue* AAminoAcid::GetResidueInformation() const
+{
+	return m_residueInformation;
 }
 
 void AAminoAcid::GetTangent(FVector& out_vector)
