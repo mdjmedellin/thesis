@@ -6,6 +6,8 @@ class AAminoAcid;
 class SecondaryStructure;
 class Residue;
 
+struct BetaSheet;
+
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
 {
@@ -30,6 +32,11 @@ namespace GHProtein
 		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
 		void MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation);
 		void UpdateMinAndMaxBounds(const FVector& newPoint);
+		
+		void AddBetaStrand(SecondaryStructure* newStrand);
+		BetaSheet* MergeStrands(SecondaryStructure* newStrand, SecondaryStructure* strandToMergeWith);
+		BetaSheet* MergeStrandIntoBetaSheet(SecondaryStructure* newStrand, BetaSheet* betaSheet);
+		BetaSheet* MergeBetaSheets(BetaSheet* sheet1, BetaSheet* sheet2);
 
 	public:
 		/** Public utility methods go here */
@@ -68,5 +75,6 @@ namespace GHProtein
 		SecondaryStructure* m_tailSecondaryStructure;
 
 		TArray<SecondaryStructure*> m_betaStrands;
+		TMap< SecondaryStructure*, BetaSheet* > m_strandToBetaSheetMap;
 	};
 }

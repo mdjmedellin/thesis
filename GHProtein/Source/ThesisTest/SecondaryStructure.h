@@ -3,6 +3,19 @@
 #include "ThesisStaticLibrary.h"
 
 class AAminoAcid;
+class SecondaryStructure;
+
+struct BetaSheet
+{
+	BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2)
+	{
+		m_strands.Add(strand1);
+		m_strands.Add(strand2);
+	}
+
+	TArray<SecondaryStructure*> m_strands;
+};
+
 /**
  * 
  */
@@ -20,6 +33,7 @@ public:
 	bool ContainsSpecifiedResidue(AAminoAcid* residue);
 	ESecondaryStructure::Type GetSecondaryStructureType() const;
 	void GetBridgeLabels(TArray<uint32>& out_bridgeLabels) const;
+	bool IsPartOfSpecifiedBridgeLabels(const TArray<uint32>& bridgeLabels) const;
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 
 	static SecondaryStructure* GetSelectedStructure();

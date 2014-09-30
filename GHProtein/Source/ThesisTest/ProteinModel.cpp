@@ -220,13 +220,13 @@ namespace GHProtein
 
 				if (currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
 				{
-					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
-					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType);
-
 					if (currentSecondaryStructure)
 					{
 						AppendSecondaryStructure(currentSecondaryStructure);
 					}
+
+					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
+					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType);
 				}
 
 				currentSecondaryStructure->AppendAminoAcid(currentAminoAcid);
@@ -307,23 +307,137 @@ namespace GHProtein
 		//check if it is a beta strand
 		if (secondaryStructure->GetSecondaryStructureType() == ESecondaryStructure::ssStrand)
 		{
-			TArray<uint32> bridgeLabels;
-			secondaryStructure->GetBridgeLabels(bridgeLabels);
-
-			//look for other beta strands that share the same beta bridge label
-			for (int betaStrandIndex = 0; betaStrandIndex < m_betaStrands.Num(); ++betaStrandIndex)
-			{
-				//m_betaStrands[betaStrandIndex]->IsPartOfSpecifiedBridgeLabels(bridgeLabels);
-
-				//if it is part of the same bridge label, then add it to the current beta strand collection for the beta sheet
-
-			}
-
-			//AddBetaStrand(secondaryStructure);
+			AddBetaStrand(secondaryStructure);
 		}
 	}
 
+	void ProteinModel::AddBetaStrand(SecondaryStructure* newStrand)
+	{
+		TArray<uint32> bridgeLabels;
+		newStrand->GetBridgeLabels(bridgeLabels);
 
+		BetaSheet* currentBetaSheet = nullptr;
+		//look for other beta strands that share the same beta bridge label
+		for (int betaStrandIndex = 0; betaStrandIndex < m_betaStrands.Num(); ++betaStrandIndex)
+		{
+			//check if the strands are connected
+			if (m_betaStrands[betaStrandIndex]->IsPartOfSpecifiedBridgeLabels(bridgeLabels))
+			{
+				if (currentBetaSheet)
+				{
+					currentBetaSheet = MergeStrandIntoBetaSheet(m_betaStrands[betaStrandIndex], currentBetaSheet);
+				}
+				else
+				{
+					//if it is part of the same bridge label, then add it to the current beta strand collection for the beta sheet
+					currentBetaSheet = MergeStrands(newStrand, m_betaStrands[betaStrandIndex]);
+				}
+			}
+		}
+
+		if (m_betaStrands.Find(newStrand) == INDEX_NONE)
+		{
+			m_betaStrands.Add(newStrand);
+		}
+	}
+
+	BetaSheet* ProteinModel::MergeStrandIntoBetaSheet(SecondaryStructure* newStrand, BetaSheet* betaSheet)
+	{
+		//check if the strand is part of a beta sheet already
+		BetaSheet* out_betaSheet = nullptr;
+		BetaSheet** foundBetaSheet = m_strandToBetaSheetMap.Find(newStrand);
+		if (foundBetaSheet)
+		{
+			if (*foundBetaSheet == betaSheet)
+			{
+				//the strand already belongs to the specified sheet
+				out_betaSheet = betaSheet;
+			}
+			else
+			{
+				//the residue is already part of a beta sheet
+				//we need to merge the sheets into one
+				out_betaSheet = MergeBetaSheets(*foundBetaSheet, betaSheet);
+			}
+		}
+		else
+		{
+			out_betaSheet = betaSheet;
+			betaSheet->m_strands.Add(newStrand);
+			m_strandToBetaSheetMap.Add(newStrand, betaSheet);
+		}
+
+		return out_betaSheet;
+	}
+
+	BetaSheet* ProteinModel::MergeStrands(SecondaryStructure* strand1, SecondaryStructure* strand2)
+	{
+		//check if any of the two strands are part of a beta sheet already
+		BetaSheet** foundBetaSheet1 = m_strandToBetaSheetMap.Find(strand1);
+		BetaSheet** foundBetaSheet2 = m_strandToBetaSheetMap.Find(strand2);
+		BetaSheet* out_betaSheet = nullptr;
+
+		if (foundBetaSheet1 && foundBetaSheet2)
+		{
+			out_betaSheet = MergeBetaSheets(*foundBetaSheet1, *foundBetaSheet2);
+		}
+		else if (foundBetaSheet1)
+		{
+			out_betaSheet = *foundBetaSheet1;
+			(*foundBetaSheet1)->m_strands.Add(strand2);
+			m_strandToBetaSheetMap.Add(strand2, *foundBetaSheet1);
+		}
+		else if (foundBetaSheet2)
+		{
+			out_betaSheet = *foundBetaSheet2;
+			(*foundBetaSheet2)->m_strands.Add(strand1);
+			m_strandToBetaSheetMap.Add(strand1, *foundBetaSheet2);
+		}
+		else
+		{
+			//make a new beta sheet
+			BetaSheet* newBetaSheet = new BetaSheet(strand1, strand2);
+			m_strandToBetaSheetMap.Add(strand1, newBetaSheet);
+			m_strandToBetaSheetMap.Add(strand2, newBetaSheet);
+
+			out_betaSheet = newBetaSheet;
+		}
+
+		return out_betaSheet;
+	}
+
+	BetaSheet* ProteinModel::MergeBetaSheets(BetaSheet* sheet1, BetaSheet* sheet2)
+	{
+		//save the strands that were originally part of sheet1 so that their pointer is set the same
+		//as the other strands in the sheet
+		TArray<SecondaryStructure*> sheet1Strands = sheet1->m_strands;
+		BetaSheet* mergingSheet = sheet1;
+		BetaSheet* out_betaSheet = nullptr;
+
+		//iterate over the strands of sheet2 and modify the mapping of all the strands that compose it
+		for (int i = 0; i < sheet2->m_strands.Num(); ++i)
+		{
+			//we only add to the strands if it is not already part of the sheet1
+			if (mergingSheet->m_strands.Find(sheet2->m_strands[i]) == INDEX_NONE)
+			{
+				mergingSheet->m_strands.Add(sheet2->m_strands[i]);
+			}
+
+			//replace the mapping of the strand to the new sheet
+			m_strandToBetaSheetMap[sheet2->m_strands[i]] = mergingSheet;
+		}
+
+		//change the mapping of sheet1 original strands to the mergingSheet
+		for (int i = 0; i < sheet1Strands.Num(); ++i)
+		{
+			m_strandToBetaSheetMap[sheet1Strands[i]] = mergingSheet;
+		}
+
+		delete sheet2;
+		sheet2 = mergingSheet;
+		out_betaSheet = mergingSheet;
+		return out_betaSheet;
+	}
 
 	void ProteinModel::RotateModel(const FVector& anglesDegrees)
 	{

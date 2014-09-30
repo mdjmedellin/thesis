@@ -117,7 +117,7 @@ void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
 		BridgePartner currentPartner;
 		for (int betaPartnerIndex = 0; betaPartnerIndex < 2; ++betaPartnerIndex)
 		{
-			currentPartner = residueInfo->GetBetaPartner(0);
+			currentPartner = residueInfo->GetBetaPartner(betaPartnerIndex);
 			if (currentPartner.ladder != ' ')
 			{
 				AddBridgeLabel(currentPartner.ladder);
@@ -133,6 +133,30 @@ void SecondaryStructure::AddBridgeLabel(uint32 bridgeLabel)
 	{
 		m_bridgeLabels.Add(bridgeLabel);
 	}
+}
+
+bool SecondaryStructure::IsPartOfSpecifiedBridgeLabels(const TArray<uint32>& bridgeLabels) const
+{
+	//check if this secondary structure shares at least one of the bridge labels passed in
+	for (int j = 0; j < bridgeLabels.Num(); ++j)
+	{
+		if (bridgeLabels[j] == ' ')
+		{
+			continue;
+		}
+		else
+		{
+			for (int i = 0; i < m_bridgeLabels.Num(); ++i)
+			{
+				if (bridgeLabels[j] == m_bridgeLabels[i])
+				{
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }
 
 void SecondaryStructure::GetBridgeLabels(TArray<uint32>& out_bridgeLabels) const
