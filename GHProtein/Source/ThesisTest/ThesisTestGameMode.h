@@ -1,6 +1,7 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 #pragma once
 
+#include "ProteinModelSpawnPoint.h"
 #include "ThesisTestGameMode.generated.h"
 
 namespace GHProtein
@@ -19,6 +20,11 @@ public:
 	/** Transition from WaitingToStart to InProgress. You can call this manually, will also get called if ReadyToStartMatch returns true */
 	virtual void StartMatch();
 
+	virtual void AddProteinModelSpawnPoint(AProteinModelSpawnPoint* NewProteinModelSpawnPoint);
+	virtual void RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint);
+
+	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType);
+
 public:
 	GHProtein::ProteinModel* m_proteinModel;
 
@@ -28,13 +34,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameMode)
 		FVector m_proteinModelCenterLocation;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = GameMode)
-		UBlueprint* m_aminoAcidBlueprint;
-private:
-	/* Private data members */
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		UClass* DefaultAminoAcidClass;
 
+private:
+	/* Private data members */
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		float m_linkWidth;
 
@@ -55,4 +59,7 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		float m_helixLinkWidth;
+
+	UPROPERTY()
+		TArray<class AProteinModelSpawnPoint*> ProteinModelSpawnPoints;
 };

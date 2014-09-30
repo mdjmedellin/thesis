@@ -7,13 +7,13 @@
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
 #include "AminoAcid.h"
+#include "ProteinModelSpawnPoint.h"
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
-	, m_aminoAcidBlueprint(nullptr)
 	, m_linkWidth(100.f)
 	, m_linkHeight(100.f)
 	, m_distanceScale(1.f)
@@ -111,11 +111,44 @@ void AThesisTestGameMode::StartMatch()
 {
 	Super::StartMatch();
 
+	//Get the spawn location of the protein
+	AProteinModelSpawnPoint* bestModelSpawnPoint = GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_ProteinModel);
+
 	//check if we received a valid protein model
-	if (m_proteinModel && DefaultAminoAcidClass)
+	if (m_proteinModel && DefaultAminoAcidClass && bestModelSpawnPoint)
 	{
+		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
+
 		UWorld* const World = GetWorld();
 		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
 			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth);
 	}
+}
+
+AProteinModelSpawnPoint* AThesisTestGameMode::GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType)
+{
+	//at the moment we only expect to have one protein model spawn point
+	if (ProteinModelSpawnPoints.Num() > 0)
+	{
+		for (int i = 0; i < ProteinModelSpawnPoints.Num(); ++i)
+		{
+			if (ProteinModelSpawnPoints[i]->m_typeOfSpawnPoint == spawnType)
+			{
+				return ProteinModelSpawnPoints[i];
+			}
+		}
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
+void AThesisTestGameMode::AddProteinModelSpawnPoint(AProteinModelSpawnPoint* NewProteinModelSpawnPoint)
+{
+	ProteinModelSpawnPoints.AddUnique(NewProteinModelSpawnPoint);
+}
+
+void AThesisTestGameMode::RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint)
+{
+	ProteinModelSpawnPoints.Remove(RemovedProteinModelSpawnPoint);
 }
