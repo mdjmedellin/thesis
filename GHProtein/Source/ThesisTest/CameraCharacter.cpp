@@ -419,7 +419,15 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 			newAminoAcid->SetAminoAcidSize(m_customChainResidueDiameter);
 
 			//
-			m_customChain.Add(newAminoAcid);
+			if (index < 0 
+				|| (index + 1 >= m_customChain.Num()))
+			{
+				m_customChain.Add(newAminoAcid);
+			}
+			else
+			{
+				m_customChain.Insert(newAminoAcid, index+1);
+			}
 		}
 	}
 }
