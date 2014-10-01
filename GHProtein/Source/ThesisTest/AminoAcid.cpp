@@ -322,6 +322,7 @@ void AAminoAcid::Translate(const FVector& deltaLocation)
 	AAminoAcid* tempResidue = nullptr;
 
 	//update the chains of the amino acids
+	/*
 	if (m_previousAminoAcid)
 	{
 		//update the chain handled by the previous amino acid of the previous amino acid
@@ -337,23 +338,53 @@ void AAminoAcid::Translate(const FVector& deltaLocation)
 
 	//update the cahin handled by this amino acid
 	UpdateLinkToNextAminoAcid();
+	*/
+	TranslateLinkFragment(deltaLocation);
 
 	//update the chain handled by the next amino acid
 	if (m_nextAminoAcid)
 	{
-		m_nextAminoAcid->UpdateLinkToNextAminoAcid();
+		//m_nextAminoAcid->UpdateLinkToNextAminoAcid();
 	}
 }
 
-void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
+void AAminoAcid::TranslateLinkFragment(const FVector& deltaLocation)
+{
+	if (m_linkFragment)
+	{
+		m_linkFragment->SetActorLocation(m_linkFragment->GetActorLocation() + deltaLocation);
+	}
+}
+
+void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
 {
 	//rotate the amino acid and the chain
 	FVector distanceFromRotationPoint = GetActorLocation() - rotationPoint;
-	distanceFromRotationPoint = rotation.RotateVector(distanceFromRotationPoint);
+	distanceFromRotationPoint = rotationMatrix.TransformVector(distanceFromRotationPoint);
 
 	SetActorLocation(distanceFromRotationPoint + rotationPoint);
+
+	//if this amino acid has a link fragment then we rotate it also
+	RotateLinkFragmentAboutSpecifiedPoint(rotationMatrix, rotationPoint);
 }
 
+void AAminoAcid::RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
+{
+	if (m_linkFragment)
+	{
+		FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
+
+		//rotate the distance
+		distanceFromPivotPoint = rotationMatrix.TransformVector(distanceFromPivotPoint);
+		//now set the new location to the fragment
+		m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
+
+		//rotate the object
+		FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
+		currentRotationMatrix *= rotationMatrix;
+		m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
+	}
+}
 void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
 {
 	if (secondaryStructure != ESecondaryStructure::ssAlphaHelix

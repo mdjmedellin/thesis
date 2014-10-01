@@ -22,6 +22,8 @@ class AAminoAcid : public AActor
 private:
 	void ClearNextAminoAcidPtr();
 	void ClearPreviousAminoAcidPtr();
+	void RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
+	void TranslateLinkFragment(const FVector& deltaLocation);
 
 public:
 	virtual void BeginPlay();
@@ -43,7 +45,7 @@ public:
 	void UpdateLinkToNextAminoAcid();
 	void UpdateHydrogenBonds(bool recurse = false);
 
-	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
+	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void Translate(const FVector& deltaLocation);
 
 	void SetParentModel(GHProtein::ProteinModel* parentModel);

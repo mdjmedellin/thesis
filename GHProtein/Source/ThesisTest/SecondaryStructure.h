@@ -16,6 +16,7 @@ class HydrogenBond
 public:
 	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment)
 	: m_linkFragment(linkFragment)
+	, m_relativeRotation(FRotator::ZeroRotator)
 	{
 		m_bondResidues[0] = residue1;
 		m_bondResidues[1] = residue2;
@@ -35,9 +36,10 @@ public:
 	}
 
 	void Translate(const FVector& displacement);
-	void RotateAboutSpecifiedPoint(const FRotator& rotation, const FVector& rotationPoint);
+	void RotateAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 
 private:
+	FRotator m_relativeRotation;
 	AAminoAcid* m_bondResidues[2];
 	ALinkFragment* m_linkFragment;
 };

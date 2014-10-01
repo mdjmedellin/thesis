@@ -10,8 +10,21 @@ void HydrogenBond::Translate(const FVector& displacement)
 	m_linkFragment->SetActorLocation(m_linkFragment->GetActorLocation() + displacement);
 }
 
-void HydrogenBond::RotateAboutSpecifiedPoint(const FRotator& rotation, const FVector& rotationPoint)
+void HydrogenBond::RotateAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
 {
+	FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
+
+	//rotate the distance
+	distanceFromPivotPoint = rotationMatrix.TransformVector(distanceFromPivotPoint);
+	//now set the new location to the fragment
+	m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
+
+	//rotate the object
+	FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
+	currentRotationMatrix *= rotationMatrix;
+	m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
+
+	/*
 	FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
 
 	//rotate the distance
@@ -20,7 +33,11 @@ void HydrogenBond::RotateAboutSpecifiedPoint(const FRotator& rotation, const FVe
 	m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
 
 	//rotate the object
-	m_linkFragment->SetActorRotation(m_linkFragment->GetActorRotation() + rotation);
+	FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
+	FRotationMatrix newRotation(rotation);
+	currentRotationMatrix *= newRotation;
+	m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
+	*/
 }
 //============================================================
 
