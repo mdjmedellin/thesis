@@ -80,36 +80,36 @@ struct Atom
 	operator FVector&()						{ return mLoc; }
 };
 
-UENUM()
+UENUM(BlueprintType)
 namespace EResidueType
 {
 	enum Type
 	{
-		kUnknownResidue,
+		kUnknownResidue			UMETA(DisplayName="Unknown"),
 
 		//
-		kAlanine,				// A	ala
-		kArginine,				// R	arg
-		kAsparagine,			// N	asn
-		kAsparticAcid,			// D	asp
-		kCysteine,				// C	cys
-		kGlutamicAcid,			// E	glu
-		kGlutamine,				// Q	gln
-		kGlycine,				// G	gly
-		kHistidine,				// H	his
-		kIsoleucine,			// I	ile
-		kLeucine,				// L	leu
-		kLysine,				// K	lys
-		kMethionine,			// M	met
-		kPhenylalanine,			// F	phe
-		kProline,				// P	pro
-		kSerine,				// S	ser
-		kThreonine,				// T	thr
-		kTryptophan,			// W	trp
-		kTyrosine,				// Y	tyr
-		kValine,				// V	val
+		kAlanine				UMETA(DisplayName = "Alanine"),				// A	ala
+		kArginine				UMETA(DisplayName = "Arginine"),			// R	arg
+		kAsparagine				UMETA(DisplayName = "Asparagine"),			// N	asn
+		kAsparticAcid			UMETA(DisplayName = "Aspartic Acid"),		// D	asp
+		kCysteine				UMETA(DisplayName = "Cysteine"),			// C	cys
+		kGlutamicAcid			UMETA(DisplayName = "Glutamic Acid"),		// E	glu
+		kGlutamine				UMETA(DisplayName = "Glutamiane"),			// Q	gln
+		kGlycine				UMETA(DisplayName = "Glycine"),				// G	gly
+		kHistidine				UMETA(DisplayName = "Histidine"),			// H	his
+		kIsoleucine				UMETA(DisplayName = "Isoleucine"),			// I	ile
+		kLeucine				UMETA(DisplayName = "Leucine"),				// L	leu
+		kLysine					UMETA(DisplayName = "Lysine"),				// K	lys
+		kMethionine				UMETA(DisplayName = "Methionine"),			// M	met
+		kPhenylalanine			UMETA(DisplayName = "Phenylalanine"),		// F	phe
+		kProline				UMETA(DisplayName = "Proline"),				// P	pro
+		kSerine					UMETA(DisplayName = "Serine"),				// S	ser
+		kThreonine				UMETA(DisplayName = "Threonine"),			// T	thr
+		kTryptophan				UMETA(DisplayName = "Tryptophan"),			// W	trp
+		kTyrosine				UMETA(DisplayName = "Tyrosine"),			// Y	tyr
+		kValine					UMETA(DisplayName = "Valine"),				// V	val
 
-		kResidueTypeCount
+		kResidueTypeCount		UMETA(Hidden)
 	};
 }
 
