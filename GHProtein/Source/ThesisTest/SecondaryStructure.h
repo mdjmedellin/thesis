@@ -4,16 +4,53 @@
 
 class AAminoAcid;
 class SecondaryStructure;
+class ALinkFragment;
 
-struct BetaSheet
+namespace GHProtein
 {
-	BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2)
+	class ProteinModel;
+}
+
+class HydrogenBond
+{
+public:
+	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment)
+	: m_linkFragment(linkFragment)
 	{
-		m_strands.Add(strand1);
-		m_strands.Add(strand2);
+		m_bondResidues[0] = residue1;
+		m_bondResidues[1] = residue2;
+	};
+
+	bool ContainsSpecifiedResidue(const AAminoAcid* residue)
+	{
+		for (int i = 0; i < 2; ++i)
+		{
+			if (m_bondResidues[i] == residue)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
+	void Translate(const FVector& displacement);
+	void RotateAboutSpecifiedPoint(const FRotator& rotation, const FVector& rotationPoint);
+
+private:
+	AAminoAcid* m_bondResidues[2];
+	ALinkFragment* m_linkFragment;
+};
+
+class BetaSheet
+{
+public:
+	BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, GHProtein::ProteinModel* parentModel);
+	void SpawnHydrogenBonds();
+	void SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue);
+
 	TArray<SecondaryStructure*> m_strands;
+	GHProtein::ProteinModel* m_proteinModel;
 };
 
 /**
@@ -30,6 +67,8 @@ public:
 	void SetSelected();
 	void Deselect();
 	SecondaryStructure* GetNextStructurePtr();
+	AAminoAcid* GetHeadResidue();
+	AAminoAcid* GetEndResidue();
 	bool ContainsSpecifiedResidue(AAminoAcid* residue);
 	ESecondaryStructure::Type GetSecondaryStructureType() const;
 	void GetBridgeLabels(TArray<uint32>& out_bridgeLabels) const;

@@ -1,5 +1,6 @@
 #include "ThesisTest.h"
 #include "AminoAcid.h"
+#include "LinkFragment.h"
 #include "ProteinUtilities.h"
 #include "ProteinModel.h"
 #include "ResidueContainer.h"
@@ -237,7 +238,7 @@ namespace GHProtein
 			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
 			MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
 
-			//iterate ove the chain of amino acids and spawn the link particle effect
+			//iterate over the chain of amino acids and spawn the link fragments
 			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
@@ -245,8 +246,35 @@ namespace GHProtein
 				currentAminoAcid->SetRenderProperties(helixColor, betaStrandColor, helixLinkWidth, betaStrandLinkWidth);
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
+
+			//spawn the hydrogen bonds in the beta sheet
+			for (int betaSheetIndex = 0; betaSheetIndex < m_betaSheets.Num(); ++betaSheetIndex)
+			{
+				m_betaSheets[betaSheetIndex]->SpawnHydrogenBonds();
+			}
 		}
 	}
+
+	HydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2)
+	{
+		FVector startLocation = residue1->GetActorLocation();
+		FVector endLocation = residue2->GetActorLocation();
+		UWorld* world = residue1->GetWorld();
+		UClass* linkFragmentClass = residue1->GetDetaultLinkFragmentClass();
+
+		ALinkFragment* linkChain = UThesisStaticLibrary::SpawnBP<ALinkFragment>(world, linkFragmentClass,
+			FVector::ZeroVector, FRotator::ZeroRotator);
+
+		linkChain->SplineMeshComponent->SetStartPosition(startLocation);
+		linkChain->SplineMeshComponent->SetEndPosition(endLocation);
+
+		HydrogenBond* newHydrogenBond = new HydrogenBond(residue1, residue2, linkChain);
+
+		//should probably add the hydrogen bond into the array of current hydrogen bonds
+		m_hydrogenBonds.Add(newHydrogenBond);
+
+		return newHydrogenBond;
+	};
 
 	void ProteinModel::HighlightSecondaryStructure(AAminoAcid* residueMember)
 	{
@@ -396,9 +424,11 @@ namespace GHProtein
 		else
 		{
 			//make a new beta sheet
-			BetaSheet* newBetaSheet = new BetaSheet(strand1, strand2);
+			BetaSheet* newBetaSheet = new BetaSheet(strand1, strand2, this);
 			m_strandToBetaSheetMap.Add(strand1, newBetaSheet);
 			m_strandToBetaSheetMap.Add(strand2, newBetaSheet);
+
+			m_betaSheets.Add(newBetaSheet);
 
 			out_betaSheet = newBetaSheet;
 		}
@@ -433,8 +463,14 @@ namespace GHProtein
 			m_strandToBetaSheetMap[sheet1Strands[i]] = mergingSheet;
 		}
 
+		//remove sheet2 from the array of sheets
+		m_betaSheets.Remove(sheet2);
+
+		//delete sheet2
 		delete sheet2;
 		sheet2 = mergingSheet;
+
+		//return the new sheet
 		out_betaSheet = mergingSheet;
 		return out_betaSheet;
 	}
@@ -452,6 +488,12 @@ namespace GHProtein
 		{
 			currentAminoAcid->RotateAminoAcidFromSpecifiedPoint(m_centerOfBoundingBox, rotation);
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//update hydrogen bonds
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->RotateAboutSpecifiedPoint(rotation, m_centerOfBoundingBox);
 		}
 
 		//update links
@@ -510,6 +552,12 @@ namespace GHProtein
 		m_minBounds3D += displacement;
 		m_maxBounds3D += displacement;
 		m_centerOfBoundingBox += displacement;
+
+		//displace the hydrogen bonds
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->Translate(displacement);
+		}
 	}
 
 	FVector ProteinModel::GetBoundingBoxDimensions() const

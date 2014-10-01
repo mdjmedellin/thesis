@@ -3,10 +3,12 @@
 #include "ThesisStaticLibrary.h"
 
 class AAminoAcid;
+class ALinkFragment;
 class SecondaryStructure;
 class Residue;
 
-struct BetaSheet;
+class BetaSheet;
+class HydrogenBond;
 
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
@@ -52,29 +54,31 @@ namespace GHProtein
 		void TranslateModel(const FVector& displacement);
 		FVector GetBoundingBoxDimensions() const;
 		FVector GetCenterLocation() const;
+		HydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
-
-	private:
-		/** Private utility methods go here */
-		FVector m_minBounds3D;
-		FVector m_maxBounds3D;
-		FVector m_centerOfBoundingBox;
-		AAminoAcid* m_headPtr;
 
 	public:
 		/** public data members go here */
 
 	private:
 		/** private data members go here */
-		TMap< int, ResidueContainer* > ResidueIDMap;
-		TArray< Residue* > m_residueVector;
-		TArray< ResidueContainer* > m_residueContainers;
+		TMap<int, ResidueContainer*> ResidueIDMap;
+		TArray<Residue*> m_residueVector;
+		TArray<ResidueContainer*> m_residueContainers;
 
 		SecondaryStructure* m_headSecondaryStructure;
 		SecondaryStructure* m_tailSecondaryStructure;
 
 		TArray<SecondaryStructure*> m_betaStrands;
-		TMap< SecondaryStructure*, BetaSheet* > m_strandToBetaSheetMap;
+		TMap<SecondaryStructure*, BetaSheet*> m_strandToBetaSheetMap;
+
+		TArray<BetaSheet*> m_betaSheets;
+		TArray<HydrogenBond*> m_hydrogenBonds;
+
+		FVector m_minBounds3D;
+		FVector m_maxBounds3D;
+		FVector m_centerOfBoundingBox;
+		AAminoAcid* m_headPtr;
 	};
 }

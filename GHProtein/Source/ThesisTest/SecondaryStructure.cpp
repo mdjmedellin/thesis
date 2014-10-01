@@ -1,8 +1,98 @@
-
-
 #include "ThesisTest.h"
+#include "ProteinModel.h"
 #include "SecondaryStructure.h"
 #include "AminoAcid.h"
+#include "LinkFragment.h"
+
+//========================HydrogenBond========================
+void HydrogenBond::Translate(const FVector& displacement)
+{
+	m_linkFragment->SetActorLocation(m_linkFragment->GetActorLocation() + displacement);
+}
+
+void HydrogenBond::RotateAboutSpecifiedPoint(const FRotator& rotation, const FVector& rotationPoint)
+{
+	FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
+
+	//rotate the distance
+	distanceFromPivotPoint = rotation.RotateVector(distanceFromPivotPoint);
+	//now set the new location to the fragment
+	m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
+
+	//rotate the object
+	m_linkFragment->SetActorRotation(m_linkFragment->GetActorRotation() + rotation);
+}
+//============================================================
+
+//======================BetaSheet===========================
+BetaSheet::BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, GHProtein::ProteinModel* parentModel)
+: m_proteinModel(parentModel)
+{
+	m_strands.Add(strand1);
+	m_strands.Add(strand2);
+}
+
+void BetaSheet::SpawnHydrogenBonds()
+{
+	//we are going to need to iterate through all the strands
+	SecondaryStructure* outerStrand = nullptr;
+	AAminoAcid* currentOuterResidue = nullptr;
+	AAminoAcid* endOuterResidue = nullptr;
+	for (int outerIndex = 0; outerIndex < m_strands.Num(); ++outerIndex)
+	{
+		//get the current strand and iterate and spawn the hydrogen bonds of all its residues
+		outerStrand = m_strands[outerIndex];
+		currentOuterResidue = outerStrand->GetHeadResidue();
+		endOuterResidue = outerStrand->GetEndResidue();
+		bool continueIteratingOverResidues = currentOuterResidue != nullptr;
+		while (continueIteratingOverResidues)
+		{
+			//spawn the hydrogen bond of the current residue
+			SpawnHydrogenBondsOfSpecifiedResidue(currentOuterResidue);
+
+			//check end condition
+			if (currentOuterResidue == endOuterResidue)
+			{
+				continueIteratingOverResidues = false;
+			}
+			else
+			{
+				currentOuterResidue = currentOuterResidue->GetNextAminoAcidPtr();
+			}
+		}
+	}
+}
+
+void BetaSheet::SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue)
+{
+	const Residue* residueInfo = residue->GetResidueInformation();
+
+	//a residue can only have to bridge partners
+	//one on each lateral side
+	for (int i = 0; i < 2; ++i)
+	{
+		BridgePartner partner = residueInfo->GetBetaPartner(i);
+
+		if (partner.residue)
+		{
+			AAminoAcid* betaPartner = m_proteinModel->GetAminoAcidWithSpecifiedId(partner.number);
+
+			//if the residue has a valid partner and a bond between them has not been created
+			//spawn a bond between them
+			if (betaPartner && !residue->BondWithResidueExists(betaPartner))
+			{
+				//if the bond has not yet been created, then we create it
+				HydrogenBond* hBond = m_proteinModel->SpawnHydrogenBond(residue, betaPartner);
+				residue->AddHydrogenBond(hBond);
+				betaPartner->AddHydrogenBond(hBond);
+
+				//add bond to the array of hydrogen bonds in the beta sheet
+
+			}
+		}
+	}
+}
+//==========================================================
 
 SecondaryStructure* SecondaryStructure::s_selectedStructure = nullptr;
 
@@ -172,6 +262,16 @@ ESecondaryStructure::Type SecondaryStructure::GetSecondaryStructureType() const
 SecondaryStructure* SecondaryStructure::GetNextStructurePtr()
 {
 	return m_nextSecondaryStructure;
+}
+
+AAminoAcid* SecondaryStructure::GetHeadResidue()
+{
+	return m_headAminoAcid;
+}
+
+AAminoAcid* SecondaryStructure::GetEndResidue()
+{
+	return m_tailAminoAcid;
 }
 
 bool SecondaryStructure::ContainsSpecifiedResidue(AAminoAcid* residue)

@@ -12,6 +12,7 @@ namespace GHProtein
 }
 
 class ALinkFragment;
+class HydrogenBond;
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -23,7 +24,6 @@ private:
 	void ClearPreviousAminoAcidPtr();
 
 public:
-
 	virtual void BeginPlay();
 
 	bool SpawnLinkParticleToNextAminoAcid(float width, float height);
@@ -60,6 +60,11 @@ public:
 
 	void SetAminoAcidSize(float aminoAcidSize);
 
+	bool BondWithResidueExists(const AAminoAcid* residue) const;
+	void AddHydrogenBond(HydrogenBond* newBond);
+
+	UClass* GetDetaultLinkFragmentClass();
+
 	ResidueInfo GetAminoAcidInfo() const;
 
 	UFUNCTION(BlueprintCallable, Category = Residue)
@@ -80,17 +85,14 @@ private:
 	UClass* DefaultLinkFragmentClass;
 
 	ALinkFragment* m_linkFragment;
-	ALinkFragment* m_betaPartner1;
-	ALinkFragment* m_betaPartner2;
-
-	AAminoAcid* m_betaPartnerResidue1;
-	AAminoAcid* m_betaPartnerResidue2;
 
 	ESecondaryStructure::Type m_secondaryStructure;
 	FColor m_helixColor;
 	FColor m_betaStrandColor;
 
 	Residue* m_residueInformation;
+
+	TArray<HydrogenBond*> m_hydrogenBonds;
 
 	GHProtein::ProteinModel* m_model;
 

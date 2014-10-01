@@ -1,6 +1,7 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 
 #include "ThesisTest.h"
+#include "SecondaryStructure.h"
 #include "AminoAcid.h"
 #include "LinkFragment.h"
 #include "ProteinModel.h"
@@ -10,10 +11,6 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
 	, m_linkFragment(nullptr)
-	, m_betaPartner1(nullptr)
-	, m_betaPartner2(nullptr)
-	, m_betaPartnerResidue1(nullptr)
-	, m_betaPartnerResidue2(nullptr)
 	, m_secondaryStructure(ESecondaryStructure::ssCount)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
@@ -124,6 +121,29 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 const Residue* AAminoAcid::GetResidueInformation() const
 {
 	return m_residueInformation;
+}
+
+void AAminoAcid::AddHydrogenBond(HydrogenBond* newBond)
+{
+	m_hydrogenBonds.Add(newBond);
+}
+
+bool AAminoAcid::BondWithResidueExists(const AAminoAcid* residue) const
+{
+	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+	{
+		if (m_hydrogenBonds[i]->ContainsSpecifiedResidue(residue))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+UClass* AAminoAcid::GetDetaultLinkFragmentClass()
+{
+	return DefaultLinkFragmentClass;
 }
 
 void AAminoAcid::GetTangent(FVector& out_vector)
@@ -291,26 +311,8 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 
 void AAminoAcid::UpdateHydrogenBonds(bool recurse)
 {
-	if (m_betaPartnerResidue1)
-	{
-		m_betaPartner1->SplineMeshComponent->SetStartPosition(GetActorLocation());
-		m_betaPartner1->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue1->GetActorLocation());
-
-		if (recurse)
-		{
-			m_betaPartnerResidue1->UpdateHydrogenBonds();
-		}
-	}
-	if (m_betaPartnerResidue2)
-	{
-		m_betaPartner2->SplineMeshComponent->SetStartPosition(GetActorLocation());
-		m_betaPartner2->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue2->GetActorLocation());
-
-		if (recurse)
-		{
-			m_betaPartnerResidue2->UpdateHydrogenBonds();
-		}
-	}
+	//TODO:
+	//DECIDE IF WE ARE GOING TO KEEP THIS FUNCTION
 }
 
 void AAminoAcid::Translate(const FVector& deltaLocation)
