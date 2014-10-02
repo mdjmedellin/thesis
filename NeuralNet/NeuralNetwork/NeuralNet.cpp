@@ -106,6 +106,24 @@ namespace GHProtein
 	{
 		return m_dataSets[dataSetIndex].GetIrisData(dataIndex);
 	}
+
+	int NeuralNetData::GetNumberOfSets() const
+	{
+		return m_dataSets.size();
+	}
+
+	const NeuralNetDataSet* NeuralNetData::GetDataSetAt(int dataSetIndex)
+	{
+		if (dataSetIndex >= 0
+			&& dataSetIndex < m_dataSets.size())
+		{
+			return &(m_dataSets[dataSetIndex]);
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
 	//==================================================================
 	
 	//==========================NeuralNetDataSet========================
@@ -211,6 +229,42 @@ namespace GHProtein
 					m_irisDataContainer.push_back(currentData);
 				}
 			}
+		}
+	}
+
+	int NeuralNetDataSet::GetNumberOfFilesInSet() const
+	{
+		return m_proteinModels.size();
+	}
+
+	int NeuralNetDataSet::GetSizeOfTrainingDataAtSpecifiedIndex(int fileIndex) const
+	{
+		if (fileIndex >= 0
+			&& fileIndex < m_proteinModels.size())
+		{
+			return m_proteinModels[fileIndex]->GetLengthOfChain();
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	void NeuralNetDataSet::GetInputValues(int fileIndex, int residueIndex, std::vector< std::vector<double> >& out_inputs) const
+	{
+		if (fileIndex >= 0
+			&& fileIndex < m_proteinModels.size())
+		{
+			m_proteinModels[fileIndex]->GetInputValues(residueIndex, out_inputs);
+		}
+	}
+
+	void NeuralNetDataSet::GetOutputValues(int fileIndex, int residueIndex, std::vector< double >& out_outputs) const
+	{
+		if (fileIndex >= 0
+			&& fileIndex < m_proteinModels.size())
+		{
+			m_proteinModels[fileIndex]->GetOutputValues(residueIndex, out_outputs);
 		}
 	}
 	//==================================================================
@@ -616,11 +670,16 @@ namespace GHProtein
 	TrainingData::TrainingData(const std::string filename)
 		: m_proteinBuilder(new ProteinBuilder())
 	{
+		//open the file
 		m_trainingDataFile.open(filename.c_str());
-		assert(m_trainingDataFile.good());
+		
+		if (m_trainingDataFile.good())
+		{
+			//load the training data
+			LoadTrainingData();
+		}
 
-		//load the training data
-		LoadTrainingData();
+		m_trainingDataFile.close();
 	}
 
 	TrainingData::~TrainingData()
@@ -704,15 +763,17 @@ namespace GHProtein
 		std::vector<std::string> results;
 		TokenizeString(results, line, " ");
 
-		//at this point I should have the information about each one of the layers
+		//at this point I should have the information about the training data
 		std::string dataSubstring;
 		std::vector<std::string> tokenized_substring;
-			
+
+		//we ignore the first part of the string because it is what contains the label
 		dataSubstring = results[1];
 		TokenizeString(tokenized_substring, dataSubstring, "|");
 
 		assert(tokenized_substring.size() > 0);
 
+		//save the total number of data sets and the root location of the data sets if it is specified
 		int numberOfSets = std::atoi(tokenized_substring[0].c_str());
 		if (tokenized_substring.size() > 1)
 		{
@@ -753,10 +814,10 @@ namespace GHProtein
 		std::vector<std::string> results;
 		TokenizeString(results, line, " ");
 
-		//at this point I should have the information about each one of the layers
 		std::string dataSubstring;
 		std::vector<std::string> tokenized_substring;
 
+		//we skip the first part of the string because it is what contains the label
 		dataSubstring = results[1];
 		TokenizeString(tokenized_substring, dataSubstring, "|");
 
@@ -777,8 +838,8 @@ namespace GHProtein
 		}
 
 		//load the protein models from the information in the data set
-		//currentSet.LoadProteinModels(m_proteinBuilder, m_data.GetRootLocation());
-		currentSet.LoadIrisData(m_data.GetRootLocation());
+		currentSet.LoadProteinModels(m_proteinBuilder, m_data.GetRootLocation());
+		//currentSet.LoadIrisData(m_data.GetRootLocation());
 
 		m_data.AddDataSet(currentSet);
 	}
@@ -952,6 +1013,16 @@ namespace GHProtein
 				}
 			}
 		}
+	}
+
+	int TrainingData::GetNumberOfSets() const
+	{
+		return m_data.GetNumberOfSets();
+	}
+
+	const NeuralNetDataSet* TrainingData::GetDataSetAtSpecifiedIndex(int dataSetIndex)
+	{
+		return m_data.GetDataSetAt(dataSetIndex);
 	}
 
 	/*

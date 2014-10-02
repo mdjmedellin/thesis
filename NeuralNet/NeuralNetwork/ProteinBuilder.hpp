@@ -47,8 +47,11 @@ namespace GHProtein
 		bool ExtractResidue(const std::string& informationString, Residue*& out_extractedResidue);
 		bool MoveToFirstLineOfAminoAcid();
 		ProteinModel* LoadProteinModel();
+		ProteinModel* LoadProteinFromJM();
+		ProteinModel* LoadProteinFromDSSP();
 		ProteinModel* CreateProteinModel();
 		void CheckIfStringContainsAminoAcidInfo(const std::string& currentLine);
+		ProteinModel* CreateProteinModelFromJM();
 
 	private:
 		/** The passed-in path of the loaded file (might be absolute or relative) */
@@ -59,6 +62,8 @@ namespace GHProtein
 		std::vector<std::string> m_inputLines;
 
 		std::ifstream m_dataFile;
+
+		std::string m_loadedFileName;
 	};
 }
 

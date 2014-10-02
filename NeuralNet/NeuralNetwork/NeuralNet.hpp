@@ -36,6 +36,10 @@ namespace GHProtein
 		void LoadProteinModels(ProteinBuilder* proteinBuilder, const std::string& dataRootLocation);
 		void LoadIrisData(const std::string& dataRootLocation);
 		IrisData* GetIrisData(int dataIndex);
+		int GetNumberOfFilesInSet() const;
+		int GetSizeOfTrainingDataAtSpecifiedIndex(int fileIndex) const;
+		void GetInputValues(int fileIndex, int residueIndex, std::vector< std::vector<double> >& out_inputs) const;
+		void GetOutputValues(int fileIndex, int residueIndex, std::vector< double >& out_outputs) const;
 
 	private:
 		std::string m_directory;
@@ -52,6 +56,8 @@ namespace GHProtein
 		std::string GetRootLocation();
 		void AddDataSet(const NeuralNetDataSet& dataSet);
 		IrisData* GetIrisDataFromSet(int dataSetIndex, int dataIndex);
+		int GetNumberOfSets() const;
+		const NeuralNetDataSet* GetDataSetAt(int dataSetIndex);
 
 	private:
 		std::string m_rootLocation;
@@ -154,6 +160,9 @@ namespace GHProtein
 		std::vector< std::pair<int, int> > GetTopology() { return m_topology; }
 		void GetRandomTrainingData(std::vector<const IrisData*>& out_container);
 		void GetRandomValidationData(std::vector<const IrisData*>& out_container);
+		int GetNumberOfSets() const;
+		const NeuralNetDataSet* GetDataSetAtSpecifiedIndex(int dataSetIndex);
+
 
 	private:
 		void LoadTopology();

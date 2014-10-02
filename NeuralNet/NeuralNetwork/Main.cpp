@@ -1,28 +1,201 @@
 #include <iostream>
 #include "NeuralNet.hpp"
+#include "Residue.hpp"
 #include "ProteinUtilities.hpp"
+
+void AnalyzePrediction(GHProtein::ESecondaryStructure predictedStructure,
+	GHProtein::ESecondaryStructure expectedStructure,
+	std::vector<int>& correctPredictionCounters,
+	std::vector<int>& incorrectPredictionCounters,
+	std::vector<int>& wrongfullyPredictedCounters)
+{
+	if (predictedStructure == expectedStructure)
+	{
+		//correct prediction
+		correctPredictionCounters[expectedStructure] += 1;
+	}
+	else
+	{
+		//incorrectly predicted
+		incorrectPredictionCounters[expectedStructure] += 1;
+
+		wrongfullyPredictedCounters[predictedStructure] += 1;
+	}
+}
+
+double CalculateQ3(const std::vector<int>& correctPredictionCounters,
+	int totalResidues)
+{
+	//add up the total number of correct prediction
+	int totalCorrectPredictions = 0;
+	for (int i = 0; i < correctPredictionCounters.size(); ++i)
+	{
+		totalCorrectPredictions += correctPredictionCounters[i];
+	}
+
+	double q3Rate = double(totalCorrectPredictions) / totalResidues;
+	return q3Rate;
+}
+
+void CalculateCorrelationCoefficients(std::vector<double>& out_correlationCoefficients,
+	const std::vector<int>& correctPredictionCounter,
+	const std::vector<int>& incorrectPredictionCounter,
+	const std::vector<int>& wrongfullyPredictedCounter)
+{
+	int totalCorrectPredictions = 0;
+	for (int i = 0; i < correctPredictionCounter.size(); ++i)
+	{
+		totalCorrectPredictions += correctPredictionCounter[i];
+	}
+
+	int pn = 0;
+	int uo = 0;
+
+	int nAu = 0;
+	int nAo = 0;
+	int pAu = 0;
+	int pAo = 0;
+
+	int dividend = 0;
+	double divisor = 0.0;
+
+	for (int i = 0; i < GHProtein::ESecondaryStructure::ssCount; ++i)
+	{
+		pn = correctPredictionCounter[i] * (totalCorrectPredictions - correctPredictionCounter[i]);
+		uo = incorrectPredictionCounter[i] * wrongfullyPredictedCounter[i];
+
+		nAu = (totalCorrectPredictions - correctPredictionCounter[i]) + incorrectPredictionCounter[i];
+		nAo = (totalCorrectPredictions - correctPredictionCounter[i]) + wrongfullyPredictedCounter[i];
+		pAu = correctPredictionCounter[i] + incorrectPredictionCounter[i];
+		pAo = correctPredictionCounter[i] + wrongfullyPredictedCounter[i];
+
+		dividend = pn - uo;
+		divisor = double(nAu * nAo * pAu * pAo);
+		if (divisor > 0.0)
+		{
+			divisor = sqrt(divisor);
+
+			out_correlationCoefficients[i] = dividend / divisor;
+		}
+		else
+		{
+			out_correlationCoefficients[i] = -1.0;
+		}
+	}
+}
 
 int main(int argc, char* argv[])
 {
 	int MAX_TRAINING = 2000;
 
-	GHProtein::TrainingData trainData("tmp/testTraining.txt");
+	GHProtein::TrainingData trainData("tmp/trainingData.txt");
 	GHProtein::NeuralNet* testNet = new GHProtein::NeuralNet(trainData.GetTopology(), true);
 
+	/*
 	std::vector< const GHProtein::IrisData* > randomTrainingData;
 	std::vector< const GHProtein::IrisData* > randomValidationData;
+	*/
 
 	std::vector< std::vector<double> >inputVals;
 	std::vector< double > outputVals;
 	int trainingDataLength = 0;
+	int numberOfSets = trainData.GetNumberOfSets();
+	int filesInSet = 0;
+	const GHProtein::NeuralNetDataSet* currentDataSet = nullptr;
 
-	for (int trainingPass = 0; trainingPass < MAX_TRAINING; ++trainingPass)
+	int cyclesBeforeLastTest = 1;
+	const int CYCLES_BETWEEN_TESTS = 250;
+
+	for (int trainingPass = 0; trainingPass < MAX_TRAINING; ++trainingPass, ++cyclesBeforeLastTest)
 	{
-		trainData.GetRandomTrainingData(randomTrainingData);
-		trainData.GetRandomValidationData(randomValidationData);
+		//iterate over all the sets
+		for (int i = 0; i < numberOfSets - 1; ++i)
+		{
+			currentDataSet = trainData.GetDataSetAtSpecifiedIndex(i);
+			filesInSet = currentDataSet->GetNumberOfFilesInSet();
+
+			for (int j = 0; j < filesInSet; ++j)
+			{
+				trainingDataLength = currentDataSet->GetSizeOfTrainingDataAtSpecifiedIndex(j);
+
+				//now that we know the set, the file, and the size of the training data
+				//we iterate over all of the amino acids and train our neural network
+				for (int residueIndex = 0; residueIndex < trainingDataLength; ++residueIndex)
+				{
+					currentDataSet->GetInputValues(j, residueIndex, inputVals);
+					testNet->FeedForward(inputVals);
+
+					currentDataSet->GetOutputValues(j, residueIndex, outputVals);
+					testNet->BackPropagation(outputVals);
+				}
+			}
+		}
+
+		//test how good the network is doing
+		if (cyclesBeforeLastTest > CYCLES_BETWEEN_TESTS)
+		{
+			currentDataSet = trainData.GetDataSetAtSpecifiedIndex(numberOfSets - 1);
+			filesInSet = currentDataSet->GetNumberOfFilesInSet();
+			std::vector<char> secondaryStructureResults;
+			std::vector<double> predictionResults;
+			std::vector<double> correlationCoefficients(3, 0.0);
+			std::vector<int> correctPredictionCounters(3,0);
+			std::vector<int> incorrectPredictionCounters(3,0);
+			std::vector<int> wrongfullyPredictedCounters(3,0);
+			GHProtein::ESecondaryStructure predictedStructure;
+			GHProtein::ESecondaryStructure expectedStruccture;
+
+			double q3Rate = 0.0;
+
+			for (int j = 0; j < filesInSet; ++j)
+			{
+				trainingDataLength = currentDataSet->GetSizeOfTrainingDataAtSpecifiedIndex(j);
+
+				//reset all counters
+				std::fill(correctPredictionCounters.begin(), correctPredictionCounters.end(), 0);
+				std::fill(incorrectPredictionCounters.begin(), incorrectPredictionCounters.end(), 0);
+				std::fill(wrongfullyPredictedCounters.begin(), wrongfullyPredictedCounters.end(), 0);
+
+				//now that we know the set, the file, and the size of the training data
+				//we iterate over all of the amino acids and train our neural network
+				for (int residueIndex = 0; residueIndex < trainingDataLength; ++residueIndex)
+				{
+					currentDataSet->GetInputValues(j, residueIndex, inputVals);
+					testNet->FeedForward(inputVals);
+
+					testNet->GetResults(predictionResults);
+					//GHProtein::ShowVectorVals("OUTPUTS:", outputVals);
+
+					currentDataSet->GetOutputValues(j, residueIndex, outputVals);
+					//GHProtein::ShowVectorVals("EXPECTED OUTPUTS:", outputVals);
+
+					predictedStructure = GHProtein::Residue::VectorToSecondaryStructureType(predictionResults);
+					expectedStruccture = GHProtein::Residue::VectorToSecondaryStructureType(outputVals);
+
+					AnalyzePrediction(predictedStructure, expectedStruccture,
+						correctPredictionCounters, incorrectPredictionCounters,
+						wrongfullyPredictedCounters);
+				}
+
+				q3Rate = CalculateQ3(correctPredictionCounters, trainingDataLength);
+				CalculateCorrelationCoefficients(correlationCoefficients, correctPredictionCounters,
+					incorrectPredictionCounters, wrongfullyPredictedCounters);
+
+				std::cout << "Q3 Rate = " << q3Rate << std::endl;
+				GHProtein::ShowVectorVals("COEFFICIENTS:", correlationCoefficients);
+
+			}
+
+			cyclesBeforeLastTest = 0;
+		}
+	}
+		
+		/*
+		//trainData.GetRandomTrainingData(randomTrainingData);
+		//trainData.GetRandomValidationData(randomValidationData);
 
 		//now that we have the randomized sets, lets train the neural network
-		trainingDataLength = randomTrainingData.size();
+		//trainingDataLength = randomTrainingData.size();
 		for (int i = 0; i < trainingDataLength; ++i)
 		{
 			randomTrainingData[i]->GetInputValues(inputVals);

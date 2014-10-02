@@ -28,34 +28,6 @@ namespace GHProtein
 
 	bool ProteinModel::AddResidue(Residue* residueAttemptingToInsert)
 	{
-		//this brings an interesting problem
-		//I want to create something i have fast access to, but I also want to create something I
-		//could traverse really quickly in order
-
-		//I know I am going to need a map
-		ResidueMapIterator residueLocation = ResidueIDMap.find(residueAttemptingToInsert->GetNumber());
-
-		if (residueLocation != ResidueIDMap.end())
-		{
-			if (!residueLocation->second)
-			{
-				residueLocation->second = new ResidueContainer();
-				m_residueContainers.push_back(residueLocation->second);
-			}
-
-			if (!residueLocation->second->AddResidue(residueAttemptingToInsert))
-			{
-				return false;
-			}
-		}
-		else
-		{
-			ResidueContainer* newContainer = new ResidueContainer();
-			newContainer->AddResidue(residueAttemptingToInsert);
-			m_residueContainers.push_back(newContainer);
-			ResidueIDMap.insert(std::pair<int, ResidueContainer*>(residueAttemptingToInsert->GetNumber(),newContainer));
-		}
-
 		m_residueVector.push_back(residueAttemptingToInsert);
 		return true;
 	}
@@ -85,5 +57,44 @@ namespace GHProtein
 		currentResidue->SetNext(nullptr);
 
 		return;
+	}
+
+	int ProteinModel::GetLengthOfChain() const
+	{
+		return m_residueVector.size();
+	}
+
+	void ProteinModel::GetInputValues(int startingResidue, std::vector< std::vector<double> >& out_inputs) const
+	{
+		out_inputs.clear();
+
+		std::vector< double > residueVectorRepresentation(21, 0.0);
+		for (int residueIndex = startingResidue - 8; residueIndex <= startingResidue + 8; ++residueIndex)
+		{
+			//check if we are to create a null residue input
+			if (residueIndex < 0
+				|| residueIndex > m_residueVector.size() - 1)
+			{
+				Residue::GetVectorRepresentationOfResidue(residueVectorRepresentation);
+			}
+			else
+			{
+				Residue::GetVectorRepresentationOfResidue(residueVectorRepresentation, m_residueVector[residueIndex]->GetType());
+			}
+
+			out_inputs.push_back(residueVectorRepresentation);
+		}
+	}
+
+	void ProteinModel::GetOutputValues(int residueIndex, std::vector< double >& out_outputs) const
+	{
+		out_outputs.resize(3);
+		std::fill(out_outputs.begin(), out_outputs.end(), 0.0);
+
+		if (residueIndex >= 0
+			&& residueIndex > out_outputs.size())
+		{
+			Residue::GetVectorRepresentationOfSecondaryStructure(out_outputs, m_residueVector[residueIndex]->GetSecondaryStructure());
+		}
 	}
 }

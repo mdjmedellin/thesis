@@ -35,6 +35,9 @@ namespace GHProtein
 		bool AddResidue(Residue* insertedResidue);
 		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
 		void BuildProteinModel();
+		int GetLengthOfChain() const;
+		void GetInputValues(int startingResidue, std::vector< std::vector<double> >& out_inputs) const;
+		void GetOutputValues(int startingResidue, std::vector< double >& out_outputs) const;
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 

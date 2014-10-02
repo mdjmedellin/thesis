@@ -33,12 +33,7 @@ namespace GHProtein
 	{
 		' '
 		, 'H'
-		, 'B'
 		, 'E'
-		, 'G'
-		, 'I'
-		, 'T'
-		, 'S'
 	};
 
 	EResidueType MapResidue(std::string inName)
@@ -128,5 +123,42 @@ namespace GHProtein
 	void Residue::SetSecondaryStructure(char inSSCharLabel)
 	{
 		mSecondaryStructure = MapSecondaryStructure(inSSCharLabel);
+	}
+
+	void Residue::GetVectorRepresentationOfResidue(std::vector< double >& out_vectorRepresentation,
+		EResidueType residueType)
+	{
+		//reset the vector representation
+		out_vectorRepresentation.resize(21);
+		std::fill(out_vectorRepresentation.begin(), out_vectorRepresentation.end(), 0.0);
+
+		out_vectorRepresentation[residueType] = 1.0;
+	}
+
+	void Residue::GetVectorRepresentationOfSecondaryStructure(std::vector< double >& out_vectorRepresentation,
+		ESecondaryStructure structureType)
+	{
+		out_vectorRepresentation.resize(3);
+		std::fill(out_vectorRepresentation.begin(), out_vectorRepresentation.end(), 0.0);
+
+		out_vectorRepresentation[structureType] = 1.0;
+	}
+
+	ESecondaryStructure Residue::VectorToSecondaryStructureType(const std::vector< double >& vectorRepresentation)
+	{
+		//find the index of the highest set flag
+		int indexOfHighestFlag = 0;
+		double highestSetFlagValue = vectorRepresentation[0];
+
+		for (int i = 1; i < vectorRepresentation.size(); ++i)
+		{
+			if (vectorRepresentation[i] > highestSetFlagValue)
+			{
+				highestSetFlagValue = vectorRepresentation[i];
+				indexOfHighestFlag = i;
+			}
+		}
+
+		return ESecondaryStructure(indexOfHighestFlag);
 	}
 }

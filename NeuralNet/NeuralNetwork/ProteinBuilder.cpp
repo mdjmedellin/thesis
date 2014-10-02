@@ -18,13 +18,42 @@ namespace GHProtein
 		}
 		else
 		{
+			m_loadedFileName = inFile;
 			bFileLoaded = true;
 		}
 
-		return LoadProteinModel();
+		ProteinModel* loadedProtein = LoadProteinModel();
+
+		m_dataFile.close();
+		return loadedProtein;
 	}
 
 	ProteinModel* ProteinBuilder::LoadProteinModel()
+	{
+		//depending on the type of file that is loaded, we choose how to load the protein model
+		int indexOfExtensionStart = m_loadedFileName.find_last_of('.') + 1;
+		std::string substring = m_loadedFileName.substr(indexOfExtensionStart);
+		GHProtein::Trim(substring, GHProtein::ETrim::TrimBoth);
+
+		//check what ype of file it is
+		if (substring == "jm")
+		{
+			return LoadProteinFromJM();
+		}
+		else if (substring == "dssp")
+		{
+			return LoadProteinFromDSSP();
+		}
+
+		return nullptr;
+	}
+
+	ProteinModel* ProteinBuilder::LoadProteinFromJM()
+	{
+		return CreateProteinModelFromJM();
+	}
+
+	ProteinModel* ProteinBuilder::LoadProteinFromDSSP()
 	{
 		if (MoveToFirstLineOfAminoAcid())
 		{
@@ -81,19 +110,85 @@ namespace GHProtein
 			*/
 			std::string currentLine = "";
 			Residue* extractedResidue = nullptr;
-
-			getline(m_dataFile, currentLine);
-
-			while (!m_dataFile.eof() && currentLine.find_first_not_of(' ') != std::string::npos)
+			while (!m_dataFile.eof())
 			{
 				//instead of creating a new pointer, we just recycle the one used
 				//in the previous iteration
 				extractedResidue = nullptr;
-
-				if (ExtractResidue(currentLine, extractedResidue))
+				
+				getline(m_dataFile, currentLine);
+				if (currentLine.find_first_not_of(' ') != std::string::npos)
 				{
-					localProteinModel->AddResidue(extractedResidue);
-					extractedResidue = nullptr;
+					if (ExtractResidue(currentLine, extractedResidue))
+					{
+						localProteinModel->AddResidue(extractedResidue);
+						extractedResidue = nullptr;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			//build the protein model at this point
+			localProteinModel->BuildProteinModel();
+			return localProteinModel;
+		}
+
+		return nullptr;
+	}
+
+	ProteinModel* ProteinBuilder::CreateProteinModelFromJM()
+	{
+		ProteinModel* localProteinModel = nullptr;
+
+		if (bFileLoaded)
+		{
+			localProteinModel = new ProteinModel();
+
+			std::string residueLine = "";
+			std::string secondaryStructureLine = "";
+			Residue* residue = nullptr;
+
+			//we read data from the file until we reach the end of the file
+			while (!m_dataFile.eof())
+			{
+				//first we load the line of residue names
+				bool foundResidues = false;
+				while (!m_dataFile.eof() && !foundResidues)
+				{
+					getline(m_dataFile, residueLine);
+
+					if (residueLine.find_first_not_of(" ") != std::string::npos)
+					{
+						foundResidues = true;
+					}
+				}
+
+				//if we reached the end of the file before reading the secondary structure prediction
+				//we break because we need both the secondary structure prediction and the residue name
+				if (m_dataFile.eof())
+				{
+					break;
+				}
+
+				//current line has residues
+				//next line contains the secondary structure that correspond to each residue
+				std::string secondaryStructureLine;
+				getline(m_dataFile, secondaryStructureLine);
+
+				for (int i = 0; i < residueLine.length(); ++i)
+				{
+					if (residueLine[i] == ' ')
+					{
+						continue;
+					}
+
+					residue = new Residue();
+					residue->SetType(residueLine[i]);
+					residue->SetSecondaryStructure(secondaryStructureLine[i]);
+					localProteinModel->AddResidue(residue);
 				}
 			}
 

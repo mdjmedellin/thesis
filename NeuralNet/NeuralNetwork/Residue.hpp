@@ -3,6 +3,7 @@
 #define RESIDUE_H
 
 #include <iostream>
+#include <vector>
 
 namespace GHProtein
 {
@@ -60,12 +61,7 @@ namespace GHProtein
 	{
 		ssLoop			//' '
 		, ssAlphaHelix	// H
-		, ssBetaBridge	// B
 		, ssStrand		// E
-		, ssHelix_3		// G
-		, ssHelix_5		// I
-		, ssTurn		// T
-		, ssBend		// S
 		, ssCount
 	};
 
@@ -102,6 +98,14 @@ namespace GHProtein
 
 		void				SetNumber(unsigned inNumber)				{ mNumber = inNumber; }
 		unsigned			GetNumber() const							{ return mNumber; }
+
+		static void			GetVectorRepresentationOfResidue(std::vector< double >& out_vectorRepresentation,
+													EResidueType residueType = EResidueType::kUnknownResidue);
+
+		static void			GetVectorRepresentationOfSecondaryStructure(std::vector< double >& out_vectorRepresentation,
+													ESecondaryStructure structureType = ESecondaryStructure::ssLoop);
+
+		static ESecondaryStructure	VectorToSecondaryStructureType(const std::vector< double >& vectorRepresentation);
 
 	protected:
 		char				mSheetLabel;

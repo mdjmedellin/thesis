@@ -23,12 +23,14 @@ namespace GHProtein
 
 		default:
 			//do both
+			firstNonWhiteSpace = in_string.find_first_not_of(whitespaces);
+			lastNonWhiteSpace = in_string.find_last_not_of(whitespaces);
 			break;
 		}
 
 		if (lastNonWhiteSpace != std::string::npos)
 		{
-			in_string = in_string.substr(0, lastNonWhiteSpace);
+			in_string = in_string.substr(0, lastNonWhiteSpace+1);
 		}
 		if (firstNonWhiteSpace != std::string::npos)
 		{
