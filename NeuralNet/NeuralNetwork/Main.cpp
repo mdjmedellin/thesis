@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
 	const GHProtein::NeuralNetDataSet* currentDataSet = nullptr;
 
 	int cyclesBeforeLastTest = 1;
-	const int CYCLES_BETWEEN_TESTS = 250;
+	const int CYCLES_BETWEEN_TESTS = 25;
 
 	for (int trainingPass = 0; trainingPass < MAX_TRAINING; ++trainingPass, ++cyclesBeforeLastTest)
 	{

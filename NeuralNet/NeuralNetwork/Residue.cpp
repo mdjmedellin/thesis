@@ -139,9 +139,9 @@ namespace GHProtein
 		ESecondaryStructure structureType)
 	{
 		out_vectorRepresentation.resize(3);
-		std::fill(out_vectorRepresentation.begin(), out_vectorRepresentation.end(), 0.0);
+		std::fill(out_vectorRepresentation.begin(), out_vectorRepresentation.end(), 0.05);
 
-		out_vectorRepresentation[structureType] = 1.0;
+		out_vectorRepresentation[structureType] = 0.95;
 	}
 
 	ESecondaryStructure Residue::VectorToSecondaryStructureType(const std::vector< double >& vectorRepresentation)

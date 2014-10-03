@@ -279,7 +279,7 @@ namespace GHProtein
 	{
 		for (int i = 0; i < m_weight.size(); ++i)
 		{
-			m_weight[i] = RandZeroToN();
+			m_weight[i] = RandZeroToN(0.10);
 		}
 	}
 
@@ -305,11 +305,13 @@ namespace GHProtein
 	double FNeuron::s_alpha = 0.5;   // momentum, multiplier of last deltaWeight, [0.0..1.0]
 
 	FNeuron::FNeuron()
+		: m_gradient(0.0)
 	{
 		m_myIndex = -1;
 	}
 
 	FNeuron::FNeuron(int numberOfOutputs, int myIndex, int numberOfInputs)
+		: m_gradient(0.0)
 	{
 		for (int i = 0; i < numberOfOutputs; ++i)
 		{
@@ -348,6 +350,13 @@ namespace GHProtein
 		for (int i = 0; i < m_outputVals.size(); ++i)
 		{
 			outputVal += m_outputVals[i];
+		}
+
+		//check that the output value is 1
+		if (m_outputVals.size() > 1
+			&& outputVal != 1.0)
+		{
+			int x = 1;
 		}
 
 		return outputVal;
