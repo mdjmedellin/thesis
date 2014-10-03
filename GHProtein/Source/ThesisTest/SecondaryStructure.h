@@ -1,10 +1,10 @@
 #pragma once
 
 #include "ThesisStaticLibrary.h"
+#include "LinkFragment.h"
 
 class AAminoAcid;
 class SecondaryStructure;
-class ALinkFragment;
 
 namespace GHProtein
 {
@@ -14,12 +14,24 @@ namespace GHProtein
 class HydrogenBond
 {
 public:
-	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment)
+	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment,
+		float linkHeight, float linkWidth)
 	: m_linkFragment(linkFragment)
 	, m_relativeRotation(FRotator::ZeroRotator)
+	, m_linkHeight(linkHeight)
+	, m_linkWidth(linkWidth)
 	{
 		m_bondResidues[0] = residue1;
 		m_bondResidues[1] = residue2;
+
+		//scale the link fragment to the appropriate size
+		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
+		FVector2D scale(1.f, 1.f);
+		scale.X = m_linkWidth / size.X;
+		scale.Y = m_linkHeight / size.Y;
+
+		linkFragment->SplineMeshComponent->SetStartScale(scale);
+		linkFragment->SplineMeshComponent->SetEndScale(scale);
 	};
 
 	bool ContainsSpecifiedResidue(const AAminoAcid* residue)
@@ -42,6 +54,8 @@ private:
 	FRotator m_relativeRotation;
 	AAminoAcid* m_bondResidues[2];
 	ALinkFragment* m_linkFragment;
+	float m_linkWidth;
+	float m_linkHeight;
 };
 
 class BetaSheet

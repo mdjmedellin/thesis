@@ -46,7 +46,7 @@ namespace GHProtein
 		void BuildProteinModel();
 		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation
 			, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor
-			, float helixLinkWidth, float betaStrandLinkWidth);
+			, float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth);
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void HighlightSecondaryStructure(AAminoAcid* residueMember);
 		Residue* GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue = nullptr);
@@ -80,5 +80,9 @@ namespace GHProtein
 		FVector m_maxBounds3D;
 		FVector m_centerOfBoundingBox;
 		AAminoAcid* m_headPtr;
+
+		float m_hydrogenBondLinkWidth;
+		float m_linkWidth;
+		float m_linkHeight;
 	};
 }

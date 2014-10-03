@@ -21,6 +21,7 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_betaStrandColor(FColor::White)
 	, m_helixLinkWidth(100.f)
 	, m_betaStrandLinkWidth(100.f)
+	, m_hydrogenBondLinkWidth(100.f)
 {
 	/*
 	FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt") );
@@ -121,7 +122,8 @@ void AThesisTestGameMode::StartMatch()
 
 		UWorld* const World = GetWorld();
 		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
-			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth);
+			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth
+			, m_hydrogenBondLinkWidth);
 	}
 }
 

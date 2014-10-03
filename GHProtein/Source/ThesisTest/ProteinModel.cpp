@@ -14,6 +14,9 @@ namespace GHProtein
 		, m_headPtr(nullptr)
 		, m_headSecondaryStructure(nullptr)
 		, m_tailSecondaryStructure(nullptr)
+		, m_hydrogenBondLinkWidth(0.f)
+		, m_linkHeight(0.f)
+		, m_linkWidth(0.f)
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -168,8 +171,12 @@ namespace GHProtein
 
 	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation
 		, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-		, float betaStrandLinkWidth)
+		, float betaStrandLinkWidth, float hydrogenBondLinkWidth)
 	{
+		m_linkWidth = linkWidth;
+		m_linkHeight = linkHeight;
+		m_hydrogenBondLinkWidth = hydrogenBondLinkWidth;
+
 		if (!world || !blueprint || aminoAcidSize <= 0.f)
 		{
 			//we need to have a valid world and blueprint
@@ -257,6 +264,7 @@ namespace GHProtein
 
 	HydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2)
 	{
+		//Get the size of the hydrogen bond link fragment from the game mode
 		FVector startLocation = residue1->GetActorLocation();
 		FVector endLocation = residue2->GetActorLocation();
 		UWorld* world = residue1->GetWorld();
@@ -268,7 +276,7 @@ namespace GHProtein
 		linkChain->SplineMeshComponent->SetStartPosition(startLocation);
 		linkChain->SplineMeshComponent->SetEndPosition(endLocation);
 
-		HydrogenBond* newHydrogenBond = new HydrogenBond(residue1, residue2, linkChain);
+		HydrogenBond* newHydrogenBond = new HydrogenBond(residue1, residue2, linkChain, m_linkHeight, m_hydrogenBondLinkWidth);
 
 		//should probably add the hydrogen bond into the array of current hydrogen bonds
 		m_hydrogenBonds.Add(newHydrogenBond);

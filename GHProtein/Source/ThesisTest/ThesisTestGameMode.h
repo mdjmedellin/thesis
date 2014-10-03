@@ -60,6 +60,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		float m_helixLinkWidth;
 
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		float m_hydrogenBondLinkWidth;
+
 	UPROPERTY()
 		TArray<class AProteinModelSpawnPoint*> ProteinModelSpawnPoints;
 };
