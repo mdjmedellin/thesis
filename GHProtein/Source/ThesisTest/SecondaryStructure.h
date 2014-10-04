@@ -75,7 +75,7 @@ public:
 class THESISTEST_API SecondaryStructure
 {
 public:
-	SecondaryStructure(ESecondaryStructure::Type secondaryStructureType);
+	SecondaryStructure(ESecondaryStructure::Type secondaryStructureType, GHProtein::ProteinModel* parentModel);
 	~SecondaryStructure();
 
 	void SetNextStructurePtr(SecondaryStructure* nextStructure);
@@ -90,6 +90,7 @@ public:
 	void GetBridgeLabels(TArray<uint32>& out_bridgeLabels) const;
 	bool IsPartOfSpecifiedBridgeLabels(const TArray<uint32>& bridgeLabels) const;
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
+	void SpawnHydrogenBonds();
 
 	static SecondaryStructure* GetSelectedStructure();
 
@@ -106,6 +107,9 @@ private:
 	AAminoAcid* m_tailAminoAcid;
 
 	TArray<uint32> m_bridgeLabels;
+	TArray<HydrogenBond*> m_hydrogenBonds;
+
+	GHProtein::ProteinModel* m_parentModel;
 
 	static SecondaryStructure* s_selectedStructure;
 public:

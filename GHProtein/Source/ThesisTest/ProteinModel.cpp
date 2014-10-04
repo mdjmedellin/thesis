@@ -17,6 +17,7 @@ namespace GHProtein
 		, m_hydrogenBondLinkWidth(0.f)
 		, m_linkHeight(0.f)
 		, m_linkWidth(0.f)
+		, m_temperatureCelsius(37.f)						//we start the model with a temperature equal to a human's average body temperatures
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -234,7 +235,7 @@ namespace GHProtein
 					}
 
 					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
-					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType);
+					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType, this);
 				}
 
 				currentSecondaryStructure->AppendAminoAcid(currentAminoAcid);
@@ -258,6 +259,12 @@ namespace GHProtein
 			for (int betaSheetIndex = 0; betaSheetIndex < m_betaSheets.Num(); ++betaSheetIndex)
 			{
 				m_betaSheets[betaSheetIndex]->SpawnHydrogenBonds();
+			}
+
+			for (SecondaryStructure* currentStructure = m_headSecondaryStructure;
+				currentStructure; currentStructure = currentStructure->GetNextStructurePtr())
+			{
+				currentStructure->SpawnHydrogenBonds();
 			}
 		}
 	}

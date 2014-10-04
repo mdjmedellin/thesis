@@ -84,5 +84,7 @@ namespace GHProtein
 		float m_hydrogenBondLinkWidth;
 		float m_linkWidth;
 		float m_linkHeight;
+
+		float m_temperatureCelsius;
 	};
 }

@@ -113,11 +113,13 @@ void BetaSheet::SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue)
 
 SecondaryStructure* SecondaryStructure::s_selectedStructure = nullptr;
 
-SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStructureType)
+SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStructureType,
+	GHProtein::ProteinModel* parentModel)
 : m_secondaryStructureType(secondaryStructureType)
 , m_nextSecondaryStructure(nullptr)
 , m_headAminoAcid(nullptr)
 , m_tailAminoAcid(nullptr)
+, m_parentModel(parentModel)
 {}
 
 SecondaryStructure::~SecondaryStructure()
@@ -306,4 +308,41 @@ bool SecondaryStructure::ContainsSpecifiedResidue(AAminoAcid* residue)
 	}
 
 	return false;
+}
+
+void SecondaryStructure::SpawnHydrogenBonds()
+{
+	//we only spawn for alpha helix structures
+	if (m_secondaryStructureType != ESecondaryStructure::ssAlphaHelix)
+	{
+		return;
+	}
+
+	bool keepLooping = true;
+	for (AAminoAcid* currentResidue = m_headAminoAcid;
+		keepLooping && currentResidue != m_tailAminoAcid;
+		currentResidue = currentResidue->GetNextAminoAcidPtr())
+	{
+		//look for the residues that make up the hydrogen bond
+		int index = 0;
+		AAminoAcid* partnerResidue = nullptr;
+		for (partnerResidue = currentResidue;
+			partnerResidue != m_tailAminoAcid && index < 4;
+			++index, partnerResidue = partnerResidue->GetNextAminoAcidPtr())
+		{}
+
+		if (index == 4)
+		{
+			//we found a valid partner residue to create a hydrogen bond
+			HydrogenBond* newlyCreatedBond = m_parentModel->SpawnHydrogenBond(currentResidue, partnerResidue);
+			m_hydrogenBonds.Add(newlyCreatedBond);
+			currentResidue->AddHydrogenBond(newlyCreatedBond);
+			partnerResidue->AddHydrogenBond(newlyCreatedBond);
+		}
+		else
+		{
+			//the first time we cannot find a partner indicates where we should stop spawning hydrogen bonds
+			keepLooping = false;
+		}
+	}
 }
