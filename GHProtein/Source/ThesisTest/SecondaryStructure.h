@@ -47,6 +47,12 @@ public:
 		return false;
 	}
 
+	void Hide()
+	{
+		m_linkFragment->Hide();
+	}
+
+	void ToggleShake();
 	void Translate(const FVector& displacement);
 	void RotateAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 
@@ -91,6 +97,7 @@ public:
 	bool IsPartOfSpecifiedBridgeLabels(const TArray<uint32>& bridgeLabels) const;
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 	void SpawnHydrogenBonds();
+	void BreakStructure();
 
 	static SecondaryStructure* GetSelectedStructure();
 
@@ -98,6 +105,7 @@ private:
 	void AddBridgeLabel(uint32 bridgeLabel);
 	void ChangeRibbonColor(const FColor& ribbonColor);
 	void ResetRibbonColor();
+	void TestLineFitting(TArray<AAminoAcid*>& residues);
 
 private:
 	ESecondaryStructure::Type m_secondaryStructureType;

@@ -114,6 +114,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
 		AAminoAcid* GetResidueAtSpecifiedIndex(int32 index = -1);
 
+	UFUNCTION(exec)
+		void ToggleShake();
+
+	UFUNCTION(exec)
+		void HideHydrogenBonds();
+
+	UFUNCTION(exec)
+		void BreakDownFirstSpiral();
+
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();
 	virtual void Tick(float DeltaSeconds) OVERRIDE;

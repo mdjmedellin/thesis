@@ -306,7 +306,12 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 	}
 
 	//update Hydrogen bonds here
-	UpdateHydrogenBonds(true);
+	//UpdateHydrogenBonds(true);
+}
+
+void AAminoAcid::HideLinkFragment()
+{
+	m_linkFragment->Hide();
 }
 
 void AAminoAcid::UpdateHydrogenBonds(bool recurse)

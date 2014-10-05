@@ -33,6 +33,8 @@ public:
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
 
+	void HideLinkFragment();
+
 	int GetSequenceNumber();
 	bool GetDistanceToNextAminoAcid(FVector& out_vector);
 	void GetTangent(FVector& out_vector);

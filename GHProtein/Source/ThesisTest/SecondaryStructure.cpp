@@ -39,6 +39,11 @@ void HydrogenBond::RotateAboutSpecifiedPoint(const FRotationMatrix& rotationMatr
 	m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
 	*/
 }
+
+void HydrogenBond::ToggleShake()
+{
+	m_linkFragment->ToggleShake();
+}
 //============================================================
 
 //======================BetaSheet===========================
@@ -345,4 +350,231 @@ void SecondaryStructure::SpawnHydrogenBonds()
 			keepLooping = false;
 		}
 	}
+}
+
+void SecondaryStructure::BreakStructure()
+{
+	//iterate throguh the residues that make up this structure
+	AAminoAcid* currentResidue = m_headAminoAcid;
+	int counter = 0;
+	TArray<AAminoAcid*> residues;
+	bool keepIterating = true;
+
+	while (keepIterating)
+	{
+		++counter;
+		residues.Add(currentResidue);
+		if (currentResidue != m_tailAminoAcid)
+		{
+			currentResidue = currentResidue->GetNextAminoAcidPtr();
+		}
+		else
+		{
+			keepIterating = false;
+		}
+		
+	}
+
+	for (int i = 0; i < 1; ++i)
+	{
+		TestLineFitting(residues);
+	}
+
+	//get the first and last position
+	FVector startPosition = m_headAminoAcid->GetActorLocation();
+	FVector endPosition = m_tailAminoAcid->GetActorLocation();
+
+	//at first lets just put the residues in a straight line
+	FVector distance = endPosition - startPosition;
+
+	if (counter > 1)
+	{
+		distance /= (counter - 1);
+	}
+
+	for (int index = 0; index < residues.Num(); ++index)
+	{
+		currentResidue = residues[index];
+		currentResidue->SetActorLocation(startPosition + (distance * index));
+	}
+
+	//update the link fragments for all of the residues in the struture
+	for (int index = 0; index < residues.Num(); ++index)
+	{
+		currentResidue = residues[index];
+		currentResidue->UpdateLinkToNextAminoAcid();
+		currentResidue->HideLinkFragment();
+	}
+}
+
+void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
+{
+	int num = residues.Num();
+	float inverseNum = 1.f / num;
+	float oneThird = 1.f / 3;
+
+	double x_m = 0.f;
+	double y_m = 0.f;
+	double z_m = 0.f;
+	double x_squared_m = 0.f;
+	double y_squared_m = 0.f;
+	double z_squared_m = 0.f;
+	double sum_xy = 0.f;
+	double sum_xz = 0.f;
+	double sum_yz = 0.f;
+
+	FVector location;
+	for (int i = 0; i < residues.Num(); ++i)
+	{
+		location = residues[i]->GetActorLocation();
+
+		x_m += location.X;
+		y_m += location.Y;
+		z_m += location.Z;
+
+		x_squared_m += (location.X * location.X);
+		y_squared_m += (location.Y * location.Y);
+		z_squared_m += (location.Z * location.Z);
+
+		sum_xy += (location.X * location.Y);
+		sum_xz += (location.X * location.Z);
+		sum_yz += (location.Y * location.Z);
+	}
+
+	x_m *= inverseNum;
+	y_m *= inverseNum;
+	z_m *= inverseNum;
+
+	double s_xx = 0.f;
+	double s_yy = 0.f;
+	double s_zz = 0.f;
+	
+	s_xx = -(x_m * x_m) + (inverseNum * x_squared_m);
+	s_yy = -(y_m * y_m) + (inverseNum * y_squared_m);
+	s_zz = -(z_m * z_m) + (inverseNum * z_squared_m);
+
+	double s_xz = 0.f;
+	double s_xy = 0.f;
+	double s_yz = 0.f;
+
+	s_xy = -(x_m * y_m) + (inverseNum * sum_xy);
+	s_xz = -(x_m * z_m) + (inverseNum * sum_xz);
+	s_yz = -(y_m * z_m) + (inverseNum * sum_yz);
+
+	double theta = 0.f;
+
+	theta = FMath::Atan2((s_xx - s_yy), (2.f * s_xy)) * 0.5f;
+
+	double cosTheta = cos(theta);
+	double sinTheta = sin(theta);
+	double cosThetaSquared = cosTheta * cosTheta;
+	double sinThetaSquared = sinTheta * sinTheta;
+
+	double k11 = ((s_yy + s_zz) * cosThetaSquared) + ((s_xx + s_zz) * sinThetaSquared) - (2.f * s_xy * cosTheta * sinTheta);
+	double k22 = ((s_yy + s_zz) * sinThetaSquared) + ((s_xx + s_zz) * cosThetaSquared) + (2.f * s_xy * cosTheta * sinTheta);
+	double k12 = ((-s_xy) * (cosThetaSquared - sinThetaSquared)) + ((s_xx - s_yy) * cosTheta * sinTheta);
+	double k10 = (s_xz * cosTheta) + (s_yz * sinTheta);
+	double k01 = (-s_xz * sinTheta) + (s_yz * cosTheta);
+	double k00 = s_xx + s_yy;
+
+	double c2 = -k00 - k11 - k22;
+	double c1 = (k00 * k11) + (k00 * k22) + (k11*k22) - (k01 * k01) - (k10 * k10);
+	double c0 = ((k01 * k01) * k11) + ((k10 * k10) * k22) - (k00*k11*k22);
+
+	double p = c1 - (oneThird * c2 * c2);
+	double q = ((2.f / 27) * c2 *c2 * c2) - (oneThird * c1 * c2) + c0;
+	double R = (0.25f * q * q) + ((1 / 27) * p * p * p);
+
+	double phetaSquared = 0.f;
+
+	if (R > 0.f)
+	{
+		double sqrtR = sqrt(R);
+		double term1 = (-oneThird) * c2;
+		double innerTest = -0.5 * q;
+		innerTest += sqrtR;
+		double term2 = cbrt((-0.5 * q) + sqrtR);
+		double term3 = cbrt((-0.5 * q) - sqrtR);
+
+		phetaSquared = term1 + term2 + term3;
+	}
+	else
+	{
+		double kappa = sqrt((-1.f / 27) * p * p * p);
+		double gamma = acos(-q / (2 * kappa));
+
+		double cubicRootKappa = cbrt(kappa);
+
+		FVector values = FVector::ZeroVector;
+		values.X = ((-oneThird) * c2) + (2 * cubicRootKappa * cos((oneThird)*gamma));
+		values.Y = ((-oneThird) * c2) + (2 * cubicRootKappa * cos((oneThird)*(gamma + (2 * PI))));
+		values.Z = ((-oneThird) * c2) + (2 * cubicRootKappa * cos((oneThird)*(gamma + (4 * PI))));
+
+		phetaSquared = values.GetMin();
+	}
+
+	double division1 = (k10 / (k11 - phetaSquared));
+	double division2 = (k01 / (k22 - phetaSquared));
+
+	double a = (-division1 * cosTheta) + (division2 * sinTheta);
+	double b = (-division1 * sinTheta) + (-division2 * cosTheta);
+	double a_squared = a * a;
+	double b_squared = b * b;
+
+	double division3 = ((1.0) / (1.0 + a_squared + b_squared));
+
+	double u = division3 * (((1.f + b_squared) * x_m) - (a*b*y_m) + (a*z_m));
+	double v = division3 * ((-a*b*x_m) + ((1.f + a_squared) * y_m) + (b*z_m));
+	double w = division3 * ((a * x_m) + (b*y_m) + ((a_squared + b_squared)*z_m));
+
+	FVector LinkStart(x_m, y_m, z_m);
+	FVector LinkEnd(u, v, w);
+	
+	DrawDebugLine(
+		m_parentModel->GetWorld(),
+		LinkStart,
+		LinkEnd,
+		FColor(255, 0, 0),
+		true, -1, 0,
+		12
+		);
+
+	DrawDebugSphere(
+		m_parentModel->GetWorld(),
+		LinkStart,
+		10,
+		20,
+		FColor(0,255,0),
+		true,
+		-1.f,
+		0
+		);
+
+	DrawDebugSphere(
+		m_parentModel->GetWorld(),
+		LinkEnd,
+		10,
+		20,
+		FColor(0, 255, 0),
+		true,
+		-1.f,
+		0
+		);
+
+	FVector test1 = residues[0]->GetActorLocation();
+	float z = a * test1.X + b * test1.Y;
+	test1.Z = z;
+
+	DrawDebugSphere(
+		m_parentModel->GetWorld(),
+		LinkEnd,
+		10,
+		20,
+		FColor(0, 255, 0),
+		true,
+		-1.f,
+		0
+		);
+
+	float test2 = (phetaSquared * phetaSquared * phetaSquared) + c2 * phetaSquared * phetaSquared + c1 * phetaSquared + c0;
 }

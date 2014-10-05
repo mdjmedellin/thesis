@@ -95,7 +95,7 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 		testString = "./ThesisData/Lysozyme.dssp";
 	}
 	PdbFile->LoadFile(testString);
-	m_proteinModel = PdbFile->GetCurrentProteinModel();
+	m_proteinModel = PdbFile->GetCurrentProteinModel(GetWorld());
 
 	/*FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt"));
 	if (SaveFile)

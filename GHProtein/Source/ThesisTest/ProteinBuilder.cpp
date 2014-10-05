@@ -105,13 +105,13 @@ bool ProteinBuilder::GetLineOfFirstAminoAcid(int& out_LineOfFirstAminoAcid)
 void ProteinBuilder::PreProcessInput(TArray<FString>& Input)
 {}
 
-GHProtein::ProteinModel* ProteinBuilder::GetCurrentProteinModel()
+GHProtein::ProteinModel* ProteinBuilder::GetCurrentProteinModel(UWorld* proteinWorld)
 {
 	GHProtein::ProteinModel* localProteinModel = nullptr;
 
 	if (bFileLoaded)
 	{
-		localProteinModel = new GHProtein::ProteinModel();
+		localProteinModel = new GHProtein::ProteinModel(proteinWorld);
 
 		/** search through the lines of the dssp file in order to find where
 		*	the information of the amino acids is located

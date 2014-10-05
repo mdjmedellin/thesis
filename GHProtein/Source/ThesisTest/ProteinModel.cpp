@@ -8,7 +8,7 @@
 
 namespace GHProtein
 {
-	ProteinModel::ProteinModel()
+	ProteinModel::ProteinModel(UWorld* proteinWorld)
 		: m_minBounds3D(FVector(0.f, 0.f, 0.f))
 		, m_maxBounds3D(FVector(0.f, 0.f, 0.f))
 		, m_headPtr(nullptr)
@@ -17,6 +17,7 @@ namespace GHProtein
 		, m_hydrogenBondLinkWidth(0.f)
 		, m_linkHeight(0.f)
 		, m_linkWidth(0.f)
+		, m_world(proteinWorld)
 		, m_temperatureCelsius(37.f)						//we start the model with a temperature equal to a human's average body temperatures
 	{}
 
@@ -603,5 +604,43 @@ namespace GHProtein
 	FVector ProteinModel::GetCenterLocation() const
 	{
 		return m_centerOfBoundingBox;
+	}
+
+	void ProteinModel::ToggleShake()
+	{
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->ToggleShake();
+		}
+	}
+
+	void ProteinModel::HideHydrogenBonds()
+	{
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->Hide();
+		}
+	}
+
+	void ProteinModel::BreakFirstSpiral()
+	{
+		//look for the first spiral and start modifying it
+		SecondaryStructure* test = m_headSecondaryStructure;
+
+		while (test && test->GetSecondaryStructureType() != ESecondaryStructure::ssAlphaHelix)
+		{
+			test = test->GetNextStructurePtr();
+		}
+
+		//modify this alpha helix
+		if (test)
+		{
+			test->BreakStructure();
+		}
+	}
+
+	UWorld* ProteinModel::GetWorld()
+	{
+		return m_world;
 	}
 }

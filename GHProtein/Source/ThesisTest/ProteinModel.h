@@ -19,7 +19,7 @@ namespace GHProtein
 	{
 	public:
 		/** Constructor */
-		ProteinModel();
+		ProteinModel(UWorld* proteinWorld);
 
 		/** Destructor */
 		~ProteinModel();
@@ -55,6 +55,10 @@ namespace GHProtein
 		FVector GetBoundingBoxDimensions() const;
 		FVector GetCenterLocation() const;
 		HydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
+		void ToggleShake();
+		void HideHydrogenBonds();
+		void BreakFirstSpiral();
+		UWorld* GetWorld();
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 
@@ -86,5 +90,7 @@ namespace GHProtein
 		float m_linkHeight;
 
 		float m_temperatureCelsius;
+
+		UWorld* m_world;
 	};
 }

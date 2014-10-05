@@ -465,3 +465,18 @@ AAminoAcid* ACameraCharacter::GetResidueAtSpecifiedIndex(int32 index)
 		return m_customChain[index];
 	}
 }
+
+void ACameraCharacter::ToggleShake()
+{
+	m_proteinModel->ToggleShake();
+}
+
+void ACameraCharacter::HideHydrogenBonds()
+{
+	m_proteinModel->HideHydrogenBonds();
+}
+
+void ACameraCharacter::BreakDownFirstSpiral()
+{
+	m_proteinModel->BreakFirstSpiral();
+}

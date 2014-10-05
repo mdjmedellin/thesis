@@ -20,8 +20,18 @@ public:
 
 private:
 	UMaterialInstanceDynamic* m_dynamicMaterial;
+	FVector m_prevEndTangent;
+	bool m_shake;
+	float m_timeVal;
+	float m_maxTime;
+	FVector m_minVals;
+	FVector m_maxVals;
 
 public:
 	virtual void BeginPlay();
 	void setColor(const FColor& linkColor);
+
+	virtual void Tick(float DeltaSeconds) OVERRIDE;
+	void ToggleShake();
+	void Hide();
 };
