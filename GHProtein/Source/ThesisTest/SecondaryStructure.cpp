@@ -454,7 +454,7 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 	TArray<FVector> multiplicativeSums;
 	multiplicativeSums.SetNum(3);
 	multiplicativeSums[0].Set(0.f, sum_xy, sum_xz);
-	multiplicativeSums[1].Set(sum_xy, 0.f, sum_xz);
+	multiplicativeSums[1].Set(sum_xy, 0.f, sum_yz);
 	multiplicativeSums[2].Set(sum_xz, sum_yz, 0.f);
 
 	//calculate the means
@@ -556,9 +556,43 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 			longestDistanceSquared = FVector::DistSquared(actorLocation, projectedLocation);
 			shortestDistanceSquared = longestDistanceSquared;
 		}
-
-		residues[i]->SetActorLocation(projectedLocation);
 	}
+
+	//move the firat and last resiude to their projected location
+	actorLocation = residues[0]->GetActorLocation();
+	FVector startLocation = FVector::ZeroVector;
+	FVector endLocation = FVector::ZeroVector;
+	projectedLocation = actorLocation;
+	for (int j = 0; j < 3; ++j)
+	{
+		if (j != axisToUse)
+		{
+			projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
+		}
+	}
+	startLocation = projectedLocation;
+	//residues[0]->SetActorLocation(projectedLocation);
+
+	actorLocation = residues.Last()->GetActorLocation();
+	projectedLocation = actorLocation;
+	for (int j = 0; j < 3; ++j)
+	{
+		if (j != axisToUse)
+		{
+			projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
+		}
+	}
+	endLocation = projectedLocation;
+	//residues.Last()->SetActorLocation(projectedLocation);
+
+	DrawDebugLine(
+		m_parentModel->GetWorld(),
+		startLocation,
+		endLocation,
+		FColor(255, 0, 0),
+		true, -1, 0,
+		12
+		);
 }
 
 //this does not work
