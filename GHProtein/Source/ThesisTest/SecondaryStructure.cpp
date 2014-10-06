@@ -377,13 +377,21 @@ void SecondaryStructure::BreakStructure()
 
 	for (int i = 0; i < 1; ++i)
 	{
-		TestLineFitting(residues);
+		TestLineFitting2(residues);
+
+		for (int index = 0; index < residues.Num(); ++index)
+		{
+			currentResidue = residues[index];
+			currentResidue->UpdateLinkToNextAminoAcid();
+			currentResidue->HideLinkFragment();
+		}
 	}
 
 	//get the first and last position
 	FVector startPosition = m_headAminoAcid->GetActorLocation();
 	FVector endPosition = m_tailAminoAcid->GetActorLocation();
 
+	/*
 	//at first lets just put the residues in a straight line
 	FVector distance = endPosition - startPosition;
 
@@ -405,23 +413,170 @@ void SecondaryStructure::BreakStructure()
 		currentResidue->UpdateLinkToNextAminoAcid();
 		currentResidue->HideLinkFragment();
 	}
+	*/
 }
 
+void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
+{
+	//This line fitting will only work appropriately for spirals, it makes assumptions other type of data
+	//will not meet
+	int num = residues.Num();
+	int axisToUse = -1;
+	double inverseNum = 1.f / num;
+
+	//extract the data we need from the cluster of points
+	FVector means = FVector::ZeroVector;
+	FVector sums = FVector::ZeroVector;
+	FVector sumsSquared = FVector::ZeroVector;
+	double sum_xy = 0.0;
+	double sum_xz = 0.0;
+	double sum_yz = 0.0;
+
+	FVector location;
+	for (int i = 0; i < residues.Num(); ++i)
+	{
+		location = residues[i]->GetActorLocation();
+
+		sums.X += location.X;
+		sums.Y += location.Y;
+		sums.Z += location.Z;
+
+		sumsSquared.X += (location.X * location.X);
+		sumsSquared.Y += (location.Y * location.Y);
+		sumsSquared.Z += (location.Z * location.Z);
+
+		sum_xy += (location.X * location.Y);
+		sum_xz += (location.X * location.Z);
+		sum_yz += (location.Y * location.Z);
+	}
+
+	//store the multiplicative sums in their appropriate place
+	TArray<FVector> multiplicativeSums;
+	multiplicativeSums.SetNum(3);
+	multiplicativeSums[0].Set(0.f, sum_xy, sum_xz);
+	multiplicativeSums[1].Set(sum_xy, 0.f, sum_xz);
+	multiplicativeSums[2].Set(sum_xz, sum_yz, 0.f);
+
+	//calculate the means
+	for (int i = 0; i < 3; ++i)
+	{
+		means[i] = sums[i] * inverseNum;
+	}
+
+	//calculate the possible independent variables
+	//in other words the run value on the slope formula
+	FVector possibleIndependentVariables = FVector::ZeroVector;
+	for (int i = 0; i < 3; ++i)
+	{
+		possibleIndependentVariables[i] = sumsSquared[i] - (sums[i] * means[i]);
+	}
+
+	//precalculate some of the possible values we will need for the point slope formula
+	TArray<FVector> possibleSlopes;
+	TArray<FVector> possibleIntercepts;
+	possibleSlopes.SetNum(3);
+	possibleIntercepts.SetNum(3);
+
+	for (int i = 0; i < 3; ++i)
+	{
+		for (int j = 0; j < 3; ++j)
+		{
+			if (i != j)
+			{
+				possibleSlopes[i][j] = (multiplicativeSums[i][j] - sums[i] * means[j]);
+			}
+		}
+	}
+
+	double currentMin = possibleIndependentVariables[0];
+	axisToUse = 0;
+	for (int i = 1; i < 3 && currentMin == 0.0; ++i)
+	{
+		currentMin = possibleIndependentVariables[i];
+		axisToUse = i;
+	}
+
+	//check which variable we are going to use as the independent variable
+	for (int i = 0; i < 3; ++i)
+	{
+		if (possibleIndependentVariables[i] != 0.0
+			&& abs(currentMin) < abs(possibleIndependentVariables[i]))
+		{
+			//we can use this variable as the independent variable
+			currentMin = possibleIndependentVariables[i];
+			axisToUse = i;
+		}
+	}
+
+	//finish constructing the slopes
+	for (int i = 0; i < 3; ++i)
+	{
+		if (i != axisToUse)
+		{
+			possibleSlopes[axisToUse][i] /= possibleIndependentVariables[axisToUse];
+
+			//calculate the intercepts
+			possibleIntercepts[axisToUse][i] = means[i] - (possibleSlopes[axisToUse][i] * means[axisToUse]);
+		}
+	}
+
+	//find the min and max distance from the projected position to the actual position
+	FVector actorLocation = FVector::ZeroVector;
+	FVector projectedLocation = FVector::ZeroVector;
+	float shortestDistanceSquared = 0.f;
+	float longestDistanceSquared = 0.f;
+
+	for (int i = 0; i < residues.Num(); ++i)
+	{
+		actorLocation = residues[i]->GetActorLocation();
+		projectedLocation = actorLocation;
+
+		for (int j = 0; j < 3; ++j)
+		{
+			if (j != axisToUse)
+			{
+				projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
+			}
+		}
+
+		float currentDistance = FVector::DistSquared(actorLocation, projectedLocation);
+		if (i != 0)
+		{
+			if (currentDistance > longestDistanceSquared)
+			{
+				longestDistanceSquared = currentDistance;
+			}
+			else if (currentDistance < shortestDistanceSquared)
+			{
+				shortestDistanceSquared = currentDistance;
+			}
+		}
+		else
+		{
+			longestDistanceSquared = FVector::DistSquared(actorLocation, projectedLocation);
+			shortestDistanceSquared = longestDistanceSquared;
+		}
+
+		residues[i]->SetActorLocation(projectedLocation);
+	}
+}
+
+//this does not work
 void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 {
 	int num = residues.Num();
-	float inverseNum = 1.f / num;
-	float oneThird = 1.f / 3;
+	double inverseNum = 1.0 / num;
+	double oneThird = 1.0 / 3.0;
 
-	double x_m = 0.f;
-	double y_m = 0.f;
-	double z_m = 0.f;
-	double x_squared_m = 0.f;
-	double y_squared_m = 0.f;
-	double z_squared_m = 0.f;
-	double sum_xy = 0.f;
-	double sum_xz = 0.f;
-	double sum_yz = 0.f;
+	double x_m = 0.0;
+	double y_m = 0.0;
+	double z_m = 0.0;
+	double sum_x_squared_m = 0.0;
+	double sum_y_squared_m = 0.0;
+	double sum_z_squared_m = 0.0;
+	double sum_xy = 0.0;
+	double sum_xz = 0.0;
+	double sum_yz = 0.0;
 
 	FVector location;
 	for (int i = 0; i < residues.Num(); ++i)
@@ -432,9 +587,9 @@ void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 		y_m += location.Y;
 		z_m += location.Z;
 
-		x_squared_m += (location.X * location.X);
-		y_squared_m += (location.Y * location.Y);
-		z_squared_m += (location.Z * location.Z);
+		sum_x_squared_m += (location.X * location.X);
+		sum_y_squared_m += (location.Y * location.Y);
+		sum_z_squared_m += (location.Z * location.Z);
 
 		sum_xy += (location.X * location.Y);
 		sum_xz += (location.X * location.Z);
@@ -445,33 +600,41 @@ void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 	y_m *= inverseNum;
 	z_m *= inverseNum;
 
-	double s_xx = 0.f;
-	double s_yy = 0.f;
-	double s_zz = 0.f;
+	sum_x_squared_m *= inverseNum;
+	sum_y_squared_m *= inverseNum;
+	sum_z_squared_m *= inverseNum;
+
+	sum_xy *= inverseNum;
+	sum_xz *= inverseNum;
+	sum_yz *= inverseNum;
+
+	double s_xx = 0.0;
+	double s_yy = 0.0;
+	double s_zz = 0.0;
 	
-	s_xx = -(x_m * x_m) + (inverseNum * x_squared_m);
-	s_yy = -(y_m * y_m) + (inverseNum * y_squared_m);
-	s_zz = -(z_m * z_m) + (inverseNum * z_squared_m);
+	s_xx = -(x_m * x_m) + (sum_x_squared_m);
+	s_yy = -(y_m * y_m) + (sum_y_squared_m);
+	s_zz = -(z_m * z_m) + (sum_z_squared_m);
 
-	double s_xz = 0.f;
-	double s_xy = 0.f;
-	double s_yz = 0.f;
+	double s_xz = 0.0;
+	double s_xy = 0.0;
+	double s_yz = 0.0;
 
-	s_xy = -(x_m * y_m) + (inverseNum * sum_xy);
-	s_xz = -(x_m * z_m) + (inverseNum * sum_xz);
-	s_yz = -(y_m * z_m) + (inverseNum * sum_yz);
+	s_xy = -(x_m * y_m) + (sum_xy);
+	s_xz = -(x_m * z_m) + (sum_xz);
+	s_yz = -(y_m * z_m) + (sum_yz);
 
-	double theta = 0.f;
+	double theta = 0.0;
 
-	theta = FMath::Atan2((s_xx - s_yy), (2.f * s_xy)) * 0.5f;
+	theta = FMath::Atan2((s_xx - s_yy), (2.0 * s_xy)) * 0.5;
 
 	double cosTheta = cos(theta);
 	double sinTheta = sin(theta);
 	double cosThetaSquared = cosTheta * cosTheta;
 	double sinThetaSquared = sinTheta * sinTheta;
 
-	double k11 = ((s_yy + s_zz) * cosThetaSquared) + ((s_xx + s_zz) * sinThetaSquared) - (2.f * s_xy * cosTheta * sinTheta);
-	double k22 = ((s_yy + s_zz) * sinThetaSquared) + ((s_xx + s_zz) * cosThetaSquared) + (2.f * s_xy * cosTheta * sinTheta);
+	double k11 = ((s_yy + s_zz) * cosThetaSquared) + ((s_xx + s_zz) * sinThetaSquared) - (2.0 * s_xy * cosTheta * sinTheta);
+	double k22 = ((s_yy + s_zz) * sinThetaSquared) + ((s_xx + s_zz) * cosThetaSquared) + (2.0 * s_xy * cosTheta * sinTheta);
 	double k12 = ((-s_xy) * (cosThetaSquared - sinThetaSquared)) + ((s_xx - s_yy) * cosTheta * sinTheta);
 	double k10 = (s_xz * cosTheta) + (s_yz * sinTheta);
 	double k01 = (-s_xz * sinTheta) + (s_yz * cosTheta);
@@ -482,12 +645,12 @@ void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 	double c0 = ((k01 * k01) * k11) + ((k10 * k10) * k22) - (k00*k11*k22);
 
 	double p = c1 - (oneThird * c2 * c2);
-	double q = ((2.f / 27) * c2 *c2 * c2) - (oneThird * c1 * c2) + c0;
-	double R = (0.25f * q * q) + ((1 / 27) * p * p * p);
+	double q = ((2.0 / 27.0) * c2 *c2 * c2) - (oneThird * c1 * c2) + c0;
+	double R = (0.25 * q * q) + ((1.0 / 27.0) * p * p * p);
 
-	double phetaSquared = 0.f;
+	double phetaSquared = 0.0;
 
-	if (R > 0.f)
+	if (R > 0.0)
 	{
 		double sqrtR = sqrt(R);
 		double term1 = (-oneThird) * c2;
@@ -500,15 +663,15 @@ void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 	}
 	else
 	{
-		double kappa = sqrt((-1.f / 27) * p * p * p);
-		double gamma = acos(-q / (2 * kappa));
+		double kappa = sqrt((-1.0 / 27.0) * p * p * p);
+		double gamma = acos(-q / (2.0 * kappa));
 
 		double cubicRootKappa = cbrt(kappa);
 
 		FVector values = FVector::ZeroVector;
-		values.X = ((-oneThird) * c2) + (2 * cubicRootKappa * cos((oneThird)*gamma));
-		values.Y = ((-oneThird) * c2) + (2 * cubicRootKappa * cos((oneThird)*(gamma + (2 * PI))));
-		values.Z = ((-oneThird) * c2) + (2 * cubicRootKappa * cos((oneThird)*(gamma + (4 * PI))));
+		values.X = ((-oneThird) * c2) + (2.0 * cubicRootKappa * cos((oneThird)*gamma));
+		values.Y = ((-oneThird) * c2) + (2.0 * cubicRootKappa * cos((oneThird)*(gamma + (2.0 * PI))));
+		values.Z = ((-oneThird) * c2) + (2.0 * cubicRootKappa * cos((oneThird)*(gamma + (4.0 * PI))));
 
 		phetaSquared = values.GetMin();
 	}
@@ -523,8 +686,8 @@ void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 
 	double division3 = ((1.0) / (1.0 + a_squared + b_squared));
 
-	double u = division3 * (((1.f + b_squared) * x_m) - (a*b*y_m) + (a*z_m));
-	double v = division3 * ((-a*b*x_m) + ((1.f + a_squared) * y_m) + (b*z_m));
+	double u = division3 * (((1.0 + b_squared) * x_m) - (a*b*y_m) + (a*z_m));
+	double v = division3 * ((-a*b*x_m) + ((1.0 + a_squared) * y_m) + (b*z_m));
 	double w = division3 * ((a * x_m) + (b*y_m) + ((a_squared + b_squared)*z_m));
 
 	FVector LinkStart(x_m, y_m, z_m);
@@ -567,7 +730,7 @@ void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
 
 	DrawDebugSphere(
 		m_parentModel->GetWorld(),
-		LinkEnd,
+		test1,
 		10,
 		20,
 		FColor(0, 255, 0),

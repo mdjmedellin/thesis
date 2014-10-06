@@ -106,6 +106,7 @@ private:
 	void ChangeRibbonColor(const FColor& ribbonColor);
 	void ResetRibbonColor();
 	void TestLineFitting(TArray<AAminoAcid*>& residues);
+	void TestLineFitting2(TArray<AAminoAcid*>& residues);
 
 private:
 	ESecondaryStructure::Type m_secondaryStructureType;
