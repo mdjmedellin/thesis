@@ -2,6 +2,7 @@
 
 #include "ThesisTest.h"
 #include "ThesisTestGameMode.h"
+#include "ThesisStaticLibrary.h"
 #include "ThesisTestHUD.h"
 #include "CameraPlayerController.h"
 #include "ProteinBuilder.h"
@@ -108,6 +109,12 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 		delete SaveFile;
 		SaveFile = NULL;
 	}*/
+}
+
+void AThesisTestGameMode::Tick(float DeltaSeconds)
+{
+	Interpolator::UpdateInterpolators(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
 }
 
 void AThesisTestGameMode::StartMatch()

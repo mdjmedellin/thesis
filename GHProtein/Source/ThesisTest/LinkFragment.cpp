@@ -11,6 +11,7 @@ ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCI
 	, m_maxTime(0.15f)
 	, m_minVals(FVector(0,-100, 0))
 	, m_maxVals(FVector(0,100,0))
+	, testInterpolator(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	//Create the static mesh component
@@ -36,6 +37,7 @@ void ALinkFragment::Tick(float DeltaSeconds)
 {
 	if (m_shake)
 	{
+		/*
 		float t = 0.f;
 		m_timeVal += DeltaSeconds;
 		if (m_timeVal > m_maxTime)
@@ -58,6 +60,8 @@ void ALinkFragment::Tick(float DeltaSeconds)
 		}
 
 		t /= m_maxTime;
+		*/
+		float t = testInterpolator->Poll().X;
 		m_prevEndTangent = m_minVals * (1.f - t) + m_maxVals * (t);
 
 		SplineMeshComponent->SetEndTangent(m_prevEndTangent);
@@ -66,6 +70,15 @@ void ALinkFragment::Tick(float DeltaSeconds)
 
 void ALinkFragment::ToggleShake()
 {
+	if (testInterpolator)
+	{
+		testInterpolator->TogglePlay();
+	}
+	else
+	{
+		testInterpolator = new Interpolator();
+		testInterpolator->ResetInterpolator(FVector::ZeroVector, FVector(1.f, 0.f, 0.f), 0.75f, true, true);
+	}
 	float randVal = FMath::SRand();
 	m_timeVal = randVal * m_maxTime;
 	m_shake = !m_shake;

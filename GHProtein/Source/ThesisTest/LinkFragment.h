@@ -25,6 +25,7 @@ private:
 	float m_maxTime;
 	FVector m_minVals;
 	FVector m_maxVals;
+	Interpolator* testInterpolator;
 
 public:
 	virtual void BeginPlay();

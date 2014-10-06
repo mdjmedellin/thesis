@@ -108,6 +108,47 @@ namespace EBridgeType
 	};
 }
 
+class Interpolator
+{
+public:
+	Interpolator();
+	~Interpolator();
+	void TogglePlay();
+	void Update(float deltaTime);
+	FVector Poll() const;
+	void ResetInterpolator(const FVector& start, const FVector& goal, float interpSpeed,
+		bool loop = false, bool startRandomlyWithinRange = false, int maxPlayCount = -1);
+
+	static void UpdateInterpolators(float deltaTime);
+
+private:
+	static void AddToListOfInterpolators(Interpolator* interpolatorToAdd);
+	static void RemoveInterpolatorFromList(Interpolator* interpolatorToRemove);
+
+public:
+
+private:
+	FVector m_originalGoal;
+	FVector m_originalStart;
+	FVector m_currentGoal;
+	FVector m_currentStart;
+	FVector m_current;
+
+	float m_interpSpeed;
+
+	bool m_play;
+	bool m_loop;
+	
+	int m_playCount;
+	int m_maxPlayCount;
+	int m_id;
+
+	bool m_isInList;
+
+	static int s_id;
+	static TArray<Interpolator*> s_interpolatorList;
+};
+
 /**
  * 
  */
