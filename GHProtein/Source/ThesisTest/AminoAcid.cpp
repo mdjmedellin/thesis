@@ -302,6 +302,7 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 	if (m_nextAminoAcid && m_linkFragment)
 	{
 		m_linkFragment->SetActorLocation(FVector::ZeroVector);
+		m_linkFragment->SetActorRotation(FRotator::ZeroRotator);
 		m_secondaryStructure = ESecondaryStructure::ssLoop;
 		UpdateLinkFragmentRenderProperties();
 

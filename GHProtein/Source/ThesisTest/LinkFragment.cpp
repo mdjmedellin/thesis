@@ -58,7 +58,7 @@ void ALinkFragment::Tick(float DeltaSeconds)
 		}
 
 		t /= m_maxTime;
-		m_prevEndTangent = m_minVals * (1.f - t) + m_maxTime * (t);
+		m_prevEndTangent = m_minVals * (1.f - t) + m_maxVals * (t);
 
 		SplineMeshComponent->SetEndTangent(m_prevEndTangent);
 	}
