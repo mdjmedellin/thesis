@@ -1,8 +1,7 @@
-
-
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "ThesisStaticLibrary.h"
 #include "Components/SplineMeshComponent.h"
 #include "LinkFragment.generated.h"
 
@@ -30,7 +29,7 @@ private:
 public:
 	virtual void BeginPlay();
 	void setColor(const FColor& linkColor);
-
+	void ChangeRenderType(ESecondaryStructure::Type linkType);
 	virtual void Tick(float DeltaSeconds) OVERRIDE;
 	void ToggleShake();
 	void Hide();

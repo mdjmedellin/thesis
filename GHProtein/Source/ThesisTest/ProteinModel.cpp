@@ -9,14 +9,20 @@
 namespace GHProtein
 {
 	ProteinModel::ProteinModel(UWorld* proteinWorld)
-		: m_minBounds3D(FVector(0.f, 0.f, 0.f))
-		, m_maxBounds3D(FVector(0.f, 0.f, 0.f))
+		: m_minBounds3D(FVector::ZeroVector)
+		, m_maxBounds3D(FVector::ZeroVector)
+		, m_centerOfBoundingBox(FVector::ZeroVector)
 		, m_headPtr(nullptr)
 		, m_headSecondaryStructure(nullptr)
 		, m_tailSecondaryStructure(nullptr)
 		, m_hydrogenBondLinkWidth(0.f)
 		, m_linkHeight(0.f)
 		, m_linkWidth(0.f)
+		, m_helixLinkWidth(0.f)
+		, m_betaStrandLinkWidth(0.f)
+		, m_normalColor(FColor::White)
+		, m_helixColor(FColor::White)
+		, m_betaStrandColor(FColor::White)
 		, m_world(proteinWorld)
 		, m_temperatureCelsius(37.f)						//we start the model with a temperature equal to a human's average body temperatures
 	{}
@@ -171,9 +177,9 @@ namespace GHProtein
 		m_centerOfBoundingBox = proteinModelCenterLocation;
 	}
 
-	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation
-		, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-		, float betaStrandLinkWidth, float hydrogenBondLinkWidth)
+	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation,
+		float linkWidth, float linkHeight, float distanceScale, const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+		float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth)
 	{
 		m_linkWidth = linkWidth;
 		m_linkHeight = linkHeight;
@@ -252,7 +258,7 @@ namespace GHProtein
 			while (currentAminoAcid)
 			{
 				currentAminoAcid->SpawnLinkParticleToNextAminoAcid(linkWidth, linkHeight);
-				currentAminoAcid->SetRenderProperties(helixColor, betaStrandColor, helixLinkWidth, betaStrandLinkWidth);
+				currentAminoAcid->SetRenderProperties(normalColor, helixColor, betaStrandColor, linkWidth, helixLinkWidth, betaStrandLinkWidth);
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 

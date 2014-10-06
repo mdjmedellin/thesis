@@ -49,6 +49,9 @@ private:
 		float m_distanceScale;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_normalColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		FColor m_helixColor;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)

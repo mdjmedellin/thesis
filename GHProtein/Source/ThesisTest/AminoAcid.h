@@ -24,6 +24,7 @@ private:
 	void ClearPreviousAminoAcidPtr();
 	void RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void TranslateLinkFragment(const FVector& deltaLocation);
+	void UpdateLinkFragmentRenderProperties();
 
 public:
 	virtual void BeginPlay();
@@ -45,7 +46,6 @@ public:
 	const Residue* GetResidueInformation() const;
 
 	void UpdateLinkToNextAminoAcid();
-	void UpdateHydrogenBonds(bool recurse = false);
 
 	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void Translate(const FVector& deltaLocation);
@@ -53,14 +53,13 @@ public:
 	void SetParentModel(GHProtein::ProteinModel* parentModel);
 	void SetResidueInformation(Residue* residueInformation);
 	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
-	void SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-		, float betaStrandLinkWidth);
+
+	void SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+		float normalWidth, float helixLinkWidth, float betaStrandLinkWidth);
 	void SetLinkFragmentColor(const FColor& fragmentColor);
 	void ResetLinkFragmentColorToDefault();
 
 	ESecondaryStructure::Type GetSecondaryStructure();
-
-	void UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth);
 
 	void SetAminoAcidSize(float aminoAcidSize);
 
@@ -68,7 +67,6 @@ public:
 	void AddHydrogenBond(HydrogenBond* newBond);
 
 	UClass* GetDetaultLinkFragmentClass();
-
 	ResidueInfo GetAminoAcidInfo() const;
 
 	UFUNCTION(BlueprintCallable, Category = Residue)
@@ -83,22 +81,23 @@ private:
 	AAminoAcid* m_previousAminoAcid;
 
 	UMaterialInstanceDynamic* m_dynamicMaterial;
-
-	float m_linkFragmentScalePerUnrealUnit;
-
-	UClass* DefaultLinkFragmentClass;
-
+	UClass* m_defaultLinkFragmentClass;
 	ALinkFragment* m_linkFragment;
+	Residue* m_residueInformation;
+	GHProtein::ProteinModel* m_model;
 
 	ESecondaryStructure::Type m_secondaryStructure;
+	FColor m_normalColor;
 	FColor m_helixColor;
 	FColor m_betaStrandColor;
-
-	Residue* m_residueInformation;
+	float m_normalWidth;
+	float m_helixWidth;
+	float m_betaStrandWidth;
+	float m_linkFragmentScalePerUnrealUnit;
 
 	TArray<HydrogenBond*> m_hydrogenBonds;
 
-	GHProtein::ProteinModel* m_model;
+	
 
 public:
 	

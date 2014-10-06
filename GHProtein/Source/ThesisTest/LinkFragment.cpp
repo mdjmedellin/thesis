@@ -75,3 +75,16 @@ void ALinkFragment::Hide()
 {
 	this->SetActorHiddenInGame(true);
 }
+
+void ALinkFragment::ChangeRenderType(ESecondaryStructure::Type linkType)
+{
+	switch (linkType)
+	{
+	case ESecondaryStructure::ssAlphaHelix:
+		break;
+	case ESecondaryStructure::ssStrand:
+		break;
+	default:
+		break;
+	}
+}

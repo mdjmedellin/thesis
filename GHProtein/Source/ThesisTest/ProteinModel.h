@@ -44,9 +44,11 @@ namespace GHProtein
 		/** Public utility methods go here */
 		bool AddResidue(Residue* insertedResidue);
 		void BuildProteinModel();
-		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation
-			, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor
-			, float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth);
+		
+		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation,
+			float linkWidth, float linkHeight, float distanceScale, const FColor& normalColor, const FColor& helixColor,
+			const FColor& betaStrandColor, float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth);
+
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void HighlightSecondaryStructure(AAminoAcid* residueMember);
 		Residue* GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue = nullptr);
@@ -67,30 +69,36 @@ namespace GHProtein
 
 	private:
 		/** private data members go here */
+		FVector m_minBounds3D;
+		FVector m_maxBounds3D;
+		FVector m_centerOfBoundingBox;
+
+		AAminoAcid* m_headPtr;
+		SecondaryStructure* m_headSecondaryStructure;
+		SecondaryStructure* m_tailSecondaryStructure;
+
+		float m_hydrogenBondLinkWidth;
+		float m_linkWidth;
+		float m_linkHeight;
+		float m_helixLinkWidth;
+		float m_betaStrandLinkWidth;
+
+		FColor m_normalColor;
+		FColor m_helixColor;
+		FColor m_betaStrandColor;
+
+		float m_temperatureCelsius;
+
+		UWorld* m_world;
+
 		TMap<int, ResidueContainer*> ResidueIDMap;
 		TArray<Residue*> m_residueVector;
 		TArray<ResidueContainer*> m_residueContainers;
-
-		SecondaryStructure* m_headSecondaryStructure;
-		SecondaryStructure* m_tailSecondaryStructure;
 
 		TArray<SecondaryStructure*> m_betaStrands;
 		TMap<SecondaryStructure*, BetaSheet*> m_strandToBetaSheetMap;
 
 		TArray<BetaSheet*> m_betaSheets;
 		TArray<HydrogenBond*> m_hydrogenBonds;
-
-		FVector m_minBounds3D;
-		FVector m_maxBounds3D;
-		FVector m_centerOfBoundingBox;
-		AAminoAcid* m_headPtr;
-
-		float m_hydrogenBondLinkWidth;
-		float m_linkWidth;
-		float m_linkHeight;
-
-		float m_temperatureCelsius;
-
-		UWorld* m_world;
 	};
 }

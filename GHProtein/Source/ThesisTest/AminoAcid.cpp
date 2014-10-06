@@ -10,12 +10,19 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
+	, m_dynamicMaterial(nullptr)
+	, m_defaultLinkFragmentClass(nullptr)
 	, m_linkFragment(nullptr)
-	, m_secondaryStructure(ESecondaryStructure::ssCount)
-	, m_helixColor(FColor::White)
-	, m_betaStrandColor(FColor::White)
 	, m_residueInformation(nullptr)
 	, m_model(nullptr)
+	, m_secondaryStructure(ESecondaryStructure::ssCount)
+	, m_normalColor(FColor::White)
+	, m_helixColor(FColor::White)
+	, m_betaStrandColor(FColor::White)
+	, m_normalWidth(0.f)
+	, m_helixWidth(0.f)
+	, m_betaStrandWidth(0.f)
+	, m_linkFragmentScalePerUnrealUnit(0.f)
 {
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
@@ -54,7 +61,7 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 
 		//spawn the link fragment
 		ALinkFragment* linkFragment = nullptr;
-		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), m_defaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
 		
 		//scale the fragment to the size specified to it
 		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
@@ -143,7 +150,7 @@ bool AAminoAcid::BondWithResidueExists(const AAminoAcid* residue) const
 
 UClass* AAminoAcid::GetDetaultLinkFragmentClass()
 {
-	return DefaultLinkFragmentClass;
+	return m_defaultLinkFragmentClass;
 }
 
 void AAminoAcid::GetTangent(FVector& out_vector)
@@ -277,11 +284,11 @@ void AAminoAcid::BeginPlay()
 {
 	if (m_linkBlueprint)
 	{
-		DefaultLinkFragmentClass = (UClass*)m_linkBlueprint->GeneratedClass;
+		m_defaultLinkFragmentClass = (UClass*)m_linkBlueprint->GeneratedClass;
 	}
 	else
 	{
-		DefaultLinkFragmentClass = nullptr;
+		m_defaultLinkFragmentClass = nullptr;
 	}
 
 	m_linkFragmentScalePerUnrealUnit = 1.0 / m_lengthOfLinkFragment;
@@ -294,6 +301,10 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 {
 	if (m_nextAminoAcid && m_linkFragment)
 	{
+		m_linkFragment->SetActorLocation(FVector::ZeroVector);
+		m_secondaryStructure = ESecondaryStructure::ssLoop;
+		UpdateLinkFragmentRenderProperties();
+
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
 		FVector endTangent = FVector::ZeroVector;
@@ -312,12 +323,6 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 void AAminoAcid::HideLinkFragment()
 {
 	m_linkFragment->Hide();
-}
-
-void AAminoAcid::UpdateHydrogenBonds(bool recurse)
-{
-	//TODO:
-	//DECIDE IF WE ARE GOING TO KEEP THIS FUNCTION
 }
 
 void AAminoAcid::Translate(const FVector& deltaLocation)
@@ -408,13 +413,18 @@ ESecondaryStructure::Type AAminoAcid::GetSecondaryStructure()
 	return m_secondaryStructure;
 }
 
-void AAminoAcid::SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-	, float betaStrandLinkWidth)
+void AAminoAcid::SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+	float normalWidth, float helixLinkWidth, float betaStrandLinkWidth)
 {
+	m_normalColor = normalColor;
 	m_helixColor = helixColor;
 	m_betaStrandColor = betaStrandColor;
 
-	UpdateLinkFragmentRenderProperties(helixLinkWidth, betaStrandLinkWidth);
+	m_normalWidth = normalWidth;
+	m_helixWidth = helixLinkWidth;
+	m_betaStrandWidth = betaStrandLinkWidth;
+
+	UpdateLinkFragmentRenderProperties();
 }
 
 void AAminoAcid::SetLinkFragmentColor(const FColor& fragmentColor)
@@ -441,7 +451,7 @@ void AAminoAcid::ResetLinkFragmentColorToDefault()
 	}
 }
 
-void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth)
+void AAminoAcid::UpdateLinkFragmentRenderProperties()
 {
 	if (m_linkFragment)
 	{
@@ -453,13 +463,15 @@ void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float 
 		{
 		case ESecondaryStructure::ssAlphaHelix:
 			renderColor = m_helixColor;
-			scale.Y = helixLinkWidth / size.Y;
+			scale.Y = m_helixWidth / size.Y;
 			break;
 		case ESecondaryStructure::ssStrand:
 			renderColor = m_betaStrandColor;
-			scale.Y = betaStrandLinkWidth / size.Y;
+			scale.Y = m_betaStrandWidth / size.Y;
 			break;
 		default:
+			renderColor = m_normalColor;
+			scale.Y = m_normalWidth / size.Y;
 			break;
 		}
 		

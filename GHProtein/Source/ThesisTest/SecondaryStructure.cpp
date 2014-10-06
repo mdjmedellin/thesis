@@ -383,7 +383,7 @@ void SecondaryStructure::BreakStructure()
 		{
 			currentResidue = residues[index];
 			currentResidue->UpdateLinkToNextAminoAcid();
-			currentResidue->HideLinkFragment();
+			//currentResidue->HideLinkFragment();
 		}
 	}
 
@@ -558,10 +558,15 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		}
 	}
 
-	//move the firat and last resiude to their projected location
-	actorLocation = residues[0]->GetActorLocation();
+	float shortestDistance = sqrt(shortestDistanceSquared);
+	float longestDistance = sqrt(longestDistanceSquared);
+
+	//calculate the end and start points of the line we use to visualize the best fit line
+	
 	FVector startLocation = FVector::ZeroVector;
 	FVector endLocation = FVector::ZeroVector;
+
+	actorLocation = residues[0]->GetActorLocation();
 	projectedLocation = actorLocation;
 	for (int j = 0; j < 3; ++j)
 	{
@@ -571,7 +576,6 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		}
 	}
 	startLocation = projectedLocation;
-	//residues[0]->SetActorLocation(projectedLocation);
 
 	actorLocation = residues.Last()->GetActorLocation();
 	projectedLocation = actorLocation;
@@ -583,8 +587,62 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		}
 	}
 	endLocation = projectedLocation;
-	//residues.Last()->SetActorLocation(projectedLocation);
 
+	FVector startToEnd = endLocation - startLocation;
+	float distanceStartToEnd = FVector::Dist(endLocation, startLocation);
+	startToEnd.Normalize();
+
+	FVector endToStart = startLocation - endLocation;
+	endToStart.Normalize();
+
+	//randomly move all of the residues that conform the alpha helix
+	float  distanceBetweenIncrements = distanceStartToEnd / (num - 1);
+	FVector prevLocation = startLocation;
+	for (int i = 1; i < num-1; ++i)
+	{
+		prevLocation = startLocation + (i * distanceBetweenIncrements * startToEnd);
+		residues[i]->SetActorLocation(prevLocation);
+	}
+
+	//apply the gram schmidtt process for getting a perpendicular line
+	//start
+
+	//start to end is our direction
+	//get index of min
+	float minMagnitude = startToEnd.X;
+	int indexOfMin = 0;
+
+	for (int i = 1; i < 3; ++i)
+	{
+		if (abs(minMagnitude) > abs(startToEnd[i]))
+		{
+			minMagnitude = startToEnd[i];
+			indexOfMin = i;
+		}
+	}
+
+	//create a vector where the min index is set to 1 and the rest to 0
+	FVector baseVector = FVector::ZeroVector;
+	baseVector[indexOfMin] = 1.f;
+
+	//now project the new base vector onto the line we have
+	//since we know that startToEnd is a normalized vector
+	//we do not have to divide in our projection equation
+	FVector projectedVector = FVector::DotProduct(baseVector, startToEnd) * startToEnd;
+
+	//subtract the portion that was projected from the base vector
+	baseVector -= projectedVector;
+
+	//cross product should give us the other basis vector
+	FVector baseVector2 = FVector::CrossProduct(baseVector, startToEnd);
+
+	//now we should have three vectors perpendicular to each other
+	float testDot = FVector::DotProduct(baseVector, startToEnd);
+	testDot = FVector::DotProduct(baseVector2, startToEnd);
+	testDot = FVector::DotProduct(baseVector, baseVector2);
+
+	/*
+	//render to see if they are perpendicular to each other
 	DrawDebugLine(
 		m_parentModel->GetWorld(),
 		startLocation,
@@ -593,6 +651,40 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		true, -1, 0,
 		12
 		);
+
+	endLocation = startLocation + 120 * baseVector;
+	DrawDebugLine(
+		m_parentModel->GetWorld(),
+		startLocation,
+		endLocation,
+		FColor(0, 255, 0),
+		true, -1, 0,
+		12
+		);
+
+	endLocation = startLocation + 120 * baseVector2;
+	DrawDebugLine(
+		m_parentModel->GetWorld(),
+		startLocation,
+		endLocation,
+		FColor(0, 0, 255),
+		true, -1, 0,
+		12
+		);
+	*/
+	//end
+
+	//use sin function to shake the residues away from each other
+	for (int i = 1; i < num-1; ++i)
+	{
+		float rads = (PI * 0.5 * i) + (.5 * PI);
+		float sinVal = sinf(rads);
+
+		actorLocation = residues[i]->GetActorLocation() + sinVal * longestDistance * baseVector;
+		residues[i]->SetActorLocation(actorLocation);
+
+		//see how much we should rotate the direction of the vector
+	}
 }
 
 //this does not work

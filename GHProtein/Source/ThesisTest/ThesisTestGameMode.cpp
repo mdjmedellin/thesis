@@ -11,6 +11,7 @@
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
+	, m_proteinModel(nullptr)
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
@@ -19,6 +20,7 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_distanceScale(1.f)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
+	, m_normalColor(FColor::White)
 	, m_helixLinkWidth(100.f)
 	, m_betaStrandLinkWidth(100.f)
 	, m_hydrogenBondLinkWidth(100.f)
@@ -121,9 +123,9 @@ void AThesisTestGameMode::StartMatch()
 		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
 
 		UWorld* const World = GetWorld();
-		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
-			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth
-			, m_hydrogenBondLinkWidth);
+		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation,
+			m_linkWidth, m_linkHeight, m_distanceScale, m_normalColor, m_helixColor, m_betaStrandColor,
+			m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth);
 	}
 }
 
