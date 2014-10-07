@@ -471,6 +471,11 @@ void ACameraCharacter::ToggleShake()
 	m_proteinModel->ToggleShake();
 }
 
+void ACameraCharacter::ToggleBreaking()
+{
+	m_proteinModel->ToggleBreaking();
+}
+
 void ACameraCharacter::HideHydrogenBonds()
 {
 	m_proteinModel->HideHydrogenBonds();

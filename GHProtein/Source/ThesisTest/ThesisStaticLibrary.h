@@ -5,6 +5,19 @@
 #include "Object.h"
 #include "ThesisStaticLibrary.generated.h"
 
+UENUM()
+namespace ELinkType
+{
+	enum Type
+	{
+		ELink_Helix,
+		ELink_BetaStrand,
+		ELink_HydrogenBond,
+		ELink_Backbone,
+		ELink_None
+	};
+}
+
 // a limited set of known atoms.
 UENUM()
 namespace EAtomType
@@ -116,6 +129,7 @@ public:
 	void TogglePlay();
 	void Update(float deltaTime);
 	FVector Poll() const;
+	bool IsPlaying() const;
 	void ResetInterpolator(const FVector& start, const FVector& goal, float interpSpeed,
 		bool loop = false, bool startRandomlyWithinRange = false, int maxPlayCount = -1);
 
@@ -156,6 +170,8 @@ UCLASS()
 class UThesisStaticLibrary : public UObject
 {
 	GENERATED_UCLASS_BODY()
+
+	static ELinkType::Type GetLinkTypeFromSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
 
 	static FORCEINLINE bool Trace(AActor* ActorToIgnore,
 									const FVector& Start,

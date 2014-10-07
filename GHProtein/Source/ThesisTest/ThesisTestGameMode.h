@@ -59,6 +59,9 @@ private:
 		FColor m_betaStrandColor;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_hydrogenBondColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		float m_betaStrandLinkWidth;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)

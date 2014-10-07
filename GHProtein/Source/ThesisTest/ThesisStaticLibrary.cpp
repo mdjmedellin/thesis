@@ -34,15 +34,13 @@ void Interpolator::Update(float deltaTime)
 {
 	if (m_play)
 	{
-		m_current = FMath::VInterpConstantTo(m_current, m_currentGoal, deltaTime, m_interpSpeed);
-
 		//check if we have completed one iteration
 		if (m_current == m_currentGoal)
 		{
-			++m_play;
+			++m_playCount;
 
 			//check if we should continue playing
-			if (m_playCount > m_maxPlayCount && m_maxPlayCount > 0)
+			if (m_playCount >= m_maxPlayCount && m_maxPlayCount > 0)
 			{
 				m_play = false;
 				return;
@@ -59,12 +57,19 @@ void Interpolator::Update(float deltaTime)
 				m_current = m_currentStart;
 			}
 		}
+
+		m_current = FMath::VInterpConstantTo(m_current, m_currentGoal, deltaTime, m_interpSpeed);
 	}
 }
 
 FVector Interpolator::Poll() const
 {
 	return m_current;
+}
+
+bool Interpolator::IsPlaying() const
+{
+	return m_play;
 }
 
 void Interpolator::ResetInterpolator(const FVector& start, const FVector& goal, float interpSpeed,
@@ -92,6 +97,10 @@ void Interpolator::ResetInterpolator(const FVector& start, const FVector& goal, 
 	{
 		float randVal = FMath::SRand();
 		m_current = m_currentStart * (1.f - randVal) + m_currentGoal * randVal;
+	}
+	else
+	{
+		m_current = m_currentStart;
 	}
 
 	m_play = true;
@@ -138,3 +147,18 @@ void Interpolator::RemoveInterpolatorFromList(Interpolator* interpolatorToRemove
 UThesisStaticLibrary::UThesisStaticLibrary(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 {}
+
+ELinkType::Type UThesisStaticLibrary::GetLinkTypeFromSecondaryStructure(ESecondaryStructure::Type secondaryStructureType)
+{
+	switch (secondaryStructureType)
+	{
+	case ESecondaryStructure::ssAlphaHelix:
+		return ELinkType::ELink_Helix;
+
+	case ESecondaryStructure::ssStrand:
+		return ELinkType::ELink_BetaStrand;
+	
+	default:
+		return ELinkType::ELink_Backbone;
+	}
+}

@@ -14,24 +14,14 @@ namespace GHProtein
 class HydrogenBond
 {
 public:
-	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment,
-		float linkHeight, float linkWidth)
+	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment)
 	: m_linkFragment(linkFragment)
 	, m_relativeRotation(FRotator::ZeroRotator)
-	, m_linkHeight(linkHeight)
-	, m_linkWidth(linkWidth)
 	{
 		m_bondResidues[0] = residue1;
 		m_bondResidues[1] = residue2;
 
-		//scale the link fragment to the appropriate size
-		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
-		FVector2D scale(1.f, 1.f);
-		scale.X = m_linkWidth / size.X;
-		scale.Y = m_linkHeight / size.Y;
-
-		linkFragment->SplineMeshComponent->SetStartScale(scale);
-		linkFragment->SplineMeshComponent->SetEndScale(scale);
+		m_linkFragment->ChangeLinkType(ELinkType::ELink_HydrogenBond);
 	};
 
 	bool ContainsSpecifiedResidue(const AAminoAcid* residue)
@@ -52,6 +42,7 @@ public:
 		m_linkFragment->Hide();
 	}
 
+	void ToggleBreaking();
 	void ToggleShake();
 	void Translate(const FVector& displacement);
 	void RotateAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
@@ -60,8 +51,6 @@ private:
 	FRotator m_relativeRotation;
 	AAminoAcid* m_bondResidues[2];
 	ALinkFragment* m_linkFragment;
-	float m_linkWidth;
-	float m_linkHeight;
 };
 
 class BetaSheet
@@ -86,8 +75,10 @@ public:
 
 	void SetNextStructurePtr(SecondaryStructure* nextStructure);
 	void AppendAminoAcid(AAminoAcid* residue);
+	/*
 	void SetSelected();
 	void Deselect();
+	*/
 	SecondaryStructure* GetNextStructurePtr();
 	AAminoAcid* GetHeadResidue();
 	AAminoAcid* GetEndResidue();
@@ -103,8 +94,10 @@ public:
 
 private:
 	void AddBridgeLabel(uint32 bridgeLabel);
+	/*
 	void ChangeRibbonColor(const FColor& ribbonColor);
 	void ResetRibbonColor();
+	*/
 	void TestLineFitting(TArray<AAminoAcid*>& residues);
 	void TestLineFitting2(TArray<AAminoAcid*>& residues);
 

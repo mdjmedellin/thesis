@@ -29,7 +29,7 @@ private:
 public:
 	virtual void BeginPlay();
 
-	bool SpawnLinkParticleToNextAminoAcid(float width, float height);
+	bool SpawnLinkParticleToNextAminoAcid();
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
@@ -55,9 +55,12 @@ public:
 	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
 
 	void SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
-		float normalWidth, float helixLinkWidth, float betaStrandLinkWidth);
+		const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, 
+		float hydrogenBondLinkWidth, float linkHeight);
+	/*
 	void SetLinkFragmentColor(const FColor& fragmentColor);
 	void ResetLinkFragmentColorToDefault();
+	*/
 
 	ESecondaryStructure::Type GetSecondaryStructure();
 
@@ -90,17 +93,17 @@ private:
 	FColor m_normalColor;
 	FColor m_helixColor;
 	FColor m_betaStrandColor;
+	FColor m_hydrogenBondColor;
+	float m_normalHeight;
 	float m_normalWidth;
 	float m_helixWidth;
 	float m_betaStrandWidth;
+	float m_hydrogenBondLinkWidth;
 	float m_linkFragmentScalePerUnrealUnit;
 
 	TArray<HydrogenBond*> m_hydrogenBonds;
 
-	
-
 public:
-	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		float m_lengthOfLinkFragment;
 

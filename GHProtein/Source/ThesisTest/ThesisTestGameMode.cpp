@@ -22,6 +22,7 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
 	, m_normalColor(FColor::White)
+	, m_hydrogenBondColor(FColor::White)
 	, m_helixLinkWidth(100.f)
 	, m_betaStrandLinkWidth(100.f)
 	, m_hydrogenBondLinkWidth(100.f)
@@ -129,10 +130,13 @@ void AThesisTestGameMode::StartMatch()
 	{
 		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
 
+		//set the render properties for the protein model
+		m_proteinModel->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+			m_linkWidth, m_linkHeight, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_aminoAcidSize);
+
 		UWorld* const World = GetWorld();
-		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation,
-			m_linkWidth, m_linkHeight, m_distanceScale, m_normalColor, m_helixColor, m_betaStrandColor,
-			m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth);
+		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_proteinModelCenterLocation,
+			m_distanceScale);
 	}
 }
 

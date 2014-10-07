@@ -23,6 +23,7 @@ namespace GHProtein
 		, m_normalColor(FColor::White)
 		, m_helixColor(FColor::White)
 		, m_betaStrandColor(FColor::White)
+		, m_hydrogenBondColor(FColor::White)
 		, m_world(proteinWorld)
 		, m_temperatureCelsius(37.f)						//we start the model with a temperature equal to a human's average body temperatures
 	{}
@@ -177,15 +178,29 @@ namespace GHProtein
 		m_centerOfBoundingBox = proteinModelCenterLocation;
 	}
 
-	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation,
-		float linkWidth, float linkHeight, float distanceScale, const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
-		float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth)
+	void ProteinModel::UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+		const FColor& hydrogenBondColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
+		float hydrogenBondLinkWidth, float aminoAcidSize)
 	{
-		m_linkWidth = linkWidth;
-		m_linkHeight = linkHeight;
+		m_normalColor = normalColor;
+		m_helixColor = helixColor;
+		m_betaStrandColor = betaStrandColor;
+		m_hydrogenBondColor = hydrogenBondColor;
+
+		m_linkWidth = normalLinkWidth;
+		m_helixLinkWidth = helixLinkWidth;
+		m_betaStrandLinkWidth = betaStrandLinkWidth;
 		m_hydrogenBondLinkWidth = hydrogenBondLinkWidth;
 
-		if (!world || !blueprint || aminoAcidSize <= 0.f)
+		m_linkHeight = normalLinkHeight;
+
+		m_aminoAcidSize = aminoAcidSize;
+	}
+
+	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& proteinModelCenterLocation,
+		float distanceScale)
+	{
+		if (!world || !blueprint || m_aminoAcidSize <= 0.f)
 		{
 			//we need to have a valid world and blueprint
 			//we can only spawn amino acids with a positive non-zero size
@@ -201,7 +216,7 @@ namespace GHProtein
 			ESecondaryStructure::Type currentSecondaryStructureType = ESecondaryStructure::ssCount;
 			SecondaryStructure* currentSecondaryStructure = nullptr;
 
-			//iterate over all of the amino acids and spawn an actor for each one of them
+			//iterate over all of the residues and spawn an amino acids actor for each one of them
 			for (int residueIndex = 0; residueIndex < m_residueVector.Num(); ++residueIndex)
 			{
 				currentResidue = m_residueVector[residueIndex];
@@ -209,7 +224,7 @@ namespace GHProtein
 				aminoAcidLocation *= distanceScale; // this is done in order to space out the proteins
 
 				currentAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, blueprint, aminoAcidLocation, originRotation);
-				currentAminoAcid->SetAminoAcidSize(aminoAcidSize);
+				currentAminoAcid->SetAminoAcidSize(m_aminoAcidSize);
 				currentAminoAcid->SetResidueInformation(currentResidue);
 				currentAminoAcid->SetParentModel(this);
 
@@ -257,8 +272,10 @@ namespace GHProtein
 			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
-				currentAminoAcid->SpawnLinkParticleToNextAminoAcid(linkWidth, linkHeight);
-				currentAminoAcid->SetRenderProperties(normalColor, helixColor, betaStrandColor, linkWidth, helixLinkWidth, betaStrandLinkWidth);
+				currentAminoAcid->SetRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+					m_linkWidth, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
+
+				currentAminoAcid->SpawnLinkParticleToNextAminoAcid();
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 
@@ -290,7 +307,11 @@ namespace GHProtein
 		linkChain->SplineMeshComponent->SetStartPosition(startLocation);
 		linkChain->SplineMeshComponent->SetEndPosition(endLocation);
 
-		HydrogenBond* newHydrogenBond = new HydrogenBond(residue1, residue2, linkChain, m_linkHeight, m_hydrogenBondLinkWidth);
+		//set render properties for the link
+		linkChain->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor, m_linkWidth,
+			m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
+
+		HydrogenBond* newHydrogenBond = new HydrogenBond(residue1, residue2, linkChain);
 
 		//should probably add the hydrogen bond into the array of current hydrogen bonds
 		m_hydrogenBonds.Add(newHydrogenBond);
@@ -307,7 +328,7 @@ namespace GHProtein
 		{
 			if (currentSecondaryStructure->ContainsSpecifiedResidue(residueMember))
 			{
-				currentSecondaryStructure->SetSelected();
+				//currentSecondaryStructure->SetSelected();
 				break;
 			}
 		}
@@ -617,6 +638,14 @@ namespace GHProtein
 		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
 		{
 			m_hydrogenBonds[i]->ToggleShake();
+		}
+	}
+
+	void ProteinModel::ToggleBreaking()
+	{
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->ToggleBreaking();
 		}
 	}
 

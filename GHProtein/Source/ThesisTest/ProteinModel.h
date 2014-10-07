@@ -45,9 +45,11 @@ namespace GHProtein
 		bool AddResidue(Residue* insertedResidue);
 		void BuildProteinModel();
 		
-		void SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& aminoAcidCenterLocation,
-			float linkWidth, float linkHeight, float distanceScale, const FColor& normalColor, const FColor& helixColor,
-			const FColor& betaStrandColor, float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth);
+		void UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+			const FColor& hydrogenColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
+			float hydrogenBondLinkWidth, float aminoAcidSize);
+		
+		void SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& aminoAcidCenterLocation, float distanceScale);
 
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void HighlightSecondaryStructure(AAminoAcid* residueMember);
@@ -58,6 +60,7 @@ namespace GHProtein
 		FVector GetCenterLocation() const;
 		HydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
 		void ToggleShake();
+		void ToggleBreaking();
 		void HideHydrogenBonds();
 		void BreakFirstSpiral();
 		UWorld* GetWorld();
@@ -86,8 +89,11 @@ namespace GHProtein
 		FColor m_normalColor;
 		FColor m_helixColor;
 		FColor m_betaStrandColor;
+		FColor m_hydrogenBondColor;
 
 		float m_temperatureCelsius;
+
+		float m_aminoAcidSize;
 
 		UWorld* m_world;
 

@@ -19,9 +19,12 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_normalColor(FColor::White)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
+	, m_hydrogenBondColor(FColor::White)
+	, m_normalHeight(0.f)
 	, m_normalWidth(0.f)
 	, m_helixWidth(0.f)
 	, m_betaStrandWidth(0.f)
+	, m_hydrogenBondLinkWidth(0.f)
 	, m_linkFragmentScalePerUnrealUnit(0.f)
 {
 	//Create the root SphereComponent to handle collision
@@ -43,7 +46,7 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	TextRenderComponent->AttachTo(RootComponent);
 }
 
-bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
+bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 {
 	//we only spawn the link particles if we have an amino acid to connect to
 	//and we have not spawned them before
@@ -62,62 +65,14 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
 		//spawn the link fragment
 		ALinkFragment* linkFragment = nullptr;
 		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), m_defaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
-		
-		//scale the fragment to the size specified to it
-		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
-		FVector2D scale(1.f, 1.f);
-		scale.X = width / size.X;
-		scale.Y = height / size.Y;
+		//set the render properties of this link fragment
+		linkFragment->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+			m_normalWidth, m_helixWidth, m_betaStrandWidth, m_hydrogenBondLinkWidth, m_normalHeight);
 
-		linkFragment->SplineMeshComponent->SetStartScale(scale);
-		linkFragment->SplineMeshComponent->SetEndScale(scale);
+		linkFragment->ChangeLinkType(m_residueInformation->GetSecondaryStructure());
 
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
-
-		/*
-		m_model->AddHydrogenBond(m_residueInformation->GetNumber(), )
-		BridgePartner partner = m_residueInformation->GetBetaPartner(0);
-
-		scale *= .5f;
-
-		if (partner.residue)
-		{
-			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
-
-			if (betaPartner)
-			{
-				linkEndLocation = betaPartner->GetActorLocation();
-
-				m_betaPartnerResidue1 = betaPartner;
-				m_betaPartner1 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
-
-				m_betaPartner1->SplineMeshComponent->SetStartScale(scale);
-				m_betaPartner1->SplineMeshComponent->SetEndScale(scale);
-				m_betaPartner1->SplineMeshComponent->SetStartPosition(linkStartLocation);
-				m_betaPartner1->SplineMeshComponent->SetEndPosition(linkEndLocation);
-			}
-		}
-
-		partner = m_residueInformation->GetBetaPartner(1);
-		if (partner.residue)
-		{
-			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
-
-			if (betaPartner)
-			{
-				linkEndLocation = betaPartner->GetActorLocation();
-
-				m_betaPartnerResidue2 = betaPartner;
-				m_betaPartner2 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
-
-				m_betaPartner2->SplineMeshComponent->SetStartScale(scale);
-				m_betaPartner2->SplineMeshComponent->SetEndScale(scale);
-				m_betaPartner2->SplineMeshComponent->SetStartPosition(linkStartLocation);
-				m_betaPartner2->SplineMeshComponent->SetEndPosition(linkEndLocation);
-			}
-		}
-		*/
 
 		return true;
 	}
@@ -415,19 +370,25 @@ ESecondaryStructure::Type AAminoAcid::GetSecondaryStructure()
 }
 
 void AAminoAcid::SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
-	float normalWidth, float helixLinkWidth, float betaStrandLinkWidth)
+	const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth,
+	float normalLinkHeight)
 {
 	m_normalColor = normalColor;
 	m_helixColor = helixColor;
 	m_betaStrandColor = betaStrandColor;
+	m_hydrogenBondColor = hydrogenBondColor;
 
 	m_normalWidth = normalWidth;
 	m_helixWidth = helixLinkWidth;
 	m_betaStrandWidth = betaStrandLinkWidth;
+	m_hydrogenBondLinkWidth = hydrogenBondLinkWidth;
+
+	m_normalHeight = normalLinkHeight;
 
 	UpdateLinkFragmentRenderProperties();
 }
 
+/*
 void AAminoAcid::SetLinkFragmentColor(const FColor& fragmentColor)
 {
 	if (m_linkFragment)
@@ -451,34 +412,15 @@ void AAminoAcid::ResetLinkFragmentColorToDefault()
 		break;
 	}
 }
+*/
 
 void AAminoAcid::UpdateLinkFragmentRenderProperties()
 {
 	if (m_linkFragment)
 	{
-		FVector size = m_linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
-		FVector2D scale = m_linkFragment->SplineMeshComponent->GetStartScale();
-		FColor renderColor = FColor::White;
-
-		switch (m_secondaryStructure)
-		{
-		case ESecondaryStructure::ssAlphaHelix:
-			renderColor = m_helixColor;
-			scale.Y = m_helixWidth / size.Y;
-			break;
-		case ESecondaryStructure::ssStrand:
-			renderColor = m_betaStrandColor;
-			scale.Y = m_betaStrandWidth / size.Y;
-			break;
-		default:
-			renderColor = m_normalColor;
-			scale.Y = m_normalWidth / size.Y;
-			break;
-		}
-		
-		m_linkFragment->SplineMeshComponent->SetStartScale(scale);
-		m_linkFragment->SplineMeshComponent->SetEndScale(scale);
-		m_linkFragment->setColor(renderColor);
+		m_linkFragment->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor,
+			m_hydrogenBondColor, m_normalWidth, m_helixWidth, m_betaStrandWidth, m_hydrogenBondLinkWidth,
+			m_normalHeight);
 	}
 }
 

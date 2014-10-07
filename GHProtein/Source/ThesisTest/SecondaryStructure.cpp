@@ -44,6 +44,11 @@ void HydrogenBond::ToggleShake()
 {
 	m_linkFragment->ToggleShake();
 }
+
+void HydrogenBond::ToggleBreaking()
+{
+	m_linkFragment->ToggleBreaking();
+}
 //============================================================
 
 //======================BetaSheet===========================
@@ -130,6 +135,7 @@ SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStruct
 SecondaryStructure::~SecondaryStructure()
 {}
 
+/*
 void SecondaryStructure::SetSelected()
 {
 	if (s_selectedStructure)
@@ -142,6 +148,7 @@ void SecondaryStructure::SetSelected()
 	//perform other selected operations here, such as changing colors of the materials
 	ChangeRibbonColor(FColor::Red);
 }
+*/
 
 AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 {
@@ -164,6 +171,7 @@ AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	return foundResidue;
 }
 
+/*
 void SecondaryStructure::Deselect()
 {
 	if (this == s_selectedStructure)
@@ -171,6 +179,7 @@ void SecondaryStructure::Deselect()
 		ResetRibbonColor();
 	}
 }
+
 
 void SecondaryStructure::ResetRibbonColor()
 {
@@ -183,6 +192,7 @@ void SecondaryStructure::ResetRibbonColor()
 	}
 }
 
+
 void SecondaryStructure::ChangeRibbonColor(const FColor& ribbonColor)
 {
 	//iterate over all of the amino acids on this structure and set the color to the ribbon color
@@ -193,7 +203,7 @@ void SecondaryStructure::ChangeRibbonColor(const FColor& ribbonColor)
 		currentResidue->SetLinkFragmentColor(ribbonColor);
 	}
 }
-
+*/
 void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure)
 {
 	//check if we alreay have a vaird ptr to the next secondary structure

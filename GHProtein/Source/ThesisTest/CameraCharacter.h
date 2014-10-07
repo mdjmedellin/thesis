@@ -118,6 +118,9 @@ public:
 		void ToggleShake();
 
 	UFUNCTION(exec)
+		void ToggleBreaking();
+
+	UFUNCTION(exec)
 		void HideHydrogenBonds();
 
 	UFUNCTION(exec)
