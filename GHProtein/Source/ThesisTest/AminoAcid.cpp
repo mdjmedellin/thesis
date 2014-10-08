@@ -26,7 +26,11 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_betaStrandWidth(0.f)
 	, m_hydrogenBondLinkWidth(0.f)
 	, m_linkFragmentScalePerUnrealUnit(0.f)
+	, m_locationToKeepTrackOf(FVector::ZeroVector)
+	, m_locationInterpolator(Interpolator())
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
 
@@ -44,6 +48,14 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 
 	//attach the text render component to the root
 	TextRenderComponent->AttachTo(RootComponent);
+}
+
+void AAminoAcid::Tick(float DeltaSeconds)
+{
+	if (m_locationInterpolator.IsPlaying())
+	{
+		MoveTo(m_locationInterpolator.Poll());
+	}
 }
 
 bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
@@ -284,8 +296,10 @@ void AAminoAcid::HideLinkFragment()
 void AAminoAcid::Translate(const FVector& deltaLocation)
 {
 	SetActorLocation(GetActorLocation() + deltaLocation);
+	TranslateLinkFragment(deltaLocation);
+	m_locationToKeepTrackOf += deltaLocation;
 
-	AAminoAcid* tempResidue = nullptr;
+	//AAminoAcid* tempResidue = nullptr;
 
 	//update the chains of the amino acids
 	/*
@@ -305,13 +319,15 @@ void AAminoAcid::Translate(const FVector& deltaLocation)
 	//update the cahin handled by this amino acid
 	UpdateLinkToNextAminoAcid();
 	*/
-	TranslateLinkFragment(deltaLocation);
+	//TranslateLinkFragment(deltaLocation);
 
+	/*
 	//update the chain handled by the next amino acid
 	if (m_nextAminoAcid)
 	{
 		//m_nextAminoAcid->UpdateLinkToNextAminoAcid();
 	}
+	*/
 }
 
 void AAminoAcid::TranslateLinkFragment(const FVector& deltaLocation)
@@ -329,6 +345,10 @@ void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotati
 	distanceFromRotationPoint = rotationMatrix.TransformVector(distanceFromRotationPoint);
 
 	SetActorLocation(distanceFromRotationPoint + rotationPoint);
+
+	distanceFromRotationPoint = m_locationToKeepTrackOf - rotationPoint;
+	distanceFromRotationPoint = rotationMatrix.TransformVector(distanceFromRotationPoint);
+	m_locationToKeepTrackOf = distanceFromRotationPoint + rotationPoint;
 
 	//if this amino acid has a link fragment then we rotate it also
 	RotateLinkFragmentAboutSpecifiedPoint(rotationMatrix, rotationPoint);
@@ -351,6 +371,7 @@ void AAminoAcid::RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& ro
 		m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
 	}
 }
+
 void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
 {
 	if (secondaryStructure != ESecondaryStructure::ssAlphaHelix
@@ -454,4 +475,34 @@ void AAminoAcid::SetAminoAcidType(TEnumAsByte<EResidueType::Type> aminoAcidType)
 	}
 
 	m_residueInformation->SetType(aminoAcidType);
+}
+
+void AAminoAcid::KeepTrackOfLocation(const FVector& locationToKeepTrackOf)
+{
+	m_locationToKeepTrackOf = locationToKeepTrackOf;
+}
+
+void AAminoAcid::MoveTo(const FVector& finalLocation, bool interpolate)
+{
+	if (interpolate)
+	{
+		m_locationInterpolator.ResetInterpolator(GetActorLocation(), finalLocation, 1.f, false, false, 1);
+	}
+	else
+	{
+		SetActorLocation(finalLocation);
+		
+		//updates the link fragments to the amino acids
+		UpdateLinkToNextAminoAcid();
+		if (m_previousAminoAcid)
+		{
+			m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+		}
+
+		//update the hydrogen bonds associated with this residue
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->ChangeLocationOfAssociatedEnd(this, finalLocation);
+		}
+	}
 }

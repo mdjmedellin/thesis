@@ -293,13 +293,13 @@ namespace GHProtein
 		}
 	}
 
-	HydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2)
+	HydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue)
 	{
 		//Get the size of the hydrogen bond link fragment from the game mode
-		FVector startLocation = residue1->GetActorLocation();
-		FVector endLocation = residue2->GetActorLocation();
-		UWorld* world = residue1->GetWorld();
-		UClass* linkFragmentClass = residue1->GetDetaultLinkFragmentClass();
+		FVector startLocation = startResidue->GetActorLocation();
+		FVector endLocation = endResidue->GetActorLocation();
+		UWorld* world = startResidue->GetWorld();
+		UClass* linkFragmentClass = startResidue->GetDetaultLinkFragmentClass();
 
 		ALinkFragment* linkChain = UThesisStaticLibrary::SpawnBP<ALinkFragment>(world, linkFragmentClass,
 			FVector::ZeroVector, FRotator::ZeroRotator);
@@ -311,10 +311,13 @@ namespace GHProtein
 		linkChain->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor, m_linkWidth,
 			m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
 
-		HydrogenBond* newHydrogenBond = new HydrogenBond(residue1, residue2, linkChain);
+		HydrogenBond* newHydrogenBond = new HydrogenBond(startResidue, endResidue, linkChain);
 
 		//should probably add the hydrogen bond into the array of current hydrogen bonds
 		m_hydrogenBonds.Add(newHydrogenBond);
+
+		startResidue->AddHydrogenBond(newHydrogenBond);
+		endResidue->AddHydrogenBond(newHydrogenBond);
 
 		return newHydrogenBond;
 	};

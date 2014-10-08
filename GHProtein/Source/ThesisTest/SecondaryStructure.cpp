@@ -49,6 +49,24 @@ void HydrogenBond::ToggleBreaking()
 {
 	m_linkFragment->ToggleBreaking();
 }
+
+void HydrogenBond::ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const FVector& newLocation)
+{
+	if (aminoAcidEnd == m_bondResidues[0])
+	{
+		//the residue is the starting residue
+		//m_linkFragment->SplineMeshComponent->SetStartPosition(newLocation);
+		FVector transformedLocation = m_linkFragment->SplineMeshComponent->GetComponentTransform().InverseSafe().TransformPosition(newLocation);
+		m_linkFragment->SplineMeshComponent->SetStartPosition(transformedLocation);
+	}
+	else if (aminoAcidEnd == m_bondResidues[1])
+	{
+		//the residue is the end
+		//m_linkFragment->SplineMeshComponent->SetEndPosition(newLocation);
+		FVector transformedLocation = m_linkFragment->SplineMeshComponent->GetComponentTransform().InverseSafe().TransformPosition(newLocation);
+		m_linkFragment->SplineMeshComponent->SetEndPosition(transformedLocation);
+	}
+}
 //============================================================
 
 //======================BetaSheet===========================
@@ -110,8 +128,6 @@ void BetaSheet::SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue)
 			{
 				//if the bond has not yet been created, then we create it
 				HydrogenBond* hBond = m_proteinModel->SpawnHydrogenBond(residue, betaPartner);
-				residue->AddHydrogenBond(hBond);
-				betaPartner->AddHydrogenBond(hBond);
 
 				//add bond to the array of hydrogen bonds in the beta sheet
 
@@ -351,8 +367,6 @@ void SecondaryStructure::SpawnHydrogenBonds()
 			//we found a valid partner residue to create a hydrogen bond
 			HydrogenBond* newlyCreatedBond = m_parentModel->SpawnHydrogenBond(currentResidue, partnerResidue);
 			m_hydrogenBonds.Add(newlyCreatedBond);
-			currentResidue->AddHydrogenBond(newlyCreatedBond);
-			partnerResidue->AddHydrogenBond(newlyCreatedBond);
 		}
 		else
 		{
@@ -364,15 +378,14 @@ void SecondaryStructure::SpawnHydrogenBonds()
 
 void SecondaryStructure::BreakStructure()
 {
-	//iterate throguh the residues that make up this structure
+	//iterate through the residues that make up this structure
 	AAminoAcid* currentResidue = m_headAminoAcid;
-	int counter = 0;
 	TArray<AAminoAcid*> residues;
 	bool keepIterating = true;
 
+	//group all the residues into a container
 	while (keepIterating)
 	{
-		++counter;
 		residues.Add(currentResidue);
 		if (currentResidue != m_tailAminoAcid)
 		{
@@ -382,48 +395,9 @@ void SecondaryStructure::BreakStructure()
 		{
 			keepIterating = false;
 		}
-		
 	}
 
-	for (int i = 0; i < 1; ++i)
-	{
-		TestLineFitting2(residues);
-
-		for (int index = 0; index < residues.Num(); ++index)
-		{
-			currentResidue = residues[index];
-			currentResidue->UpdateLinkToNextAminoAcid();
-			//currentResidue->HideLinkFragment();
-		}
-	}
-
-	//get the first and last position
-	FVector startPosition = m_headAminoAcid->GetActorLocation();
-	FVector endPosition = m_tailAminoAcid->GetActorLocation();
-
-	/*
-	//at first lets just put the residues in a straight line
-	FVector distance = endPosition - startPosition;
-
-	if (counter > 1)
-	{
-		distance /= (counter - 1);
-	}
-
-	for (int index = 0; index < residues.Num(); ++index)
-	{
-		currentResidue = residues[index];
-		currentResidue->SetActorLocation(startPosition + (distance * index));
-	}
-
-	//update the link fragments for all of the residues in the struture
-	for (int index = 0; index < residues.Num(); ++index)
-	{
-		currentResidue = residues[index];
-		currentResidue->UpdateLinkToNextAminoAcid();
-		currentResidue->HideLinkFragment();
-	}
-	*/
+	TestLineFitting2(residues);
 }
 
 void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
@@ -446,6 +420,11 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 	for (int i = 0; i < residues.Num(); ++i)
 	{
 		location = residues[i]->GetActorLocation();
+		
+		//we want to make dure the residue keeps track of its original location
+		//this is so that it can later return to its original location if the
+		//change is reversible
+		residues[i]->KeepTrackOfLocation(location);
 
 		sums.X += location.X;
 		sums.Y += location.Y;
@@ -473,12 +452,11 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		means[i] = sums[i] * inverseNum;
 	}
 
-	//calculate the possible independent variables
-	//in other words the run value on the slope formula
-	FVector possibleIndependentVariables = FVector::ZeroVector;
+	//calculate the possible run values of the slope formula
+	FVector possibleRunVariables = FVector::ZeroVector;
 	for (int i = 0; i < 3; ++i)
 	{
-		possibleIndependentVariables[i] = sumsSquared[i] - (sums[i] * means[i]);
+		possibleRunVariables[i] = sumsSquared[i] - (sums[i] * means[i]);
 	}
 
 	//precalculate some of the possible values we will need for the point slope formula
@@ -493,27 +471,28 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		{
 			if (i != j)
 			{
+				//at the moment we are only calculating the possible rise values of the slope formula
 				possibleSlopes[i][j] = (multiplicativeSums[i][j] - sums[i] * means[j]);
 			}
 		}
 	}
 
-	double currentMin = possibleIndependentVariables[0];
+	double currentMax = possibleRunVariables[0];
 	axisToUse = 0;
-	for (int i = 1; i < 3 && currentMin == 0.0; ++i)
+	for (int i = 1; i < 3 && currentMax == 0.0; ++i)
 	{
-		currentMin = possibleIndependentVariables[i];
+		currentMax = abs(possibleRunVariables[i]);
 		axisToUse = i;
 	}
 
-	//check which variable we are going to use as the independent variable
+	//check which axis we are going to use as the independent variable
 	for (int i = 0; i < 3; ++i)
 	{
-		if (possibleIndependentVariables[i] != 0.0
-			&& abs(currentMin) < abs(possibleIndependentVariables[i]))
+		if (possibleRunVariables[i] != 0.0
+			&& currentMax < abs(possibleRunVariables[i]))
 		{
 			//we can use this variable as the independent variable
-			currentMin = possibleIndependentVariables[i];
+			currentMax = abs(possibleRunVariables[i]);
 			axisToUse = i;
 		}
 	}
@@ -523,7 +502,7 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 	{
 		if (i != axisToUse)
 		{
-			possibleSlopes[axisToUse][i] /= possibleIndependentVariables[axisToUse];
+			possibleSlopes[axisToUse][i] /= possibleRunVariables[axisToUse];
 
 			//calculate the intercepts
 			possibleIntercepts[axisToUse][i] = means[i] - (possibleSlopes[axisToUse][i] * means[axisToUse]);
@@ -571,8 +550,8 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 	float shortestDistance = sqrt(shortestDistanceSquared);
 	float longestDistance = sqrt(longestDistanceSquared);
 
+
 	//calculate the end and start points of the line we use to visualize the best fit line
-	
 	FVector startLocation = FVector::ZeroVector;
 	FVector endLocation = FVector::ZeroVector;
 
@@ -601,18 +580,6 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 	FVector startToEnd = endLocation - startLocation;
 	float distanceStartToEnd = FVector::Dist(endLocation, startLocation);
 	startToEnd.Normalize();
-
-	FVector endToStart = startLocation - endLocation;
-	endToStart.Normalize();
-
-	//randomly move all of the residues that conform the alpha helix
-	float  distanceBetweenIncrements = distanceStartToEnd / (num - 1);
-	FVector prevLocation = startLocation;
-	for (int i = 1; i < num-1; ++i)
-	{
-		prevLocation = startLocation + (i * distanceBetweenIncrements * startToEnd);
-		residues[i]->SetActorLocation(prevLocation);
-	}
 
 	//apply the gram schmidtt process for getting a perpendicular line
 	//start
@@ -684,16 +651,16 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 	*/
 	//end
 
-	//use sin function to shake the residues away from each other
-	for (int i = 1; i < num-1; ++i)
+	//randomly move all of the residues that conform the alpha helix
+	float  distanceBetweenIncrements = distanceStartToEnd / (num - 1);
+	FVector tempLocation = FVector::ZeroVector;
+	for (int i = 1; i < num - 1; ++i)
 	{
 		float rads = (PI * 0.5 * i) + (.5 * PI);
 		float sinVal = sinf(rads);
 
-		actorLocation = residues[i]->GetActorLocation() + sinVal * longestDistance * baseVector;
-		residues[i]->SetActorLocation(actorLocation);
-
-		//see how much we should rotate the direction of the vector
+		tempLocation = startLocation + (i * distanceBetweenIncrements * startToEnd) + (sinVal * longestDistance * baseVector);
+		residues[i]->MoveTo(tempLocation, true);
 	}
 }
 

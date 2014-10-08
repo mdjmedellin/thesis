@@ -14,12 +14,12 @@ namespace GHProtein
 class HydrogenBond
 {
 public:
-	HydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2, ALinkFragment* linkFragment)
+	HydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue, ALinkFragment* linkFragment)
 	: m_linkFragment(linkFragment)
 	, m_relativeRotation(FRotator::ZeroRotator)
 	{
-		m_bondResidues[0] = residue1;
-		m_bondResidues[1] = residue2;
+		m_bondResidues[0] = startResidue;
+		m_bondResidues[1] = endResidue;
 
 		m_linkFragment->ChangeLinkType(ELinkType::ELink_HydrogenBond);
 	};
@@ -46,6 +46,7 @@ public:
 	void ToggleShake();
 	void Translate(const FVector& displacement);
 	void RotateAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
+	void ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const FVector& newLocation);
 
 private:
 	FRotator m_relativeRotation;

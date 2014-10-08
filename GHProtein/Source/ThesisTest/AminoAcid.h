@@ -28,6 +28,7 @@ private:
 
 public:
 	virtual void BeginPlay();
+	virtual void Tick(float DeltaSeconds) OVERRIDE;
 
 	bool SpawnLinkParticleToNextAminoAcid();
 
@@ -49,6 +50,9 @@ public:
 
 	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void Translate(const FVector& deltaLocation);
+	void MoveTo(const FVector& finalLocation, bool interpolate = false);
+
+	void KeepTrackOfLocation(const FVector& locationToKeepTrackOf);
 
 	void SetParentModel(GHProtein::ProteinModel* parentModel);
 	void SetResidueInformation(Residue* residueInformation);
@@ -100,6 +104,9 @@ private:
 	float m_betaStrandWidth;
 	float m_hydrogenBondLinkWidth;
 	float m_linkFragmentScalePerUnrealUnit;
+
+	FVector m_locationToKeepTrackOf;
+	Interpolator m_locationInterpolator;
 
 	TArray<HydrogenBond*> m_hydrogenBonds;
 
