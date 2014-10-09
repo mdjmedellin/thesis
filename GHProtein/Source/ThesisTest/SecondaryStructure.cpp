@@ -420,41 +420,61 @@ void SecondaryStructure::SpawnHydrogenBonds()
 
 void SecondaryStructure::SetTemperature(float temperatureCelsius)
 {
-	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix)
+	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix
+		|| m_secondaryStructureType == ESecondaryStructure::ssStrand)
 	{
-		//at the moment we only are going to handle alpha helices
 		if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 		{
-			//at the moment just set a flag to know we cannot change back
-			//ideally we woulld break this secondary structure and put all the residues in a ssloop
-			m_canReverseChange = false;
+			if (m_canReverseChange && m_prevTemperature <= m_breakTemperature)
+			{
+				TArray<AAminoAcid*> residues;
+				ExtractResidues(residues);
+				
+				BreakStructure(residues);
+				m_canReverseChange = false;
+			}
 		}
 		else if (temperatureCelsius > m_breakTemperature)
 		{
-			//get the residues that are contained in this structure
-			TArray<AAminoAcid*> residues;
-			ExtractResidues(residues);
+			if (m_prevTemperature <= m_breakTemperature && m_canReverseChange)
+			{
+				TArray<AAminoAcid*> residues;
+				ExtractResidues(residues);
 
-			//at the moment we are only breaking helices
-			BreakStructure(residues);
+				BreakStructure(residues);
+			}
 		}
 		else if (temperatureCelsius > m_regularTemperature)
 		{
-			TArray<AAminoAcid*> residues;
-			ExtractResidues(residues);
-
-			//start shaking
-			ShakeResidues(residues);
-		}
-		else
-		{
-			if (m_prevTemperature > m_regularTemperature)
+			if (m_canReverseChange && m_prevTemperature > m_breakTemperature)
 			{
+				//technically, this should be able to stabilize also
 				TArray<AAminoAcid*> residues;
 				ExtractResidues(residues);
 
 				//stabilize the residues if possible
 				StabilizeResidues(residues);
+
+				//start shaking
+				//ShakeResidues(residues);
+			}
+		}
+		else
+		{
+			if (m_canReverseChange)
+			{
+				if (m_prevTemperature > m_breakTemperature)
+				{
+					//stabilize the residues
+					TArray<AAminoAcid*> residues;
+					ExtractResidues(residues);
+
+					StabilizeResidues(residues);
+				}
+				else if (m_prevTemperature > m_regularTemperature)
+				{
+					//stop the shaking
+				}
 			}
 		}
 	}
@@ -541,6 +561,16 @@ void SecondaryStructure::BreakStructure(const TArray<AAminoAcid*>& residues)
 		sum_xy += (location.X * location.Y);
 		sum_xz += (location.X * location.Z);
 		sum_yz += (location.Y * location.Z);
+	}
+
+	if (m_secondaryStructureType == ESecondaryStructure::ssStrand)
+	{
+		for (int i = 0; i < residues.Num(); ++i)
+		{
+			residues[i]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+		}
+
+		return;
 	}
 
 	//store the multiplicative sums in their appropriate place

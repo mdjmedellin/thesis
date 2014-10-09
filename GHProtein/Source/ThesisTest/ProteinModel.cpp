@@ -666,11 +666,7 @@ namespace GHProtein
 
 		while (currentStructure != nullptr)
 		{
-			if (currentStructure->GetSecondaryStructureType() == ESecondaryStructure::ssAlphaHelix)
-			{
-				currentStructure->SetTemperature(temperatureCelsius);
-				break;
-			}
+			currentStructure->SetTemperature(temperatureCelsius);
 			currentStructure = currentStructure->GetNextStructurePtr();
 		}
 
