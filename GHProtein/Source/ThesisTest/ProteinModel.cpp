@@ -673,6 +673,12 @@ namespace GHProtein
 			}
 			currentStructure = currentStructure->GetNextStructurePtr();
 		}
+
+		//set the temperature on all of the hydrogen bonds
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->SetTemperature(temperatureCelsius);
+		}
 	}
 
 	UWorld* ProteinModel::GetWorld()

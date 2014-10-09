@@ -45,6 +45,37 @@ void HydrogenBond::ToggleShake()
 	m_linkFragment->ToggleShake();
 }
 
+void HydrogenBond::SetTemperature(float temperatureCelsius)
+{
+	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
+	{
+		if (m_canReverseChange)
+		{
+			//if it was previously on a regular temperature, we switch to breaking the bond
+			m_linkFragment->ToggleBreaking();
+		}
+
+		m_canReverseChange = false;
+	}
+	else if (temperatureCelsius > m_breakTemperature)
+	{
+		if (m_prevTemperature <= m_breakTemperature && m_canReverseChange)
+		{
+			m_linkFragment->ToggleBreaking();
+		}
+	}
+	else
+	{
+		if (m_canReverseChange && m_prevTemperature > m_regularTemperature)
+		{
+			//in this case we were previously breaking and now need to repair
+			m_linkFragment->ChangeLinkType(ELinkType::ELink_HydrogenBond, true);
+		}
+	}
+
+	m_prevTemperature = temperatureCelsius;
+}
+
 void HydrogenBond::ToggleBreaking()
 {
 	m_linkFragment->ToggleBreaking();

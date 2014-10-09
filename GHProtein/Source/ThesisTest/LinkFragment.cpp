@@ -147,8 +147,8 @@ void ALinkFragment::UpdateRendering(bool smoothInterpolate)
 		break;
 
 	case ELinkType::ELink_None:
-		width = 0.5f;
-		height = 0.5f;
+		width = 0.0f;
+		height = 0.0f;
 		break;
 		
 	default:
