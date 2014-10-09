@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "ThesisStaticLibrary.h"
 #include "Residue.h"
 #include "CameraCharacter.generated.h"
 
@@ -112,6 +113,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
 		AAminoAcid* GetResidueAtSpecifiedIndex(int32 index = -1);
+
+	UFUNCTION(exec)
+		void ToggleShake();
+
+	UFUNCTION(exec)
+		void ToggleBreaking();
+
+	UFUNCTION(exec)
+		void HideHydrogenBonds();
+
+	UFUNCTION(exec)
+		void SetTemperature(float temperatureCelsius);
 
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();

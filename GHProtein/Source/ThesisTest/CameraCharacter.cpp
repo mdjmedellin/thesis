@@ -7,7 +7,6 @@
 #include "ThesisTestGameMode.h"
 #include "AminoAcid.h"
 #include "ProteinModel.h"
-#include "ThesisStaticLibrary.h"
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -465,4 +464,24 @@ AAminoAcid* ACameraCharacter::GetResidueAtSpecifiedIndex(int32 index)
 	{
 		return m_customChain[index];
 	}
+}
+
+void ACameraCharacter::ToggleShake()
+{
+	m_proteinModel->ToggleShake();
+}
+
+void ACameraCharacter::ToggleBreaking()
+{
+	m_proteinModel->ToggleBreaking();
+}
+
+void ACameraCharacter::HideHydrogenBonds()
+{
+	m_proteinModel->HideHydrogenBonds();
+}
+
+void ACameraCharacter::SetTemperature(float temperatureCelsius)
+{
+	m_proteinModel->SetTemperature(temperatureCelsius);
 }
