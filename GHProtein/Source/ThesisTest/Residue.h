@@ -1,6 +1,6 @@
 #pragma once
 #include "UObjectBaseUtility.h"
-#include "Residue.generated.h"
+#include "ThesisStaticLibrary.h"
 
 //JM: Globals that seem to be used thorughout
 // --------------------------------------------------------------------
@@ -25,33 +25,6 @@ kRadiusWater = 1.4;
 // --------------------------------------------------------------------
 
 class Residue;
-
-// a limited set of known atoms. This is an obvious candidate for improvement of DSSP.
-namespace EAtomType
-{
-	enum Type
-	{
-		kUnknownAtom,
-		kHydrogen,
-		// ...
-		kCarbon,
-		kNitrogen,
-		kOxygen,
-		kFluorine,
-		// ...
-		kPhosphorus,
-		kSulfur,
-		kChlorine,
-		kMagnesium,
-		kPotassium,
-		kCalcium,
-		kZinc,
-		kSelenium,
-
-		kAtomTypeCount
-	};
-}
-
 EAtomType::Type MapElement(FString inElement);
 
 // for now, Atom contains exactly what the ATOM line contains in a PDB file
@@ -80,42 +53,9 @@ struct Atom
 	operator FVector&()						{ return mLoc; }
 };
 
-UENUM(BlueprintType)
-namespace EResidueType
-{
-	enum Type
-	{
-		kUnknownResidue			UMETA(DisplayName="Unknown"),
-
-		//
-		kAlanine				UMETA(DisplayName = "Alanine"),				// A	ala
-		kArginine				UMETA(DisplayName = "Arginine"),			// R	arg
-		kAsparagine				UMETA(DisplayName = "Asparagine"),			// N	asn
-		kAsparticAcid			UMETA(DisplayName = "Aspartic Acid"),		// D	asp
-		kCysteine				UMETA(DisplayName = "Cysteine"),			// C	cys
-		kGlutamicAcid			UMETA(DisplayName = "Glutamic Acid"),		// E	glu
-		kGlutamine				UMETA(DisplayName = "Glutamiane"),			// Q	gln
-		kGlycine				UMETA(DisplayName = "Glycine"),				// G	gly
-		kHistidine				UMETA(DisplayName = "Histidine"),			// H	his
-		kIsoleucine				UMETA(DisplayName = "Isoleucine"),			// I	ile
-		kLeucine				UMETA(DisplayName = "Leucine"),				// L	leu
-		kLysine					UMETA(DisplayName = "Lysine"),				// K	lys
-		kMethionine				UMETA(DisplayName = "Methionine"),			// M	met
-		kPhenylalanine			UMETA(DisplayName = "Phenylalanine"),		// F	phe
-		kProline				UMETA(DisplayName = "Proline"),				// P	pro
-		kSerine					UMETA(DisplayName = "Serine"),				// S	ser
-		kThreonine				UMETA(DisplayName = "Threonine"),			// T	thr
-		kTryptophan				UMETA(DisplayName = "Tryptophan"),			// W	trp
-		kTyrosine				UMETA(DisplayName = "Tyrosine"),			// Y	tyr
-		kValine					UMETA(DisplayName = "Valine"),				// V	val
-
-		kResidueTypeCount		UMETA(Hidden)
-	};
-}
-
 struct ResidueInfo
 {
-	EResidueType::Type		type;
+	EResidueType::Type	type;
 	char				code;
 	char				name[4];
 	FString				fullName;
@@ -133,17 +73,6 @@ struct HBond
 	double			energy;
 };
 
-namespace EBridgeType
-{
-	enum Type
-	{
-		btNoBridge
-		,btParallel
-		,btAntiParallel
-		,btCount
-	};
-}
-
 struct BridgePartner
 {
 	BridgePartner()
@@ -158,35 +87,6 @@ struct BridgePartner
 	bool			parallel;
 	int				number;
 };
-
-namespace EHelixFlag
-{
-	enum Type
-	{
-		helixNone
-		,helixStart
-		,helixEnd
-		,helixStartAndEnd
-		,helixMiddle
-		,helixCount
-	};
-}
-
-namespace ESecondaryStructure
-{
-	enum Type
-	{
-		ssLoop			//' '
-		, ssAlphaHelix	// H
-		, ssBetaBridge	// B
-		, ssStrand		// E
-		, ssHelix_3		// G
-		, ssHelix_5		// I
-		, ssTurn		// T
-		, ssBend		// S
-		,ssCount		
-	};
-}
 
 extern const char SecondaryStructureInfo[];
 ESecondaryStructure::Type MapSecondaryStructure(char inSSCharLabel);

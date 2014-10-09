@@ -16,7 +16,8 @@ class AThesisTestGameMode : public AGameMode
 
 public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage);
-	
+	virtual void Tick(float DeltaSeconds) override;
+
 	/** Transition from WaitingToStart to InProgress. You can call this manually, will also get called if ReadyToStartMatch returns true */
 	virtual void StartMatch();
 
@@ -49,16 +50,25 @@ private:
 		float m_distanceScale;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_normalColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		FColor m_helixColor;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		FColor m_betaStrandColor;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		FColor m_hydrogenBondColor;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		float m_betaStrandLinkWidth;
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		float m_helixLinkWidth;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
+		float m_hydrogenBondLinkWidth;
 
 	UPROPERTY()
 		TArray<class AProteinModelSpawnPoint*> ProteinModelSpawnPoints;

@@ -1,15 +1,10 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "ThesisStaticLibrary.h"
 #include "Residue.h"
 #include "AminoAcid.generated.h"
-
-namespace ESecondaryStructure
-{
-	enum Type;
-}
 
 namespace GHProtein
 {
@@ -17,6 +12,7 @@ namespace GHProtein
 }
 
 class ALinkFragment;
+class HydrogenBond;
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -26,15 +22,22 @@ class AAminoAcid : public AActor
 private:
 	void ClearNextAminoAcidPtr();
 	void ClearPreviousAminoAcidPtr();
+	void RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
+	void TranslateLinkFragment(const FVector& deltaLocation);
+	void UpdateLinkFragmentTangents();
+	void UpdateLinkFragmentRenderProperties();
 
 public:
-
 	virtual void BeginPlay();
+	virtual void Tick(float DeltaSeconds) OVERRIDE;
 
-	bool SpawnLinkParticleToNextAminoAcid(float width, float height);
+	bool SpawnLinkParticleToNextAminoAcid();
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
+
+	void HideLinkFragment();
+	void ChangeSecondaryStructureType(ESecondaryStructure::Type typeOfStructure, bool smoothTranslation = false);
 
 	int GetSequenceNumber();
 	bool GetDistanceToNextAminoAcid(FVector& out_vector);
@@ -43,26 +46,38 @@ public:
 	AAminoAcid* GetNextAminoAcidPtr();
 	AAminoAcid* GetPreviousAminoAcidPtr();
 
-	void UpdateLinkToNextAminoAcid();
-	void UpdateHydrogenBonds(bool recurse = false);
+	const Residue* GetResidueInformation() const;
 
-	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
+	void UpdateLinkToNextAminoAcid();
+
+	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void Translate(const FVector& deltaLocation);
+	void MoveTo(const FVector& finalLocation, bool translateLinkFragment = false, bool interpolate = false);
+
+	void KeepTrackOfLocation(const FVector& locationToKeepTrackOf);
 
 	void SetParentModel(GHProtein::ProteinModel* parentModel);
 	void SetResidueInformation(Residue* residueInformation);
-	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
-	void SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-		, float betaStrandLinkWidth);
+
+	void SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+		const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, 
+		float hydrogenBondLinkWidth, float linkHeight);
+	/*
 	void SetLinkFragmentColor(const FColor& fragmentColor);
 	void ResetLinkFragmentColorToDefault();
+	*/
+
+	void Stabilize(ESecondaryStructure::Type structureType);
+	void Shake();
 
 	ESecondaryStructure::Type GetSecondaryStructure();
 
-	void UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth);
-
 	void SetAminoAcidSize(float aminoAcidSize);
 
+	bool BondWithResidueExists(const AAminoAcid* residue) const;
+	void AddHydrogenBond(HydrogenBond* newBond);
+
+	UClass* GetDetaultLinkFragmentClass();
 	ResidueInfo GetAminoAcidInfo() const;
 
 	UFUNCTION(BlueprintCallable, Category = Residue)
@@ -77,28 +92,29 @@ private:
 	AAminoAcid* m_previousAminoAcid;
 
 	UMaterialInstanceDynamic* m_dynamicMaterial;
-
-	float m_linkFragmentScalePerUnrealUnit;
-
-	UClass* DefaultLinkFragmentClass;
-
+	UClass* m_defaultLinkFragmentClass;
 	ALinkFragment* m_linkFragment;
-	ALinkFragment* m_betaPartner1;
-	ALinkFragment* m_betaPartner2;
-
-	AAminoAcid* m_betaPartnerResidue1;
-	AAminoAcid* m_betaPartnerResidue2;
-
-	ESecondaryStructure::Type m_secondaryStructure;
-	FColor m_helixColor;
-	FColor m_betaStrandColor;
-
 	Residue* m_residueInformation;
-
 	GHProtein::ProteinModel* m_model;
 
+	ESecondaryStructure::Type m_secondaryStructure;
+	FColor m_normalColor;
+	FColor m_helixColor;
+	FColor m_betaStrandColor;
+	FColor m_hydrogenBondColor;
+	float m_normalHeight;
+	float m_normalWidth;
+	float m_helixWidth;
+	float m_betaStrandWidth;
+	float m_hydrogenBondLinkWidth;
+	float m_linkFragmentScalePerUnrealUnit;
+
+	FVector m_locationToKeepTrackOf;
+	Interpolator m_locationInterpolator;
+
+	TArray<HydrogenBond*> m_hydrogenBonds;
+
 public:
-	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		float m_lengthOfLinkFragment;
 

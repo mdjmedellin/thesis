@@ -2,11 +2,22 @@
 
 namespace GHProtein
 {
-	//This should be inlined
 	template< typename OutType >
 	void GetTypeFromString(OutType& out_variable, FString in_stringLine)
 	{
 		TTypeFromString<OutType>::FromString(out_variable, *(in_stringLine.Trim().TrimTrailing()));
+	}
+
+	template< typename OutType >
+	OutType GetMax(const OutType& val1, const OutType& val2)
+	{
+		return (val1 < val2 ? val2 : val1);
+	}
+
+	template< typename OutType >
+	OutType GetMin(const OutType& val1, const OutType& val2)
+	{
+		return (val1 < val2 ? val1 : val2);
 	}
 
 	//void GetIntFromString(int& out_int, FString in_stringLine);

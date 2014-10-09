@@ -2,6 +2,7 @@
 
 #include "ThesisTest.h"
 #include "ThesisTestGameMode.h"
+#include "ThesisStaticLibrary.h"
 #include "ThesisTestHUD.h"
 #include "CameraPlayerController.h"
 #include "ProteinBuilder.h"
@@ -11,6 +12,7 @@
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
+	, m_proteinModel(nullptr)
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
@@ -19,8 +21,11 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_distanceScale(1.f)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
+	, m_normalColor(FColor::White)
+	, m_hydrogenBondColor(FColor::White)
 	, m_helixLinkWidth(100.f)
 	, m_betaStrandLinkWidth(100.f)
+	, m_hydrogenBondLinkWidth(100.f)
 {
 	/*
 	FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt") );
@@ -94,7 +99,7 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 		testString = "./ThesisData/Lysozyme.dssp";
 	}
 	PdbFile->LoadFile(testString);
-	m_proteinModel = PdbFile->GetCurrentProteinModel();
+	m_proteinModel = PdbFile->GetCurrentProteinModel(GetWorld());
 
 	/*FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt"));
 	if (SaveFile)
@@ -105,6 +110,12 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 		delete SaveFile;
 		SaveFile = NULL;
 	}*/
+}
+
+void AThesisTestGameMode::Tick(float DeltaSeconds)
+{
+	Interpolator::UpdateInterpolators(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
 }
 
 void AThesisTestGameMode::StartMatch()
@@ -119,9 +130,13 @@ void AThesisTestGameMode::StartMatch()
 	{
 		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
 
+		//set the render properties for the protein model
+		m_proteinModel->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+			m_linkWidth, m_linkHeight, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_aminoAcidSize);
+
 		UWorld* const World = GetWorld();
-		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
-			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth);
+		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_proteinModelCenterLocation,
+			m_distanceScale);
 	}
 }
 
