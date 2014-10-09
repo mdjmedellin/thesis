@@ -557,29 +557,6 @@ namespace GHProtein
 		{
 			m_hydrogenBonds[i]->RotateAboutSpecifiedPoint(rotationMatrix, rotationPoint);
 		}
-
-		/*
-		//update links
-		currentAminoAcid = m_headPtr;
-		
-		while (currentAminoAcid)
-		{
-			//currentAminoAcid->UpdateLinkToNextAminoAcid();
-			aminoAcidLocation = currentAminoAcid->GetActorLocation();
-
-			if (currentAminoAcid != m_headPtr)
-			{
-				UpdateMinAndMaxBounds(aminoAcidLocation);
-			}
-			else
-			{
-				m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
-				m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
-			}
-
-			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
-		}
-		*/
 	}
 
 	FVector ProteinModel::GetDirectionFromCenter(const FVector& currentLocation)
@@ -602,17 +579,6 @@ namespace GHProtein
 			currentAminoAcid->Translate(displacement);
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
-
-		//update links
-		/*
-		currentAminoAcid = m_headPtr;
-		FVector aminoAcidLocation;
-		while (currentAminoAcid)
-		{
-			currentAminoAcid->UpdateLinkToNextAminoAcid();
-			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
-		}
-		*/
 
 		//translate the bounding box min and max
 		m_minBounds3D += displacement;
