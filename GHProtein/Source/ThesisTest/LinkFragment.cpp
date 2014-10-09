@@ -12,6 +12,7 @@ ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCI
 	, m_minVals(FVector(0,-100, 0))
 	, m_maxVals(FVector(0,100,0))
 	, m_sizeInterpolator(new Interpolator())
+	, m_colorInterpolator(new Interpolator())
 	, testInterpolator(nullptr)
 	, m_normalColor(FColor::White)
 	, m_helixColor(FColor::White)
@@ -62,6 +63,12 @@ void ALinkFragment::Tick(float DeltaSeconds)
 		FVector2D newScale(m_currentSizeScale.X, m_currentSizeScale.Y);
 		SplineMeshComponent->SetStartScale(newScale);
 		SplineMeshComponent->SetEndScale(newScale);
+	}
+
+	if (m_colorInterpolator->IsPlaying())
+	{
+		FLinearColor newColor = m_colorInterpolator->Poll();
+		SetColor(newColor);
 	}
 }
 
@@ -155,6 +162,13 @@ void ALinkFragment::UpdateRendering(bool smoothInterpolate)
 	if (smoothInterpolate)
 	{
 		m_sizeInterpolator->ResetInterpolator(m_currentSizeScale, endScale, 0.01f, false, false, 1);
+		
+		FLinearColor currentColor = FLinearColor::White;
+		m_dynamicMaterial->GetVectorParameterValue("color", currentColor);
+		
+		FVector currentColorVector = currentColor;
+		FVector desiredColor = renderColor.ReinterpretAsLinear();
+		m_colorInterpolator->ResetInterpolator(currentColorVector, desiredColor, 0.01f, false, false, 1);
 	}
 	else
 	{
@@ -185,4 +199,18 @@ void ALinkFragment::ChangeLinkType(ESecondaryStructure::Type secondaryStructureT
 		m_linkType = linkType;
 		UpdateRendering(smoothInterpolate);
 	}
+}
+
+void ALinkFragment::Translate(const FVector& deltaLocation)
+{
+	FVector currentLocation = GetActorLocation();
+	currentLocation += deltaLocation;
+
+	SetActorLocation(currentLocation);
+}
+
+void ALinkFragment::UpdateTangents(const FVector& startTangent, const FVector& endTangent)
+{
+	SplineMeshComponent->SetStartTangent(startTangent);
+	SplineMeshComponent->SetEndTangent(endTangent);
 }

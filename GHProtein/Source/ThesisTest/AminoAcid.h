@@ -24,6 +24,7 @@ private:
 	void ClearPreviousAminoAcidPtr();
 	void RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void TranslateLinkFragment(const FVector& deltaLocation);
+	void UpdateLinkFragmentTangents();
 	void UpdateLinkFragmentRenderProperties();
 
 public:
@@ -36,6 +37,7 @@ public:
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
 
 	void HideLinkFragment();
+	void ChangeSecondaryStructureType(ESecondaryStructure::Type typeOfStructure, bool smoothTranslation = false);
 
 	int GetSequenceNumber();
 	bool GetDistanceToNextAminoAcid(FVector& out_vector);
@@ -50,13 +52,12 @@ public:
 
 	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void Translate(const FVector& deltaLocation);
-	void MoveTo(const FVector& finalLocation, bool interpolate = false);
+	void MoveTo(const FVector& finalLocation, bool translateLinkFragment = false, bool interpolate = false);
 
 	void KeepTrackOfLocation(const FVector& locationToKeepTrackOf);
 
 	void SetParentModel(GHProtein::ProteinModel* parentModel);
 	void SetResidueInformation(Residue* residueInformation);
-	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
 
 	void SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 		const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, 

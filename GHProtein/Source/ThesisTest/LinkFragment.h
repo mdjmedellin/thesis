@@ -39,6 +39,7 @@ private:
 	ELinkType::Type m_linkType;
 
 	Interpolator* m_sizeInterpolator;
+	Interpolator* m_colorInterpolator;
 	Interpolator* testInterpolator;
 
 public:
@@ -52,6 +53,8 @@ public:
 	void ToggleShake();
 	void ToggleBreaking();
 	void Hide();
+	void Translate(const FVector& deltaLocation);
+	void UpdateTangents(const FVector& startTangent, const FVector& endtangent);
 
 private:
 	void SetColor(const FColor& linkColor);

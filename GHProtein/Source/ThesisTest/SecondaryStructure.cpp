@@ -58,6 +58,9 @@ void HydrogenBond::ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const
 		//m_linkFragment->SplineMeshComponent->SetStartPosition(newLocation);
 		FVector transformedLocation = m_linkFragment->SplineMeshComponent->GetComponentTransform().InverseSafe().TransformPosition(newLocation);
 		m_linkFragment->SplineMeshComponent->SetStartPosition(transformedLocation);
+
+		//lets try to also set the tangent
+		//m_linkFragment->SplineMeshComponent->SetStartTangent(tangent);
 	}
 	else if (aminoAcidEnd == m_bondResidues[1])
 	{
@@ -65,6 +68,8 @@ void HydrogenBond::ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const
 		//m_linkFragment->SplineMeshComponent->SetEndPosition(newLocation);
 		FVector transformedLocation = m_linkFragment->SplineMeshComponent->GetComponentTransform().InverseSafe().TransformPosition(newLocation);
 		m_linkFragment->SplineMeshComponent->SetEndPosition(transformedLocation);
+
+		//m_linkFragment->SplineMeshComponent->SetEndTangent(tangent);
 	}
 }
 //============================================================
@@ -241,6 +246,7 @@ void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
 	if (m_headAminoAcid == nullptr)
 	{
 		m_headAminoAcid = residue;
+		m_tailAminoAcid = residue;
 		//set the structure type from the head amino acid
 		m_secondaryStructureType = residueInfo->GetSecondaryStructure();
 	}
@@ -660,7 +666,8 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		float sinVal = sinf(rads);
 
 		tempLocation = startLocation + (i * distanceBetweenIncrements * startToEnd) + (sinVal * longestDistance * baseVector);
-		residues[i]->MoveTo(tempLocation, true);
+		residues[i]->MoveTo(tempLocation, false, true);
+		residues[i]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
 	}
 }
 

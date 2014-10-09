@@ -62,6 +62,26 @@ void Interpolator::Update(float deltaTime)
 	}
 }
 
+void Interpolator::OffsetValues(const FVector& offset)
+{
+	m_originalGoal += offset;
+	m_originalStart += offset;
+
+	m_currentGoal += offset;
+	m_currentStart += offset;
+
+	m_current += offset;
+}
+
+void Interpolator::RotateValuesFromSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
+{
+	UThesisStaticLibrary::RotateVectorAroundSpecifiedPoint(m_originalGoal, rotationMatrix, rotationPoint);
+	UThesisStaticLibrary::RotateVectorAroundSpecifiedPoint(m_originalStart, rotationMatrix, rotationPoint);
+	UThesisStaticLibrary::RotateVectorAroundSpecifiedPoint(m_currentGoal, rotationMatrix, rotationPoint);
+	UThesisStaticLibrary::RotateVectorAroundSpecifiedPoint(m_currentStart, rotationMatrix, rotationPoint);
+	UThesisStaticLibrary::RotateVectorAroundSpecifiedPoint(m_current, rotationMatrix, rotationPoint);
+}
+
 FVector Interpolator::Poll() const
 {
 	return m_current;
@@ -161,4 +181,12 @@ ELinkType::Type UThesisStaticLibrary::GetLinkTypeFromSecondaryStructure(ESeconda
 	default:
 		return ELinkType::ELink_Backbone;
 	}
+}
+
+void UThesisStaticLibrary::RotateVectorAroundSpecifiedPoint(FVector& out_vectorToRotate, const FMatrix& rotationMatrix,
+	const FVector& rotationPoint)
+{
+	FVector distanceFromRotationPoint = out_vectorToRotate - rotationPoint;
+	distanceFromRotationPoint = rotationMatrix.TransformVector(distanceFromRotationPoint);
+	out_vectorToRotate = distanceFromRotationPoint + rotationPoint;
 }

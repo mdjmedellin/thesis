@@ -54,6 +54,7 @@ void AAminoAcid::Tick(float DeltaSeconds)
 {
 	if (m_locationInterpolator.IsPlaying())
 	{
+		//because the residue is moving indipendently, we are not going to translate it
 		MoveTo(m_locationInterpolator.Poll());
 	}
 }
@@ -90,6 +91,19 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 	}
 
 	return false;
+}
+
+void AAminoAcid::ChangeSecondaryStructureType(ESecondaryStructure::Type typeOfStructure, bool smoothTranslation)
+{
+	if (m_secondaryStructure != typeOfStructure)
+	{
+		m_secondaryStructure = typeOfStructure;
+		
+		if (m_linkFragment)
+		{
+			m_linkFragment->ChangeLinkType(m_secondaryStructure, smoothTranslation);
+		}
+	}
 }
 
 const Residue* AAminoAcid::GetResidueInformation() const
@@ -270,8 +284,8 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 	{
 		m_linkFragment->SetActorLocation(FVector::ZeroVector);
 		m_linkFragment->SetActorRotation(FRotator::ZeroRotator);
-		m_secondaryStructure = ESecondaryStructure::ssLoop;
-		UpdateLinkFragmentRenderProperties();
+		//m_secondaryStructure = ESecondaryStructure::ssLoop;
+		//UpdateLinkFragmentRenderProperties();
 
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
@@ -283,9 +297,16 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 
 		m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 	}
+}
 
-	//update Hydrogen bonds here
-	//UpdateHydrogenBonds(true);
+void AAminoAcid::UpdateLinkFragmentTangents()
+{
+	FVector startTangent = FVector::ZeroVector;
+	GetTangent(startTangent);
+	FVector endTangent = FVector::ZeroVector;
+	m_nextAminoAcid->GetTangent(endTangent);
+
+	m_linkFragment->UpdateTangents(startTangent, endTangent);
 }
 
 void AAminoAcid::HideLinkFragment()
@@ -295,9 +316,12 @@ void AAminoAcid::HideLinkFragment()
 
 void AAminoAcid::Translate(const FVector& deltaLocation)
 {
+	MoveTo(GetActorLocation() + deltaLocation, true);
+	/*
 	SetActorLocation(GetActorLocation() + deltaLocation);
 	TranslateLinkFragment(deltaLocation);
 	m_locationToKeepTrackOf += deltaLocation;
+	*/
 
 	//AAminoAcid* tempResidue = nullptr;
 
@@ -334,7 +358,7 @@ void AAminoAcid::TranslateLinkFragment(const FVector& deltaLocation)
 {
 	if (m_linkFragment)
 	{
-		m_linkFragment->SetActorLocation(m_linkFragment->GetActorLocation() + deltaLocation);
+		m_linkFragment->Translate(deltaLocation);
 	}
 }
 
@@ -352,6 +376,12 @@ void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotati
 
 	//if this amino acid has a link fragment then we rotate it also
 	RotateLinkFragmentAboutSpecifiedPoint(rotationMatrix, rotationPoint);
+
+	//if we are interpolating the location, update the values the interpolator is using
+	if (m_locationInterpolator.IsPlaying())
+	{
+		m_locationInterpolator.RotateValuesFromSpecifiedPoint(rotationMatrix, rotationPoint);
+	}
 }
 
 void AAminoAcid::RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
@@ -369,19 +399,6 @@ void AAminoAcid::RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& ro
 		FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
 		currentRotationMatrix *= rotationMatrix;
 		m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
-	}
-}
-
-void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
-{
-	if (secondaryStructure != ESecondaryStructure::ssAlphaHelix
-		&& secondaryStructure != ESecondaryStructure::ssStrand)
-	{
-		m_secondaryStructure = ESecondaryStructure::ssTurn;
-	}
-	else
-	{
-		m_secondaryStructure = secondaryStructure;
 	}
 }
 
@@ -482,7 +499,7 @@ void AAminoAcid::KeepTrackOfLocation(const FVector& locationToKeepTrackOf)
 	m_locationToKeepTrackOf = locationToKeepTrackOf;
 }
 
-void AAminoAcid::MoveTo(const FVector& finalLocation, bool interpolate)
+void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment, bool interpolate)
 {
 	if (interpolate)
 	{
@@ -490,13 +507,39 @@ void AAminoAcid::MoveTo(const FVector& finalLocation, bool interpolate)
 	}
 	else
 	{
+		//check the displacement
+		FVector displacement = finalLocation - GetActorLocation();
+
 		SetActorLocation(finalLocation);
-		
-		//updates the link fragments to the amino acids
-		UpdateLinkToNextAminoAcid();
-		if (m_previousAminoAcid)
+
+		//check how we are supposed to update the linkFragment
+		//we translate whenever we are translating the entire protein
+		if (translateLinkFragment)
 		{
-			m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+			TranslateLinkFragment(displacement);
+			
+			//if we have a location interpolator, we update it with the new locations we are trying to approach
+			if (m_locationInterpolator.IsPlaying())
+			{
+				m_locationInterpolator.OffsetValues(displacement);
+			}
+		}
+		else
+		{
+			//if we are not translating, then update the link fragments that are affected by
+			//moving this residue
+			UpdateLinkToNextAminoAcid();
+			if (m_previousAminoAcid)
+			{
+				m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+
+				if (m_previousAminoAcid->GetPreviousAminoAcidPtr())
+				{
+					//we do this because the tangent of this link fragment is affected by the change in position of
+					//the current residue
+					m_previousAminoAcid->GetPreviousAminoAcidPtr()->UpdateLinkFragmentTangents();
+				}
+			}
 		}
 
 		//update the hydrogen bonds associated with this residue

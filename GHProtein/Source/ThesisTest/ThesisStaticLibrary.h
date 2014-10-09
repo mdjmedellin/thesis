@@ -128,6 +128,8 @@ public:
 	~Interpolator();
 	void TogglePlay();
 	void Update(float deltaTime);
+	void OffsetValues(const FVector& offset);
+	void RotateValuesFromSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint);
 	FVector Poll() const;
 	bool IsPlaying() const;
 	void ResetInterpolator(const FVector& start, const FVector& goal, float interpSpeed,
@@ -172,6 +174,8 @@ class UThesisStaticLibrary : public UObject
 	GENERATED_UCLASS_BODY()
 
 	static ELinkType::Type GetLinkTypeFromSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
+	static void RotateVectorAroundSpecifiedPoint(FVector& out_vectorToRotate, const FMatrix& rotationMatrix,
+		const FVector& rotationPoint);
 
 	static FORCEINLINE bool Trace(AActor* ActorToIgnore,
 									const FVector& Start,

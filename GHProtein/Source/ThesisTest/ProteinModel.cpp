@@ -247,7 +247,7 @@ namespace GHProtein
 				}
 
 				//set the residues secondary structure and updates the current secondary structure
-				currentAminoAcid->SetSecondaryStructure(currentResidue->GetSecondaryStructure());
+				currentAminoAcid->ChangeSecondaryStructureType(currentResidue->GetSecondaryStructure());
 
 				if (currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
 				{
@@ -622,7 +622,7 @@ namespace GHProtein
 		//displace the hydrogen bonds
 		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
 		{
-			m_hydrogenBonds[i]->Translate(displacement);
+			//m_hydrogenBonds[i]->Translate(displacement);
 		}
 	}
 
