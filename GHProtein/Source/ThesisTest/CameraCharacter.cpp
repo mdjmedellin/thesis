@@ -481,7 +481,7 @@ void ACameraCharacter::HideHydrogenBonds()
 	m_proteinModel->HideHydrogenBonds();
 }
 
-void ACameraCharacter::BreakDownFirstSpiral()
+void ACameraCharacter::SetTemperature(float temperatureCelsius)
 {
-	m_proteinModel->BreakFirstSpiral();
+	m_proteinModel->SetTemperature(temperatureCelsius);
 }

@@ -67,6 +67,9 @@ public:
 	void ResetLinkFragmentColorToDefault();
 	*/
 
+	void Stabilize(ESecondaryStructure::Type structureType);
+	void Shake();
+
 	ESecondaryStructure::Type GetSecondaryStructure();
 
 	void SetAminoAcidSize(float aminoAcidSize);

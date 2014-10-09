@@ -62,7 +62,7 @@ namespace GHProtein
 		void ToggleShake();
 		void ToggleBreaking();
 		void HideHydrogenBonds();
-		void BreakFirstSpiral();
+		void SetTemperature(float temperatureCelsius);
 		UWorld* GetWorld();
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);

@@ -54,7 +54,7 @@ void AAminoAcid::Tick(float DeltaSeconds)
 {
 	if (m_locationInterpolator.IsPlaying())
 	{
-		//because the residue is moving indipendently, we are not going to translate it
+		//because the residue is moving independently, we are not going to translate it
 		MoveTo(m_locationInterpolator.Poll());
 	}
 }
@@ -282,31 +282,45 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 {
 	if (m_nextAminoAcid && m_linkFragment)
 	{
+		FRotator fragmentRotation = m_linkFragment->GetActorRotation();
+		FVector fragmentLocation = m_linkFragment->GetActorLocation();
+
 		m_linkFragment->SetActorLocation(FVector::ZeroVector);
 		m_linkFragment->SetActorRotation(FRotator::ZeroRotator);
-		//m_secondaryStructure = ESecondaryStructure::ssLoop;
-		//UpdateLinkFragmentRenderProperties();
 
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
+		startTangent = fragmentRotation.UnrotateVector(startTangent);
+		
 		FVector endTangent = FVector::ZeroVector;
 		m_nextAminoAcid->GetTangent(endTangent);
+		endTangent = fragmentRotation.UnrotateVector(endTangent);
 
 		FVector linkStartLocation = GetActorLocation();
 		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
-		m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
+		m_linkFragment->SplineMeshComponent->SetStartPosition(fragmentRotation.UnrotateVector(linkStartLocation));
+		m_linkFragment->SplineMeshComponent->SetEndPosition(fragmentRotation.UnrotateVector(linkEndLocation));
+		m_linkFragment->SplineMeshComponent->SetStartTangent(startTangent);
+		m_linkFragment->SplineMeshComponent->SetEndTangent(endTangent);
+		//m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation,startTangent, linkEndLocation, endTangent);
+		//m_linkFragment->SetActorLocation(fragmentLocation);
+		m_linkFragment->SetActorRotation(fragmentRotation);
+
+		//m_linkFragment->SplineMeshComponent->SetStartTangent(startTangent);
+		//m_linkFragment->SplineMeshComponent->SetEndTangent(endTangent);
 	}
 }
 
 void AAminoAcid::UpdateLinkFragmentTangents()
 {
+	FRotator rotation = m_linkFragment->GetActorRotation();
 	FVector startTangent = FVector::ZeroVector;
 	GetTangent(startTangent);
 	FVector endTangent = FVector::ZeroVector;
 	m_nextAminoAcid->GetTangent(endTangent);
 
-	m_linkFragment->UpdateTangents(startTangent, endTangent);
+	m_linkFragment->UpdateTangents(rotation.UnrotateVector(startTangent), rotation.UnrotateVector(endTangent));
 }
 
 void AAminoAcid::HideLinkFragment()
@@ -523,6 +537,7 @@ void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment
 			{
 				m_locationInterpolator.OffsetValues(displacement);
 			}
+			m_locationToKeepTrackOf += displacement;
 		}
 		else
 		{
@@ -548,4 +563,17 @@ void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment
 			m_hydrogenBonds[i]->ChangeLocationOfAssociatedEnd(this, finalLocation);
 		}
 	}
+}
+
+void AAminoAcid::Stabilize(ESecondaryStructure::Type structureType)
+{
+	//do nothing for the moment
+	//go back to the location we were keeping track of
+	MoveTo(m_locationToKeepTrackOf, false, true);
+	ChangeSecondaryStructureType(structureType, true);
+}
+
+void AAminoAcid::Shake()
+{
+	//do nothing for the moment
 }

@@ -151,6 +151,11 @@ SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStruct
 , m_headAminoAcid(nullptr)
 , m_tailAminoAcid(nullptr)
 , m_parentModel(parentModel)
+, m_irreversibleChangeTemperatureCelsius(50.f)
+, m_breakTemperature(41.f)
+, m_regularTemperature(23.5f)
+, m_prevTemperature(23.5f)
+, m_canReverseChange(true)
 {}
 
 SecondaryStructure::~SecondaryStructure()
@@ -382,17 +387,81 @@ void SecondaryStructure::SpawnHydrogenBonds()
 	}
 }
 
-void SecondaryStructure::BreakStructure()
+void SecondaryStructure::SetTemperature(float temperatureCelsius)
 {
-	//iterate through the residues that make up this structure
+	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix)
+	{
+		//at the moment we only are going to handle alpha helices
+		if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
+		{
+			//at the moment just set a flag to know we cannot change back
+			//ideally we woulld break this secondary structure and put all the residues in a ssloop
+			m_canReverseChange = false;
+		}
+		else if (temperatureCelsius > m_breakTemperature)
+		{
+			//get the residues that are contained in this structure
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+
+			//at the moment we are only breaking helices
+			BreakStructure(residues);
+		}
+		else if (temperatureCelsius > m_regularTemperature)
+		{
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+
+			//start shaking
+			ShakeResidues(residues);
+		}
+		else
+		{
+			if (m_prevTemperature > m_regularTemperature)
+			{
+				TArray<AAminoAcid*> residues;
+				ExtractResidues(residues);
+
+				//stabilize the residues if possible
+				StabilizeResidues(residues);
+			}
+		}
+	}
+
+	m_prevTemperature = temperatureCelsius;
+}
+
+void SecondaryStructure::StabilizeResidues(TArray<AAminoAcid*>& residues)
+{
+	//we can only go back to our original arrangment if we did not expose the
+	//protein to such a high temperature that it cannot renature
+	if (m_canReverseChange)
+	{
+		for (int i = 0; i < residues.Num(); ++i)
+		{
+			residues[i]->Stabilize(m_secondaryStructureType);
+		}
+	}
+}
+
+void SecondaryStructure::ShakeResidues(TArray<AAminoAcid*>& residues)
+{
+	for (int i = 0; i < residues.Num(); ++i)
+	{
+		residues[i]->Shake();
+	}
+}
+
+void SecondaryStructure::ExtractResidues(TArray<AAminoAcid*>& out_residueContainer)
+{
+	//iterate through the residues that make up this structure and store them in the container
 	AAminoAcid* currentResidue = m_headAminoAcid;
-	TArray<AAminoAcid*> residues;
 	bool keepIterating = true;
 
 	//group all the residues into a container
 	while (keepIterating)
 	{
-		residues.Add(currentResidue);
+		out_residueContainer.Add(currentResidue);
 		if (currentResidue != m_tailAminoAcid)
 		{
 			currentResidue = currentResidue->GetNextAminoAcidPtr();
@@ -402,11 +471,9 @@ void SecondaryStructure::BreakStructure()
 			keepIterating = false;
 		}
 	}
-
-	TestLineFitting2(residues);
 }
 
-void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
+void SecondaryStructure::BreakStructure(const TArray<AAminoAcid*>& residues)
 {
 	//This line fitting will only work appropriately for spirals, it makes assumptions other type of data
 	//will not meet
@@ -618,43 +685,8 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 
 	//cross product should give us the other basis vector
 	FVector baseVector2 = FVector::CrossProduct(baseVector, startToEnd);
-
-	//now we should have three vectors perpendicular to each other
-	float testDot = FVector::DotProduct(baseVector, startToEnd);
-	testDot = FVector::DotProduct(baseVector2, startToEnd);
-	testDot = FVector::DotProduct(baseVector, baseVector2);
-
-	/*
-	//render to see if they are perpendicular to each other
-	DrawDebugLine(
-		m_parentModel->GetWorld(),
-		startLocation,
-		endLocation,
-		FColor(255, 0, 0),
-		true, -1, 0,
-		12
-		);
-
-	endLocation = startLocation + 120 * baseVector;
-	DrawDebugLine(
-		m_parentModel->GetWorld(),
-		startLocation,
-		endLocation,
-		FColor(0, 255, 0),
-		true, -1, 0,
-		12
-		);
-
-	endLocation = startLocation + 120 * baseVector2;
-	DrawDebugLine(
-		m_parentModel->GetWorld(),
-		startLocation,
-		endLocation,
-		FColor(0, 0, 255),
-		true, -1, 0,
-		12
-		);
-	*/
+	
+	//Gram-Schmitt process end
 	//end
 
 	//randomly move all of the residues that conform the alpha helix
@@ -669,185 +701,8 @@ void SecondaryStructure::TestLineFitting2(TArray<AAminoAcid*>& residues)
 		residues[i]->MoveTo(tempLocation, false, true);
 		residues[i]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
 	}
-}
 
-//this does not work
-void SecondaryStructure::TestLineFitting(TArray<AAminoAcid*>& residues)
-{
-	int num = residues.Num();
-	double inverseNum = 1.0 / num;
-	double oneThird = 1.0 / 3.0;
-
-	double x_m = 0.0;
-	double y_m = 0.0;
-	double z_m = 0.0;
-	double sum_x_squared_m = 0.0;
-	double sum_y_squared_m = 0.0;
-	double sum_z_squared_m = 0.0;
-	double sum_xy = 0.0;
-	double sum_xz = 0.0;
-	double sum_yz = 0.0;
-
-	FVector location;
-	for (int i = 0; i < residues.Num(); ++i)
-	{
-		location = residues[i]->GetActorLocation();
-
-		x_m += location.X;
-		y_m += location.Y;
-		z_m += location.Z;
-
-		sum_x_squared_m += (location.X * location.X);
-		sum_y_squared_m += (location.Y * location.Y);
-		sum_z_squared_m += (location.Z * location.Z);
-
-		sum_xy += (location.X * location.Y);
-		sum_xz += (location.X * location.Z);
-		sum_yz += (location.Y * location.Z);
-	}
-
-	x_m *= inverseNum;
-	y_m *= inverseNum;
-	z_m *= inverseNum;
-
-	sum_x_squared_m *= inverseNum;
-	sum_y_squared_m *= inverseNum;
-	sum_z_squared_m *= inverseNum;
-
-	sum_xy *= inverseNum;
-	sum_xz *= inverseNum;
-	sum_yz *= inverseNum;
-
-	double s_xx = 0.0;
-	double s_yy = 0.0;
-	double s_zz = 0.0;
-	
-	s_xx = -(x_m * x_m) + (sum_x_squared_m);
-	s_yy = -(y_m * y_m) + (sum_y_squared_m);
-	s_zz = -(z_m * z_m) + (sum_z_squared_m);
-
-	double s_xz = 0.0;
-	double s_xy = 0.0;
-	double s_yz = 0.0;
-
-	s_xy = -(x_m * y_m) + (sum_xy);
-	s_xz = -(x_m * z_m) + (sum_xz);
-	s_yz = -(y_m * z_m) + (sum_yz);
-
-	double theta = 0.0;
-
-	theta = FMath::Atan2((s_xx - s_yy), (2.0 * s_xy)) * 0.5;
-
-	double cosTheta = cos(theta);
-	double sinTheta = sin(theta);
-	double cosThetaSquared = cosTheta * cosTheta;
-	double sinThetaSquared = sinTheta * sinTheta;
-
-	double k11 = ((s_yy + s_zz) * cosThetaSquared) + ((s_xx + s_zz) * sinThetaSquared) - (2.0 * s_xy * cosTheta * sinTheta);
-	double k22 = ((s_yy + s_zz) * sinThetaSquared) + ((s_xx + s_zz) * cosThetaSquared) + (2.0 * s_xy * cosTheta * sinTheta);
-	double k12 = ((-s_xy) * (cosThetaSquared - sinThetaSquared)) + ((s_xx - s_yy) * cosTheta * sinTheta);
-	double k10 = (s_xz * cosTheta) + (s_yz * sinTheta);
-	double k01 = (-s_xz * sinTheta) + (s_yz * cosTheta);
-	double k00 = s_xx + s_yy;
-
-	double c2 = -k00 - k11 - k22;
-	double c1 = (k00 * k11) + (k00 * k22) + (k11*k22) - (k01 * k01) - (k10 * k10);
-	double c0 = ((k01 * k01) * k11) + ((k10 * k10) * k22) - (k00*k11*k22);
-
-	double p = c1 - (oneThird * c2 * c2);
-	double q = ((2.0 / 27.0) * c2 *c2 * c2) - (oneThird * c1 * c2) + c0;
-	double R = (0.25 * q * q) + ((1.0 / 27.0) * p * p * p);
-
-	double phetaSquared = 0.0;
-
-	if (R > 0.0)
-	{
-		double sqrtR = sqrt(R);
-		double term1 = (-oneThird) * c2;
-		double innerTest = -0.5 * q;
-		innerTest += sqrtR;
-		double term2 = cbrt((-0.5 * q) + sqrtR);
-		double term3 = cbrt((-0.5 * q) - sqrtR);
-
-		phetaSquared = term1 + term2 + term3;
-	}
-	else
-	{
-		double kappa = sqrt((-1.0 / 27.0) * p * p * p);
-		double gamma = acos(-q / (2.0 * kappa));
-
-		double cubicRootKappa = cbrt(kappa);
-
-		FVector values = FVector::ZeroVector;
-		values.X = ((-oneThird) * c2) + (2.0 * cubicRootKappa * cos((oneThird)*gamma));
-		values.Y = ((-oneThird) * c2) + (2.0 * cubicRootKappa * cos((oneThird)*(gamma + (2.0 * PI))));
-		values.Z = ((-oneThird) * c2) + (2.0 * cubicRootKappa * cos((oneThird)*(gamma + (4.0 * PI))));
-
-		phetaSquared = values.GetMin();
-	}
-
-	double division1 = (k10 / (k11 - phetaSquared));
-	double division2 = (k01 / (k22 - phetaSquared));
-
-	double a = (-division1 * cosTheta) + (division2 * sinTheta);
-	double b = (-division1 * sinTheta) + (-division2 * cosTheta);
-	double a_squared = a * a;
-	double b_squared = b * b;
-
-	double division3 = ((1.0) / (1.0 + a_squared + b_squared));
-
-	double u = division3 * (((1.0 + b_squared) * x_m) - (a*b*y_m) + (a*z_m));
-	double v = division3 * ((-a*b*x_m) + ((1.0 + a_squared) * y_m) + (b*z_m));
-	double w = division3 * ((a * x_m) + (b*y_m) + ((a_squared + b_squared)*z_m));
-
-	FVector LinkStart(x_m, y_m, z_m);
-	FVector LinkEnd(u, v, w);
-	
-	DrawDebugLine(
-		m_parentModel->GetWorld(),
-		LinkStart,
-		LinkEnd,
-		FColor(255, 0, 0),
-		true, -1, 0,
-		12
-		);
-
-	DrawDebugSphere(
-		m_parentModel->GetWorld(),
-		LinkStart,
-		10,
-		20,
-		FColor(0,255,0),
-		true,
-		-1.f,
-		0
-		);
-
-	DrawDebugSphere(
-		m_parentModel->GetWorld(),
-		LinkEnd,
-		10,
-		20,
-		FColor(0, 255, 0),
-		true,
-		-1.f,
-		0
-		);
-
-	FVector test1 = residues[0]->GetActorLocation();
-	float z = a * test1.X + b * test1.Y;
-	test1.Z = z;
-
-	DrawDebugSphere(
-		m_parentModel->GetWorld(),
-		test1,
-		10,
-		20,
-		FColor(0, 255, 0),
-		true,
-		-1.f,
-		0
-		);
-
-	float test2 = (phetaSquared * phetaSquared * phetaSquared) + c2 * phetaSquared * phetaSquared + c1 * phetaSquared + c0;
+	//change the structure type of the first and last residue in the structure
+	residues[0]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+	residues.Last()->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
 }

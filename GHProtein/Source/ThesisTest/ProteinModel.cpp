@@ -660,20 +660,18 @@ namespace GHProtein
 		}
 	}
 
-	void ProteinModel::BreakFirstSpiral()
+	void ProteinModel::SetTemperature(float temperatureCelsius)
 	{
-		//look for the first spiral and start modifying it
-		SecondaryStructure* test = m_headSecondaryStructure;
+		SecondaryStructure* currentStructure = m_headSecondaryStructure;
 
-		while (test && test->GetSecondaryStructureType() != ESecondaryStructure::ssAlphaHelix)
+		while (currentStructure != nullptr)
 		{
-			test = test->GetNextStructurePtr();
-		}
-
-		//modify this alpha helix
-		if (test)
-		{
-			test->BreakStructure();
+			if (currentStructure->GetSecondaryStructureType() == ESecondaryStructure::ssAlphaHelix)
+			{
+				currentStructure->SetTemperature(temperatureCelsius);
+				break;
+			}
+			currentStructure = currentStructure->GetNextStructurePtr();
 		}
 	}
 

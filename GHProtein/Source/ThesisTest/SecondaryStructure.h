@@ -89,18 +89,20 @@ public:
 	bool IsPartOfSpecifiedBridgeLabels(const TArray<uint32>& bridgeLabels) const;
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 	void SpawnHydrogenBonds();
-	void BreakStructure();
+	void SetTemperature(float temperatureCelsius);
 
 	static SecondaryStructure* GetSelectedStructure();
 
 private:
 	void AddBridgeLabel(uint32 bridgeLabel);
+	void ExtractResidues(TArray<AAminoAcid*>& out_residuecontainer);
+	void BreakStructure(const TArray<AAminoAcid*>& residues);
+	void ShakeResidues(TArray<AAminoAcid*>& residues);
+	void StabilizeResidues(TArray<AAminoAcid*>& residues);
 	/*
 	void ChangeRibbonColor(const FColor& ribbonColor);
 	void ResetRibbonColor();
 	*/
-	void TestLineFitting(TArray<AAminoAcid*>& residues);
-	void TestLineFitting2(TArray<AAminoAcid*>& residues);
 
 private:
 	ESecondaryStructure::Type m_secondaryStructureType;
@@ -111,6 +113,13 @@ private:
 
 	TArray<uint32> m_bridgeLabels;
 	TArray<HydrogenBond*> m_hydrogenBonds;
+
+	float m_irreversibleChangeTemperatureCelsius;
+	float m_breakTemperature;
+	float m_regularTemperature;
+	float m_prevTemperature;
+
+	bool m_canReverseChange;
 
 	GHProtein::ProteinModel* m_parentModel;
 

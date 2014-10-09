@@ -124,7 +124,7 @@ public:
 		void HideHydrogenBonds();
 
 	UFUNCTION(exec)
-		void BreakDownFirstSpiral();
+		void SetTemperature(float temperatureCelsius);
 
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();
