@@ -105,7 +105,7 @@ namespace EResidueType
 		kTyrosine				UMETA(DisplayName = "Tyrosine"),			// Y	tyr
 		kValine					UMETA(DisplayName = "Valine"),				// V	val
 
-		kResidueTypeCount		UMETA(HIDDEN)
+		kResidueTypeCount		UMETA(HIDDEN),
 	};
 }
 
