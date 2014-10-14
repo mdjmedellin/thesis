@@ -81,7 +81,7 @@ namespace EResidueType
 {
 	enum Type
 	{
-		kUnknownResidue			UMETA(Hidden),
+		kUnknownResidue			UMETA(DisplayName = "Unknown Residue"),
 
 		//
 		kAlanine				UMETA(DisplayName = "Alanine"),				// A	ala
