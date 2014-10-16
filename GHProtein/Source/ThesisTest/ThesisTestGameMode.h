@@ -26,6 +26,9 @@ public:
 
 	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "ProteinEvents")
+		void FinishedProteinAnimation();
+
 public:
 	GHProtein::ProteinModel* m_proteinModel;
 
@@ -69,6 +72,21 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = ProteinModel)
 		float m_hydrogenBondLinkWidth;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinEnviroment)
+		float m_startingTemperatureCelsius;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinEnviroment)
+		float m_stableTemperatureCelsius;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinEnviroment)
+		float m_meltingTemperatureCelsius;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinEnviroment)
+		float m_irreversibleTemperatureCelsius;
+
+	UPROPERTY(EditDefaultsOnly, Category = ProteinEnviroment)
+		float m_temperatureStep;
 
 	UPROPERTY()
 		TArray<class AProteinModelSpawnPoint*> ProteinModelSpawnPoints;

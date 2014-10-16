@@ -13,7 +13,6 @@ ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCI
 	, m_maxVals(FVector(0,100,0))
 	, m_sizeInterpolator(new Interpolator())
 	, m_colorInterpolator(new Interpolator())
-	, testInterpolator(nullptr)
 	, m_normalColor(FColor::White)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
@@ -48,14 +47,6 @@ void ALinkFragment::SetColor(const FColor& linkColor)
 
 void ALinkFragment::Tick(float DeltaSeconds)
 {
-	if (m_shake)
-	{
-		float t = testInterpolator->Poll().X;
-		m_prevEndTangent = m_minVals * (1.f - t) + m_maxVals * (t);
-
-		SplineMeshComponent->SetEndTangent(m_prevEndTangent);
-	}
-
 	if (m_sizeInterpolator->IsPlaying())
 	{
 		m_currentSizeScale = m_sizeInterpolator->Poll();
@@ -74,16 +65,6 @@ void ALinkFragment::Tick(float DeltaSeconds)
 
 void ALinkFragment::ToggleShake()
 {
-	if (testInterpolator)
-	{
-		testInterpolator->TogglePlay();
-	}
-	else
-	{
-		testInterpolator = new Interpolator();
-		testInterpolator->ResetInterpolator(FVector::ZeroVector, FVector(1.f, 0.f, 0.f), 0.75f, true, true);
-	}
-
 	float randVal = FMath::SRand();
 	m_timeVal = randVal * m_maxTime;
 	m_shake = !m_shake;
@@ -92,7 +73,6 @@ void ALinkFragment::ToggleShake()
 void ALinkFragment::ToggleBreaking()
 {
 	ChangeLinkType(ELinkType::ELink_None, true);
-	//ChangeRenderType(ESecondaryStructure::ssCount, true);
 }
 
 void ALinkFragment::UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
@@ -213,4 +193,10 @@ void ALinkFragment::UpdateTangents(const FVector& startTangent, const FVector& e
 {
 	SplineMeshComponent->SetStartTangent(startTangent);
 	SplineMeshComponent->SetEndTangent(endTangent);
+}
+
+bool ALinkFragment::IsAnimating()
+{
+	return (m_sizeInterpolator->IsPlaying()
+		|| m_colorInterpolator->IsPlaying());
 }

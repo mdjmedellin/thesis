@@ -134,6 +134,10 @@ void AThesisTestGameMode::StartMatch()
 		m_proteinModel->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
 			m_linkWidth, m_linkHeight, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_aminoAcidSize);
 
+		//se the enviromental properties of the model
+		m_proteinModel->SetEnviromentalProperties(m_startingTemperatureCelsius, m_stableTemperatureCelsius,
+			m_meltingTemperatureCelsius, m_irreversibleTemperatureCelsius, m_temperatureStep);
+
 		UWorld* const World = GetWorld();
 		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_proteinModelCenterLocation,
 			m_distanceScale);

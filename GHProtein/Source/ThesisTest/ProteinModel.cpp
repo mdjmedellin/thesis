@@ -1,4 +1,5 @@
 #include "ThesisTest.h"
+#include "ThesisTestGameMode.h"
 #include "AminoAcid.h"
 #include "LinkFragment.h"
 #include "ProteinUtilities.h"
@@ -25,7 +26,11 @@ namespace GHProtein
 		, m_betaStrandColor(FColor::White)
 		, m_hydrogenBondColor(FColor::White)
 		, m_world(proteinWorld)
-		, m_temperatureCelsius(37.f)						//we start the model with a temperature equal to a human's average body temperatures
+		, m_temperatureStep(1.f)
+		, m_stableTemperatureCelsius(0.f)
+		, m_meltingTemperatureCelsius(0.f)
+		, m_irreversibleTemperatureCelsius(0.f)
+		, m_temperatureCelsius(0.f)						//we start the model with a temperature equal to a human's average body temperatures
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -197,6 +202,16 @@ namespace GHProtein
 		m_aminoAcidSize = aminoAcidSize;
 	}
 
+	void ProteinModel::SetEnviromentalProperties(float startingTemperatureCelsius, float stableTemperatureCelsius,
+		float meltingTemperatureCelsius, float irreversibleTemperatureCelsius, float temperatureStep)
+	{
+		m_temperatureCelsius = startingTemperatureCelsius;
+		m_stableTemperatureCelsius = stableTemperatureCelsius;
+		m_meltingTemperatureCelsius = meltingTemperatureCelsius;
+		m_irreversibleTemperatureCelsius = irreversibleTemperatureCelsius;
+		m_temperatureStep = temperatureStep;
+	}
+
 	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& proteinModelCenterLocation,
 		float distanceScale)
 	{
@@ -311,6 +326,8 @@ namespace GHProtein
 		linkChain->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor, m_linkWidth,
 			m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
 
+		//linkChain->SetEnviromentalProperties(m_stableTemperatureCelsius, m_meltingTemperatureCelsius, m_irreversibleTemperatureCelsius);
+
 		HydrogenBond* newHydrogenBond = new HydrogenBond(startResidue, endResidue, linkChain);
 
 		//should probably add the hydrogen bond into the array of current hydrogen bonds
@@ -321,21 +338,6 @@ namespace GHProtein
 
 		return newHydrogenBond;
 	};
-
-	void ProteinModel::HighlightSecondaryStructure(AAminoAcid* residueMember)
-	{
-		//iterate through the secondary structures to see what to highlight
-		for (SecondaryStructure* currentSecondaryStructure = m_headSecondaryStructure;
-			currentSecondaryStructure != nullptr && (m_tailSecondaryStructure && currentSecondaryStructure != m_tailSecondaryStructure->GetNextStructurePtr());
-			currentSecondaryStructure = currentSecondaryStructure->GetNextStructurePtr())
-		{
-			if (currentSecondaryStructure->ContainsSpecifiedResidue(residueMember))
-			{
-				//currentSecondaryStructure->SetSelected();
-				break;
-			}
-		}
-	}
 
 	AAminoAcid* ProteinModel::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	{
@@ -626,25 +628,71 @@ namespace GHProtein
 		}
 	}
 
+	void ProteinModel::ModifyTemperature(float temperatureModifierScale)
+	{
+		m_temperatureCelsius += (m_temperatureStep * temperatureModifierScale);
+
+		UpdateModelTemperature();
+	}
+
 	void ProteinModel::SetTemperature(float temperatureCelsius)
+	{
+		m_temperatureCelsius = temperatureCelsius;
+
+		UpdateModelTemperature();
+	}
+
+	void ProteinModel::UpdateModelTemperature()
 	{
 		SecondaryStructure* currentStructure = m_headSecondaryStructure;
 
 		while (currentStructure != nullptr)
 		{
-			currentStructure->SetTemperature(temperatureCelsius);
+			currentStructure->SetTemperature(m_temperatureCelsius);
 			currentStructure = currentStructure->GetNextStructurePtr();
 		}
 
 		//set the temperature on all of the hydrogen bonds
 		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
 		{
-			m_hydrogenBonds[i]->SetTemperature(temperatureCelsius);
+			m_hydrogenBonds[i]->SetTemperature(m_temperatureCelsius);
 		}
+	}
+
+	float ProteinModel::GetCurrentTemperature()
+	{
+		return m_temperatureCelsius;
 	}
 
 	UWorld* ProteinModel::GetWorld()
 	{
 		return m_world;
+	}
+
+	void ProteinModel::AddToListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureBeingModified)
+	{
+		m_modifiedSecondaryStructures.AddUnique(secondaryStructureBeingModified);
+	}
+
+	void ProteinModel::RemoveFromListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureToRemove)
+	{
+		m_modifiedSecondaryStructures.Remove(secondaryStructureToRemove);
+
+		//once removed, lets check if there are any remaining structures being modified
+		CheckIfEndModificationEventShouldTrigger();
+	}
+
+	void ProteinModel::CheckIfEndModificationEventShouldTrigger()
+	{
+		if (m_modifiedSecondaryStructures.Num() == 0
+			&& m_modifiedHydrogenBonds.Num() == 0)
+		{
+			//triggerEvent
+			AThesisTestGameMode* gameMode = (AThesisTestGameMode*)(m_world->GetAuthGameMode());
+			if (gameMode)
+			{
+				gameMode->FinishedProteinAnimation();
+			}
+		}
 	}
 }

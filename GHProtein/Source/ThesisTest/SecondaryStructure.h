@@ -15,13 +15,13 @@ class HydrogenBond
 {
 public:
 	HydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue, ALinkFragment* linkFragment)
-	: m_linkFragment(linkFragment)
-	, m_relativeRotation(FRotator::ZeroRotator)
-	, m_prevTemperature(23.5)
-	, m_irreversibleChangeTemperatureCelsius(50.f)
-	, m_breakTemperature(41.f)
-	, m_regularTemperature(23.5f)
-	, m_canReverseChange(true)
+		: m_linkFragment(linkFragment)
+		, m_relativeRotation(FRotator::ZeroRotator)
+		, m_prevTemperature(23.5)
+		, m_irreversibleChangeTemperatureCelsius(50.f)
+		, m_breakTemperature(41.f)
+		, m_regularTemperature(23.5f)
+		, m_canReverseChange(true)
 	{
 		m_bondResidues[0] = startResidue;
 		m_bondResidues[1] = endResidue;
@@ -87,10 +87,6 @@ public:
 
 	void SetNextStructurePtr(SecondaryStructure* nextStructure);
 	void AppendAminoAcid(AAminoAcid* residue);
-	/*
-	void SetSelected();
-	void Deselect();
-	*/
 	SecondaryStructure* GetNextStructurePtr();
 	AAminoAcid* GetHeadResidue();
 	AAminoAcid* GetEndResidue();
@@ -101,6 +97,8 @@ public:
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 	void SpawnHydrogenBonds();
 	void SetTemperature(float temperatureCelsius);
+	void AddToListOfModifiedResidues(AAminoAcid* residueModified);
+	void RemoveFromListOfModifiedResidues(AAminoAcid* residueModified);
 
 	static SecondaryStructure* GetSelectedStructure();
 
@@ -110,10 +108,6 @@ private:
 	void BreakStructure(const TArray<AAminoAcid*>& residues);
 	void ShakeResidues(TArray<AAminoAcid*>& residues);
 	void StabilizeResidues(TArray<AAminoAcid*>& residues);
-	/*
-	void ChangeRibbonColor(const FColor& ribbonColor);
-	void ResetRibbonColor();
-	*/
 
 private:
 	ESecondaryStructure::Type m_secondaryStructureType;
@@ -124,6 +118,7 @@ private:
 
 	TArray<uint32> m_bridgeLabels;
 	TArray<HydrogenBond*> m_hydrogenBonds;
+	TArray<AAminoAcid*> m_modifiedResidues;
 
 	float m_irreversibleChangeTemperatureCelsius;
 	float m_breakTemperature;

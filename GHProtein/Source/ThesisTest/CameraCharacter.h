@@ -41,6 +41,9 @@ class ACameraCharacter : public ACharacter
 		float m_rotationSpeedDegreesPerSecond;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
+		float m_movementSpeedPerSecond;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
 		float m_maxPickDistance;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = CustomChain)
@@ -50,17 +53,23 @@ class ACameraCharacter : public ACharacter
 		float m_customChainResidueDiameter;
 
 	GHProtein::ProteinModel* m_proteinModel;
-	float m_rotationSpeedSecondsPerDegrees;
-	bool m_rotateProteinYaw;
-	bool m_rotateProteinPitch;
 	bool m_allowCameraRotation;
 	bool m_enableZoom;
+	bool m_allowInput;
+	float m_xDirection;
+	float m_yDirection;
+	float m_rotateProteinYaw;
+	float m_rotateProteinPitch;
 	float m_zoomDirection;
 	float m_zoomStep;
 	float m_zoomBuffer;
 	AAminoAcid* m_selectedAminoAcid;
 	FVector m_prevLocation;
 	TArray<AAminoAcid*> m_customChain;
+
+private:
+	void UpdateModelRotation(float deltaSeconds);
+	void UpdateModelLocation(float deltaSeconds);
 
 protected:
 
@@ -123,20 +132,33 @@ public:
 	UFUNCTION(exec)
 		void HideHydrogenBonds();
 
-	UFUNCTION(exec)
-		void SetTemperature(float temperatureCelsius);
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinEnviroment")
+		void SetModelTemperature(float temperatureCelsius);
+
+	UFUNCTION(BlueprintCallable, Category = "ProteinEnviroment")
+		float GetModelTemperature();
+
+	UFUNCTION(BlueprintCallable, Category = "ProteinEnviroment")
+		void ModifyTemperatureInModel(float temperatureModifierScale);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void TranslateModelX(float x_direction);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void TranslateModelY(float y_direction);
+	
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void RotateProteinYaw(float yawRotation);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void RotateProteinPitch(float pitchRotation);
+
+	UFUNCTION(BlueprintCallable, Category = "Controls")
+		void ToggleProteinInputs();
 
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();
 	virtual void Tick(float DeltaSeconds) OVERRIDE;
-
-	//Functions used to toggle rotation of the protein
-	virtual void ToggleProteinYawRotation();
-	virtual void ToggleProteinPitchRotation();
-
-	//world interaction functions
-	virtual void StartInteraction();
-	virtual void StopInteraction();
 
 	virtual void HandleControllerYawInput(float deltaYaw);
 	virtual void HandleControllerPitchInput(float deltaPitch);

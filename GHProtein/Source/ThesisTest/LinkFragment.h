@@ -40,7 +40,6 @@ private:
 
 	Interpolator* m_sizeInterpolator;
 	Interpolator* m_colorInterpolator;
-	Interpolator* testInterpolator;
 
 public:
 	virtual void BeginPlay();
@@ -55,6 +54,7 @@ public:
 	void Hide();
 	void Translate(const FVector& deltaLocation);
 	void UpdateTangents(const FVector& startTangent, const FVector& endtangent);
+	bool IsAnimating();
 
 private:
 	void SetColor(const FColor& linkColor);

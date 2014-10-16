@@ -49,7 +49,7 @@ void HydrogenBond::SetTemperature(float temperatureCelsius)
 {
 	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 	{
-		if (m_canReverseChange)
+		if (m_canReverseChange && m_prevTemperature <= m_breakTemperature)
 		{
 			//if it was previously on a regular temperature, we switch to breaking the bond
 			m_linkFragment->ToggleBreaking();
@@ -192,21 +192,6 @@ SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStruct
 SecondaryStructure::~SecondaryStructure()
 {}
 
-/*
-void SecondaryStructure::SetSelected()
-{
-	if (s_selectedStructure)
-	{
-		s_selectedStructure->Deselect();
-	}
-
-	s_selectedStructure = this;
-
-	//perform other selected operations here, such as changing colors of the materials
-	ChangeRibbonColor(FColor::Red);
-}
-*/
-
 AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 {
 	AAminoAcid* foundResidue = nullptr;
@@ -228,39 +213,6 @@ AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	return foundResidue;
 }
 
-/*
-void SecondaryStructure::Deselect()
-{
-	if (this == s_selectedStructure)
-	{
-		ResetRibbonColor();
-	}
-}
-
-
-void SecondaryStructure::ResetRibbonColor()
-{
-	//iterate over all of the amino acids on this structure and set the color to the ribbon color
-	for (AAminoAcid* currentResidue = m_headAminoAcid;
-		currentResidue != nullptr && (m_tailAminoAcid && currentResidue != m_tailAminoAcid->GetNextAminoAcidPtr());
-		currentResidue = currentResidue->GetNextAminoAcidPtr())
-	{
-		currentResidue->ResetLinkFragmentColorToDefault();
-	}
-}
-
-
-void SecondaryStructure::ChangeRibbonColor(const FColor& ribbonColor)
-{
-	//iterate over all of the amino acids on this structure and set the color to the ribbon color
-	for (AAminoAcid* currentResidue = m_headAminoAcid; 
-		currentResidue != nullptr && (m_tailAminoAcid && currentResidue != m_tailAminoAcid->GetNextAminoAcidPtr());
-		currentResidue = currentResidue->GetNextAminoAcidPtr())
-	{
-		currentResidue->SetLinkFragmentColor(ribbonColor);
-	}
-}
-*/
 void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure)
 {
 	//check if we alreay have a vaird ptr to the next secondary structure
@@ -277,6 +229,8 @@ void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
 {
 	//Get the residue information
 	const Residue* residueInfo = residue->GetResidueInformation();
+
+	residue->SetSecondaryStructure(this);
 
 	//if we do not have an amino acid, then we take the first amino acid as the head amino acid
 	if (m_headAminoAcid == nullptr)
@@ -425,28 +379,40 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 	{
 		if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 		{
-			if (m_canReverseChange && m_prevTemperature <= m_breakTemperature)
-			{
-				TArray<AAminoAcid*> residues;
-				ExtractResidues(residues);
-				
-				BreakStructure(residues);
-				m_canReverseChange = false;
-			}
-		}
-		else if (temperatureCelsius > m_breakTemperature)
-		{
-			if (m_prevTemperature <= m_breakTemperature && m_canReverseChange)
+			if (m_canReverseChange
+				&& m_prevTemperature <= m_breakTemperature)
 			{
 				TArray<AAminoAcid*> residues;
 				ExtractResidues(residues);
 
 				BreakStructure(residues);
+
+				//add the secondary structure to the list of sturctures being modified
+				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+			}
+
+			if (m_canReverseChange
+				&& m_prevTemperature <= m_irreversibleChangeTemperatureCelsius)
+			{
+				m_canReverseChange = false;
+			}
+		}
+		else if (temperatureCelsius > m_breakTemperature)
+		{
+			if (m_canReverseChange
+				&& m_prevTemperature <= m_breakTemperature)
+			{
+				TArray<AAminoAcid*> residues;
+				ExtractResidues(residues);
+
+				BreakStructure(residues);
+				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 			}
 		}
 		else if (temperatureCelsius > m_regularTemperature)
 		{
-			if (m_canReverseChange && m_prevTemperature > m_breakTemperature)
+			if (m_canReverseChange
+				&& m_prevTemperature > m_breakTemperature)
 			{
 				//technically, this should be able to stabilize also
 				TArray<AAminoAcid*> residues;
@@ -454,6 +420,8 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 
 				//stabilize the residues if possible
 				StabilizeResidues(residues);
+
+				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 
 				//start shaking
 				//ShakeResidues(residues);
@@ -470,6 +438,8 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 					ExtractResidues(residues);
 
 					StabilizeResidues(residues);
+
+					this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 				}
 				else if (m_prevTemperature > m_regularTemperature)
 				{
@@ -759,11 +729,27 @@ void SecondaryStructure::BreakStructure(const TArray<AAminoAcid*>& residues)
 		float sinVal = sinf(rads);
 
 		tempLocation = startLocation + (i * distanceBetweenIncrements * startToEnd) + (sinVal * longestDistance * baseVector);
-		residues[i]->MoveTo(tempLocation, false, true);
-		residues[i]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+		residues[i]->Break(tempLocation);
 	}
 
 	//change the structure type of the first and last residue in the structure
-	residues[0]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
-	residues.Last()->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+	residues[0]->Break();
+	residues.Last()->Break();
+}
+
+void SecondaryStructure::AddToListOfModifiedResidues(AAminoAcid* residueModified)
+{
+	m_modifiedResidues.AddUnique(residueModified);
+}
+
+void SecondaryStructure::RemoveFromListOfModifiedResidues(AAminoAcid* residueModified)
+{
+	m_modifiedResidues.Remove(residueModified);
+
+	if (m_modifiedResidues.Num() == 0)
+	{
+		//if all the residues finished animating
+		//remove the secondary structure from the list of structures being modified
+		m_parentModel->RemoveFromListOfModifiedSecondaryStructures(this);
+	}
 }

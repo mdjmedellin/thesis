@@ -14,8 +14,9 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_defaultLinkFragmentClass(nullptr)
 	, m_linkFragment(nullptr)
 	, m_residueInformation(nullptr)
+	, m_secondaryStructure(nullptr)
 	, m_model(nullptr)
-	, m_secondaryStructure(ESecondaryStructure::ssCount)
+	, m_secondaryStructureType(ESecondaryStructure::ssCount)
 	, m_normalColor(FColor::White)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
@@ -26,6 +27,7 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_betaStrandWidth(0.f)
 	, m_hydrogenBondLinkWidth(0.f)
 	, m_linkFragmentScalePerUnrealUnit(0.f)
+	, m_isAnimating(false)
 	, m_locationToKeepTrackOf(FVector::ZeroVector)
 	, m_locationInterpolator(Interpolator())
 {
@@ -56,6 +58,17 @@ void AAminoAcid::Tick(float DeltaSeconds)
 	{
 		//because the residue is moving independently, we are not going to translate it
 		MoveTo(m_locationInterpolator.Poll());
+	}
+
+	if (m_isAnimating)
+	{
+		//check if it is done animating the residue and the link fragment
+		if (!m_locationInterpolator.IsPlaying()
+			&& !m_linkFragment->IsAnimating())
+		{
+			m_isAnimating = false;
+			m_secondaryStructure->RemoveFromListOfModifiedResidues(this);
+		}
 	}
 }
 
@@ -95,13 +108,13 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 
 void AAminoAcid::ChangeSecondaryStructureType(ESecondaryStructure::Type typeOfStructure, bool smoothTranslation)
 {
-	if (m_secondaryStructure != typeOfStructure)
+	if (m_secondaryStructureType != typeOfStructure)
 	{
-		m_secondaryStructure = typeOfStructure;
+		m_secondaryStructureType = typeOfStructure;
 		
 		if (m_linkFragment)
 		{
-			m_linkFragment->ChangeLinkType(m_secondaryStructure, smoothTranslation);
+			m_linkFragment->ChangeLinkType(m_secondaryStructureType, smoothTranslation);
 		}
 	}
 }
@@ -179,6 +192,11 @@ bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
 void AAminoAcid::SetParentModel(GHProtein::ProteinModel* parentModel)
 {
 	m_model = parentModel;
+}
+
+void AAminoAcid::SetSecondaryStructure(SecondaryStructure* secondaryStructure)
+{
+	m_secondaryStructure = secondaryStructure;
 }
 
 void AAminoAcid::SetResidueInformation(Residue* residueInformation)
@@ -418,7 +436,7 @@ void AAminoAcid::RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& ro
 
 ESecondaryStructure::Type AAminoAcid::GetSecondaryStructure()
 {
-	return m_secondaryStructure;
+	return m_secondaryStructureType;
 }
 
 void AAminoAcid::SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
@@ -439,32 +457,6 @@ void AAminoAcid::SetRenderProperties(const FColor& normalColor, const FColor& he
 
 	UpdateLinkFragmentRenderProperties();
 }
-
-/*
-void AAminoAcid::SetLinkFragmentColor(const FColor& fragmentColor)
-{
-	if (m_linkFragment)
-	{
-		m_linkFragment->setColor(fragmentColor);
-	}
-}
-
-void AAminoAcid::ResetLinkFragmentColorToDefault()
-{
-	switch (m_secondaryStructure)
-	{
-	case ESecondaryStructure::ssAlphaHelix:
-		SetLinkFragmentColor(m_helixColor);
-		break;
-	case ESecondaryStructure::ssStrand:
-		SetLinkFragmentColor(m_betaStrandColor);
-		break;
-	default:
-		SetLinkFragmentColor(FColor::White);
-		break;
-	}
-}
-*/
 
 void AAminoAcid::UpdateLinkFragmentRenderProperties()
 {
@@ -571,6 +563,23 @@ void AAminoAcid::Stabilize(ESecondaryStructure::Type structureType)
 	//go back to the location we were keeping track of
 	MoveTo(m_locationToKeepTrackOf, false, true);
 	ChangeSecondaryStructureType(structureType, true);
+	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	m_isAnimating = true;
+}
+
+void AAminoAcid::Break(const FVector& newLocation)
+{
+	MoveTo(newLocation, false, true);
+	ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	m_isAnimating = true;
+}
+
+void AAminoAcid::Break()
+{
+	ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	m_isAnimating = true;
 }
 
 void AAminoAcid::Shake()

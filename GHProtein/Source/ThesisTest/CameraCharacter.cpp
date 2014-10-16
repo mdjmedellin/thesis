@@ -10,9 +10,8 @@
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
-	, m_rotateProteinPitch(false)
-	, m_rotateProteinYaw(false)
 	, m_rotationSpeedDegreesPerSecond(0.f)
+	, m_movementSpeedPerSecond(0.f)
 	, m_maxPickDistance(0.f)
 	, m_allowCameraRotation(true)
 	, m_selectedAminoAcid(nullptr)
@@ -21,6 +20,11 @@ ACameraCharacter::ACameraCharacter(const class FPostConstructInitializePropertie
 	, m_zoomDirection(0.f)
 	, m_zoomStep(100.f)
 	, m_zoomBuffer(100.f)
+	, m_xDirection(0.f)
+	, m_yDirection(0.f)
+	, m_rotateProteinPitch(0.f)
+	, m_rotateProteinYaw(0.f)
+	, m_allowInput(true)
 {
 	// Set size for collision capsule
 	// We actually want the  player to be a floating camera
@@ -73,19 +77,19 @@ void ACameraCharacter::SetupPlayerInputComponent(class UInputComponent* InputCom
 	InputComponent->BindAxis("LookUp", this, &ACameraCharacter::HandleControllerPitchInput);
 	InputComponent->BindAxis("LookUpRate", this, &ACameraCharacter::LookUpAtRate);
 
-
-	//Custom protein rotation input
-	InputComponent->BindAction("RotateProteinYaw", IE_Pressed, this, &ACameraCharacter::ToggleProteinYawRotation);
-	InputComponent->BindAction("RotateProteinYaw", IE_Released, this, &ACameraCharacter::ToggleProteinYawRotation);
-	InputComponent->BindAction("RotateProteinPitch", IE_Pressed, this, &ACameraCharacter::ToggleProteinPitchRotation);
-	InputComponent->BindAction("RotateProteinPitch", IE_Released, this, &ACameraCharacter::ToggleProteinPitchRotation);
-
-	//Pick the structure
-	InputComponent->BindAction("StartInteraction", IE_Pressed, this, &ACameraCharacter::StartInteraction);
-	InputComponent->BindAction("StartInteraction", IE_Released, this, &ACameraCharacter::StopInteraction);
-
 	//Custom protein zoom
 	InputComponent->BindAxis("ZoomIn", this, &ACameraCharacter::Zoom);
+
+	//Temperature
+	InputComponent->BindAxis("ModifyTemperature", this, &ACameraCharacter::ModifyTemperatureInModel);
+
+	//Custom protein translation
+	InputComponent->BindAxis("TranslateModelX", this, &ACameraCharacter::TranslateModelX);
+	InputComponent->BindAxis("TranslateModelY", this, &ACameraCharacter::TranslateModelY);
+
+	//Custom Protein rotation
+	InputComponent->BindAxis("RotateProteinYaw", this, &ACameraCharacter::RotateProteinYaw);
+	InputComponent->BindAxis("RotateProteinPitch", this, &ACameraCharacter::RotateProteinPitch);
 }
 
 void ACameraCharacter::HandleControllerYawInput(float deltaYaw)
@@ -100,40 +104,6 @@ void ACameraCharacter::HandleControllerPitchInput(float deltaPitch)
 	Super::AddControllerPitchInput(deltaPitch);
 }
 
-void ACameraCharacter::StartInteraction()
-{
-	//only do this if we have a max pick distance greater than 0
-	if (m_maxPickDistance > 0.f)
-	{
-		const FVector Start = GetActorLocation();
-		FRotator facingRotation = GetActorRotation();
-
-		FVector forwardVector = GetControlRotation().Vector();
-		const FVector End = (Start + (forwardVector * m_maxPickDistance));
-
-		FHitResult HitData(ForceInit);
-
-		if (UThesisStaticLibrary::Trace(this, Start, End, HitData))
-		{
-			m_selectedAminoAcid = (AAminoAcid*)(HitData.GetActor());
-			if (m_selectedAminoAcid)
-			{
-				m_allowCameraRotation = false;
-				GetMovementComponent()->StopMovementImmediately();
-
-				//attempt to highlight the secondary structure this amino acid belongs to
-				m_proteinModel->HighlightSecondaryStructure(m_selectedAminoAcid);
-			}
-		}
-	}
-}
-
-void ACameraCharacter::StopInteraction()
-{
-	m_selectedAminoAcid = nullptr;
-	m_allowCameraRotation = true;
-}
-
 void ACameraCharacter::ClearJumpInput()
 {
 	//Do Nothing, this is in order to prevent the controller from resetting the move up command from some weird place
@@ -143,16 +113,6 @@ void ACameraCharacter::ClearJumpInput()
 void ACameraCharacter::CustomClearJumpInput()
 {
 	Super::ClearJumpInput();
-}
-
-void ACameraCharacter::ToggleProteinYawRotation()
-{
-	m_rotateProteinYaw = !m_rotateProteinYaw;
-}
-
-void ACameraCharacter::ToggleProteinPitchRotation()
-{
-	m_rotateProteinPitch = !m_rotateProteinPitch;
 }
 
 void ACameraCharacter::OnFire()
@@ -168,10 +128,40 @@ void ACameraCharacter::OnFire()
 	}
 }
 
+void ACameraCharacter::TranslateModelX(float x_direction)
+{
+	if (m_allowInput)
+	{
+		m_xDirection = x_direction;
+	}
+}
+
+void ACameraCharacter::TranslateModelY(float y_direction)
+{
+	if (m_allowInput)
+	{
+		m_yDirection = y_direction;
+	}
+}
+
+void ACameraCharacter::RotateProteinYaw(float yawRotation)
+{
+	if (m_allowInput)
+	{
+		m_rotateProteinYaw = yawRotation;
+	}
+}
+
+void ACameraCharacter::RotateProteinPitch(float pitchRotation)
+{
+	if (m_allowInput)
+	{
+		m_rotateProteinPitch = pitchRotation;
+	}
+}
+
 void ACameraCharacter::Zoom(float Value)
 {
-	static bool wasPreviouslyZero = (Value == 0.f);
-
 	if (Value != 0.f)
 	{
 		m_zoomDirection = Value;
@@ -181,8 +171,6 @@ void ACameraCharacter::Zoom(float Value)
 	{
 		m_enableZoom = false;
 	}
-
-	wasPreviouslyZero = (Value == 0.f);
 }
 
 void ACameraCharacter::MoveUp(float Value)
@@ -302,20 +290,34 @@ void ACameraCharacter::Restart()
 	m_proteinModel = gameMode->m_proteinModel;
 }
 
-void ACameraCharacter::Tick(float DeltaSeconds)
+void ACameraCharacter::UpdateModelRotation(float DeltaSeconds)
 {
-	Super::Tick(DeltaSeconds);
-
 	float deltaDegrees = m_rotationSpeedDegreesPerSecond * DeltaSeconds;
-	FVector degreesRotated((deltaDegrees * m_rotateProteinPitch), (deltaDegrees * m_rotateProteinYaw), 0.f);
-
+	FVector degreesRotated(m_rotateProteinPitch, m_rotateProteinYaw, 0.f);
+	
 	if (degreesRotated != FVector::ZeroVector)
 	{
+		degreesRotated.Normalize();
+		degreesRotated *= deltaDegrees;
 		m_proteinModel->RotateModel(degreesRotated);
 	}
+}
 
+void ACameraCharacter::UpdateModelLocation(float DeltaSeconds)
+{
+	float translationDistance = m_movementSpeedPerSecond * DeltaSeconds;
+	FVector translationVector(m_xDirection, m_yDirection, 0.f);
+
+	if (translationVector != FVector::ZeroVector)
+	{
+		translationVector.Normalize();
+		translationVector *= translationDistance;
+		m_proteinModel->TranslateModel(translationVector);
+	}
+
+	//The following is not used at the moment
+	/*
 	FVector currentLocation = GetActorLocation();
-
 	//check if the model is zooming in or out
 	if (m_enableZoom)
 	{
@@ -336,19 +338,15 @@ void ACameraCharacter::Tick(float DeltaSeconds)
 			m_proteinModel->TranslateModel(direction);
 		}
 	}
+	*/
+}
 
-	//check if we have something we want to drag
-	if (m_selectedAminoAcid)
-	{
-		//compare the current location to the one that we are currently moving
-		FVector deltaLocation = currentLocation - m_prevLocation;
-		if (deltaLocation != FVector::ZeroVector)
-		{
-			m_selectedAminoAcid->Translate(deltaLocation);
-		}
-	}
+void ACameraCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
 
-	m_prevLocation = currentLocation;
+	UpdateModelRotation(DeltaSeconds);
+	UpdateModelLocation(DeltaSeconds);
 }
 
 void ACameraCharacter::TranslateProteinModel(const FVector& translation)
@@ -481,7 +479,31 @@ void ACameraCharacter::HideHydrogenBonds()
 	m_proteinModel->HideHydrogenBonds();
 }
 
-void ACameraCharacter::SetTemperature(float temperatureCelsius)
+void ACameraCharacter::SetModelTemperature(float temperatureCelsius)
 {
 	m_proteinModel->SetTemperature(temperatureCelsius);
+}
+
+void ACameraCharacter::ModifyTemperatureInModel(float temperatureModifierScale)
+{
+	m_proteinModel->ModifyTemperature(temperatureModifierScale);
+}
+
+float ACameraCharacter::GetModelTemperature()
+{
+	return m_proteinModel->GetCurrentTemperature();
+}
+
+void ACameraCharacter::ToggleProteinInputs()
+{
+	m_allowInput = !m_allowInput;
+
+	if (!m_allowInput)
+	{
+		//disable all of the input
+		m_rotateProteinPitch = 0.f;
+		m_rotateProteinYaw = 0.f;
+		m_xDirection = 0.f;
+		m_yDirection = 0.f;
+	}
 }

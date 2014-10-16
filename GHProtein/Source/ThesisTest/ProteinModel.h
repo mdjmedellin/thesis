@@ -31,6 +31,8 @@ namespace GHProtein
 		/** No assignment allowed */
 		ProteinModel& operator=(const ProteinModel& rhs) { return *this; };
 
+		void UpdateModelTemperature();
+
 		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
 		void MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation);
 		void UpdateMinAndMaxBounds(const FVector& newPoint);
@@ -40,6 +42,8 @@ namespace GHProtein
 		BetaSheet* MergeStrandIntoBetaSheet(SecondaryStructure* newStrand, BetaSheet* betaSheet);
 		BetaSheet* MergeBetaSheets(BetaSheet* sheet1, BetaSheet* sheet2);
 
+		void CheckIfEndModificationEventShouldTrigger();
+
 	public:
 		/** Public utility methods go here */
 		bool AddResidue(Residue* insertedResidue);
@@ -48,14 +52,17 @@ namespace GHProtein
 		void UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 			const FColor& hydrogenColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
 			float hydrogenBondLinkWidth, float aminoAcidSize);
+
+		void SetEnviromentalProperties(float startingTemperatureCelsius, float stableTemperatureCelsius, float meltingTemperatureCelsius,
+			float irreversibleTemperatureCelsius, float temperatureStep);
 		
 		void SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& aminoAcidCenterLocation, float distanceScale);
 
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
-		void HighlightSecondaryStructure(AAminoAcid* residueMember);
+		void TranslateModel(const FVector& displacement);
+
 		Residue* GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue = nullptr);
 		FVector GetDirectionFromCenter(const FVector& currentLocation);
-		void TranslateModel(const FVector& displacement);
 		FVector GetBoundingBoxDimensions() const;
 		FVector GetCenterLocation() const;
 		HydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
@@ -63,7 +70,12 @@ namespace GHProtein
 		void ToggleBreaking();
 		void HideHydrogenBonds();
 		void SetTemperature(float temperatureCelsius);
+		void ModifyTemperature(float temperatureModifierScale);
+		float GetCurrentTemperature();
 		UWorld* GetWorld();
+
+		void AddToListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureBeingModified);
+		void RemoveFromListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureToRemove);
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 
@@ -92,6 +104,10 @@ namespace GHProtein
 		FColor m_hydrogenBondColor;
 
 		float m_temperatureCelsius;
+		float m_temperatureStep;
+		float m_meltingTemperatureCelsius;
+		float m_stableTemperatureCelsius;
+		float m_irreversibleTemperatureCelsius;
 
 		float m_aminoAcidSize;
 
@@ -100,6 +116,9 @@ namespace GHProtein
 		TMap<int, ResidueContainer*> ResidueIDMap;
 		TArray<Residue*> m_residueVector;
 		TArray<ResidueContainer*> m_residueContainers;
+
+		TArray<SecondaryStructure*> m_modifiedSecondaryStructures;
+		TArray<HydrogenBond*> m_modifiedHydrogenBonds;
 
 		TArray<SecondaryStructure*> m_betaStrands;
 		TMap<SecondaryStructure*, BetaSheet*> m_strandToBetaSheetMap;

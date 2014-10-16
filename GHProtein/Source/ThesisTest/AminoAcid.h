@@ -13,6 +13,7 @@ namespace GHProtein
 
 class ALinkFragment;
 class HydrogenBond;
+class SecondaryStructure;
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -58,16 +59,15 @@ public:
 
 	void SetParentModel(GHProtein::ProteinModel* parentModel);
 	void SetResidueInformation(Residue* residueInformation);
+	void SetSecondaryStructure(SecondaryStructure* secondaryStructure);
 
 	void SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 		const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, 
 		float hydrogenBondLinkWidth, float linkHeight);
-	/*
-	void SetLinkFragmentColor(const FColor& fragmentColor);
-	void ResetLinkFragmentColorToDefault();
-	*/
 
 	void Stabilize(ESecondaryStructure::Type structureType);
+	void Break(const FVector& newLocation);
+	void Break();
 	void Shake();
 
 	ESecondaryStructure::Type GetSecondaryStructure();
@@ -96,8 +96,9 @@ private:
 	ALinkFragment* m_linkFragment;
 	Residue* m_residueInformation;
 	GHProtein::ProteinModel* m_model;
+	SecondaryStructure* m_secondaryStructure;
 
-	ESecondaryStructure::Type m_secondaryStructure;
+	ESecondaryStructure::Type m_secondaryStructureType;
 	FColor m_normalColor;
 	FColor m_helixColor;
 	FColor m_betaStrandColor;
@@ -108,6 +109,7 @@ private:
 	float m_betaStrandWidth;
 	float m_hydrogenBondLinkWidth;
 	float m_linkFragmentScalePerUnrealUnit;
+	bool m_isAnimating;
 
 	FVector m_locationToKeepTrackOf;
 	Interpolator m_locationInterpolator;
