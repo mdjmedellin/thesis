@@ -5,6 +5,7 @@
 #include "ProteinUtilities.h"
 #include "ProteinModel.h"
 #include "ResidueContainer.h"
+#include "HydrogenBond.h"
 #include "SecondaryStructure.h"
 
 namespace GHProtein
@@ -31,6 +32,7 @@ namespace GHProtein
 		, m_meltingTemperatureCelsius(0.f)
 		, m_irreversibleTemperatureCelsius(0.f)
 		, m_temperatureCelsius(0.f)						//we start the model with a temperature equal to a human's average body temperatures
+		, m_hydrogenBondClass(nullptr)
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -170,10 +172,7 @@ namespace GHProtein
 		FVector newResidueLocation = FVector::ZeroVector;
 		while (currentAminoAcid)
 		{
-			newResidueLocation = currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox;		//this brings the residue centered at 0,0,0
-			newResidueLocation += proteinModelCenterLocation;										//this centers the residue about the new location
-
-			currentAminoAcid->SetActorLocation(newResidueLocation);
+			currentAminoAcid->Translate(proteinModelCenterLocation - m_centerOfBoundingBox);
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
 
@@ -185,7 +184,7 @@ namespace GHProtein
 
 	void ProteinModel::UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 		const FColor& hydrogenBondColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
-		float hydrogenBondLinkWidth, float aminoAcidSize)
+		float hydrogenBondLinkWidth, float aminoAcidSize, UClass* hydrogenBondClass)
 	{
 		m_normalColor = normalColor;
 		m_helixColor = helixColor;
@@ -200,6 +199,8 @@ namespace GHProtein
 		m_linkHeight = normalLinkHeight;
 
 		m_aminoAcidSize = aminoAcidSize;
+
+		m_hydrogenBondClass = hydrogenBondClass;
 	}
 
 	void ProteinModel::SetEnviromentalProperties(float startingTemperatureCelsius, float stableTemperatureCelsius,
@@ -231,7 +232,7 @@ namespace GHProtein
 			ESecondaryStructure::Type currentSecondaryStructureType = ESecondaryStructure::ssCount;
 			SecondaryStructure* currentSecondaryStructure = nullptr;
 
-			//iterate over all of the residues and spawn an amino acids actor for each one of them
+			//iterate over all of the residues and spawn an amino acid actor for each one of them
 			for (int residueIndex = 0; residueIndex < m_residueVector.Num(); ++residueIndex)
 			{
 				currentResidue = m_residueVector[residueIndex];
@@ -249,6 +250,7 @@ namespace GHProtein
 				}
 				previousAminoAcid = currentAminoAcid;
 
+
 				//update bounding box
 				if (m_headPtr)
 				{
@@ -261,7 +263,8 @@ namespace GHProtein
 					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 				}
 
-				//set the residues secondary structure and updates the current secondary structure
+
+				//set the residue's secondary structure and updates the current secondary structure
 				currentAminoAcid->ChangeSecondaryStructureType(currentResidue->GetSecondaryStructure());
 
 				if (currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
@@ -274,11 +277,11 @@ namespace GHProtein
 					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
 					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType, this);
 				}
-
 				currentSecondaryStructure->AppendAminoAcid(currentAminoAcid);
-			}
 
+			}
 			AppendSecondaryStructure(currentSecondaryStructure);
+
 
 			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
 			MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
@@ -308,35 +311,31 @@ namespace GHProtein
 		}
 	}
 
-	HydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue)
+	AHydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue)
 	{
 		//Get the size of the hydrogen bond link fragment from the game mode
 		FVector startLocation = startResidue->GetActorLocation();
 		FVector endLocation = endResidue->GetActorLocation();
 		UWorld* world = startResidue->GetWorld();
-		UClass* linkFragmentClass = startResidue->GetDetaultLinkFragmentClass();
 
-		ALinkFragment* linkChain = UThesisStaticLibrary::SpawnBP<ALinkFragment>(world, linkFragmentClass,
+		AHydrogenBond* hydrogenBond = UThesisStaticLibrary::SpawnBP<AHydrogenBond>(world, m_hydrogenBondClass,
 			FVector::ZeroVector, FRotator::ZeroRotator);
 
-		linkChain->SplineMeshComponent->SetStartPosition(startLocation);
-		linkChain->SplineMeshComponent->SetEndPosition(endLocation);
+		hydrogenBond->SplineMeshComponent->SetStartPosition(startLocation);
+		hydrogenBond->SplineMeshComponent->SetEndPosition(endLocation);
 
-		//set render properties for the link
-		linkChain->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor, m_linkWidth,
-			m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
-
-		//linkChain->SetEnviromentalProperties(m_stableTemperatureCelsius, m_meltingTemperatureCelsius, m_irreversibleTemperatureCelsius);
-
-		HydrogenBond* newHydrogenBond = new HydrogenBond(startResidue, endResidue, linkChain);
+		//set render properties for the bond
+		hydrogenBond->UpdateRenderProperties(m_hydrogenBondColor, m_hydrogenBondLinkWidth, m_linkHeight);
+		//set the parent model
+		hydrogenBond->SetParentModelAndResiduesInformation(this, startResidue, endResidue);
+		//set the enviromental properties
+		hydrogenBond->SetEnviromentalProperties(m_temperatureCelsius, m_stableTemperatureCelsius, m_meltingTemperatureCelsius,
+			m_irreversibleTemperatureCelsius);
 
 		//should probably add the hydrogen bond into the array of current hydrogen bonds
-		m_hydrogenBonds.Add(newHydrogenBond);
+		m_hydrogenBonds.Add(hydrogenBond);
 
-		startResidue->AddHydrogenBond(newHydrogenBond);
-		endResidue->AddHydrogenBond(newHydrogenBond);
-
-		return newHydrogenBond;
+		return hydrogenBond;
 	};
 
 	AAminoAcid* ProteinModel::GetAminoAcidWithSpecifiedId(int sequenceNumber)
@@ -385,6 +384,9 @@ namespace GHProtein
 		{
 			AddBetaStrand(secondaryStructure);
 		}
+
+		secondaryStructure->SetEnviromentalProperties(m_temperatureCelsius, m_stableTemperatureCelsius,
+			m_meltingTemperatureCelsius, m_irreversibleTemperatureCelsius);
 	}
 
 	void ProteinModel::AddBetaStrand(SecondaryStructure* newStrand)
@@ -616,7 +618,7 @@ namespace GHProtein
 	{
 		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
 		{
-			m_hydrogenBonds[i]->ToggleBreaking();
+			m_hydrogenBonds[i]->Break();
 		}
 	}
 
@@ -679,6 +681,17 @@ namespace GHProtein
 		m_modifiedSecondaryStructures.Remove(secondaryStructureToRemove);
 
 		//once removed, lets check if there are any remaining structures being modified
+		CheckIfEndModificationEventShouldTrigger();
+	}
+
+	void ProteinModel::AddToListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondBeingModified)
+	{
+		m_modifiedHydrogenBonds.AddUnique(hydrogenBondBeingModified);
+	}
+
+	void ProteinModel::RemoveFromListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondToRemove)
+	{
+		m_modifiedHydrogenBonds.Remove(hydrogenBondToRemove);
 		CheckIfEndModificationEventShouldTrigger();
 	}
 

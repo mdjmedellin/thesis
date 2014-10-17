@@ -12,7 +12,7 @@ namespace GHProtein
 }
 
 class ALinkFragment;
-class HydrogenBond;
+class AHydrogenBond;
 class SecondaryStructure;
 
 UCLASS()
@@ -75,7 +75,7 @@ public:
 	void SetAminoAcidSize(float aminoAcidSize);
 
 	bool BondWithResidueExists(const AAminoAcid* residue) const;
-	void AddHydrogenBond(HydrogenBond* newBond);
+	void AddHydrogenBond(AHydrogenBond* newBond);
 
 	UClass* GetDetaultLinkFragmentClass();
 	ResidueInfo GetAminoAcidInfo() const;
@@ -114,7 +114,9 @@ private:
 	FVector m_locationToKeepTrackOf;
 	Interpolator m_locationInterpolator;
 
-	TArray<HydrogenBond*> m_hydrogenBonds;
+	bool m_notMoving;
+
+	TArray<AHydrogenBond*> m_hydrogenBonds;
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)

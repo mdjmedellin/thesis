@@ -5,12 +5,9 @@
 ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_dynamicMaterial(nullptr)
-	, m_prevEndTangent(FVector::ZeroVector)
 	, m_shake(false)
 	, m_timeVal(0.f)
 	, m_maxTime(0.15f)
-	, m_minVals(FVector(0,-100, 0))
-	, m_maxVals(FVector(0,100,0))
 	, m_sizeInterpolator(new Interpolator())
 	, m_colorInterpolator(new Interpolator())
 	, m_normalColor(FColor::White)
@@ -70,7 +67,7 @@ void ALinkFragment::ToggleShake()
 	m_shake = !m_shake;
 }
 
-void ALinkFragment::ToggleBreaking()
+void ALinkFragment::Break()
 {
 	ChangeLinkType(ELinkType::ELink_None, true);
 }
@@ -199,4 +196,19 @@ bool ALinkFragment::IsAnimating()
 {
 	return (m_sizeInterpolator->IsPlaying()
 		|| m_colorInterpolator->IsPlaying());
+}
+
+void ALinkFragment::RotateAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
+{
+	FVector distanceFromPivotPoint = GetActorLocation() - rotationPoint;
+
+	//rotate the distance
+	distanceFromPivotPoint = rotationMatrix.TransformVector(distanceFromPivotPoint);
+	//now set the new location to the fragment
+	SetActorLocation(rotationPoint + distanceFromPivotPoint);
+
+	//rotate the object
+	FRotationMatrix currentRotationMatrix(GetActorRotation());
+	currentRotationMatrix *= rotationMatrix;
+	SetActorRotation(currentRotationMatrix.Rotator());
 }

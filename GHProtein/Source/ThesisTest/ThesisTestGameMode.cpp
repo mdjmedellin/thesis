@@ -16,6 +16,7 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
+	, DefaultHydrogenBondClass(nullptr)
 	, m_linkWidth(100.f)
 	, m_linkHeight(100.f)
 	, m_distanceScale(1.f)
@@ -126,13 +127,17 @@ void AThesisTestGameMode::StartMatch()
 	AProteinModelSpawnPoint* bestModelSpawnPoint = GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_ProteinModel);
 
 	//check if we received a valid protein model
-	if (m_proteinModel && DefaultAminoAcidClass && bestModelSpawnPoint)
+	if (m_proteinModel 
+		&& DefaultAminoAcidClass
+		&& DefaultHydrogenBondClass
+		&& bestModelSpawnPoint)
 	{
 		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
 
 		//set the render properties for the protein model
 		m_proteinModel->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
-			m_linkWidth, m_linkHeight, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_aminoAcidSize);
+			m_linkWidth, m_linkHeight, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_aminoAcidSize,
+			DefaultHydrogenBondClass);
 
 		//se the enviromental properties of the model
 		m_proteinModel->SetEnviromentalProperties(m_startingTemperatureCelsius, m_stableTemperatureCelsius,

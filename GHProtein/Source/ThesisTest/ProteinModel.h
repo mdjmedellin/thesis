@@ -4,11 +4,11 @@
 
 class AAminoAcid;
 class ALinkFragment;
+class AHydrogenBond;
 class SecondaryStructure;
 class Residue;
 
 class BetaSheet;
-class HydrogenBond;
 
 /** JM: Protein Model is intended to be the actual structure of the protein */
 namespace GHProtein
@@ -51,7 +51,7 @@ namespace GHProtein
 		
 		void UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 			const FColor& hydrogenColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
-			float hydrogenBondLinkWidth, float aminoAcidSize);
+			float hydrogenBondLinkWidth, float aminoAcidSize, UClass* hydrogenBondClass);
 
 		void SetEnviromentalProperties(float startingTemperatureCelsius, float stableTemperatureCelsius, float meltingTemperatureCelsius,
 			float irreversibleTemperatureCelsius, float temperatureStep);
@@ -65,7 +65,7 @@ namespace GHProtein
 		FVector GetDirectionFromCenter(const FVector& currentLocation);
 		FVector GetBoundingBoxDimensions() const;
 		FVector GetCenterLocation() const;
-		HydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
+		AHydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
 		void ToggleShake();
 		void ToggleBreaking();
 		void HideHydrogenBonds();
@@ -76,6 +76,8 @@ namespace GHProtein
 
 		void AddToListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureBeingModified);
 		void RemoveFromListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureToRemove);
+		void AddToListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondBeingModified);
+		void RemoveFromListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondToRemove);
 
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 
@@ -112,18 +114,19 @@ namespace GHProtein
 		float m_aminoAcidSize;
 
 		UWorld* m_world;
+		UClass* m_hydrogenBondClass;
 
 		TMap<int, ResidueContainer*> ResidueIDMap;
 		TArray<Residue*> m_residueVector;
 		TArray<ResidueContainer*> m_residueContainers;
 
 		TArray<SecondaryStructure*> m_modifiedSecondaryStructures;
-		TArray<HydrogenBond*> m_modifiedHydrogenBonds;
+		TArray<AHydrogenBond*> m_modifiedHydrogenBonds;
 
 		TArray<SecondaryStructure*> m_betaStrands;
 		TMap<SecondaryStructure*, BetaSheet*> m_strandToBetaSheetMap;
 
 		TArray<BetaSheet*> m_betaSheets;
-		TArray<HydrogenBond*> m_hydrogenBonds;
+		TArray<AHydrogenBond*> m_hydrogenBonds;
 	};
 }

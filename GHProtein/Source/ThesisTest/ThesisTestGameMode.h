@@ -41,6 +41,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)
 		UClass* DefaultAminoAcidClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = GameMode)
+		UClass* DefaultHydrogenBondClass;
+
 private:
 	/* Private data members */
 	UPROPERTY(EditDefaultsOnly, Category = GameMode)

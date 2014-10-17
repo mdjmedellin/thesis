@@ -4,107 +4,6 @@
 #include "AminoAcid.h"
 #include "LinkFragment.h"
 
-//========================HydrogenBond========================
-void HydrogenBond::Translate(const FVector& displacement)
-{
-	m_linkFragment->SetActorLocation(m_linkFragment->GetActorLocation() + displacement);
-}
-
-void HydrogenBond::RotateAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
-{
-	FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
-
-	//rotate the distance
-	distanceFromPivotPoint = rotationMatrix.TransformVector(distanceFromPivotPoint);
-	//now set the new location to the fragment
-	m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
-
-	//rotate the object
-	FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
-	currentRotationMatrix *= rotationMatrix;
-	m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
-
-	/*
-	FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
-
-	//rotate the distance
-	distanceFromPivotPoint = rotation.RotateVector(distanceFromPivotPoint);
-	//now set the new location to the fragment
-	m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
-
-	//rotate the object
-	FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
-	FRotationMatrix newRotation(rotation);
-	currentRotationMatrix *= newRotation;
-	m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
-	*/
-}
-
-void HydrogenBond::ToggleShake()
-{
-	m_linkFragment->ToggleShake();
-}
-
-void HydrogenBond::SetTemperature(float temperatureCelsius)
-{
-	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
-	{
-		if (m_canReverseChange && m_prevTemperature <= m_breakTemperature)
-		{
-			//if it was previously on a regular temperature, we switch to breaking the bond
-			m_linkFragment->ToggleBreaking();
-		}
-
-		m_canReverseChange = false;
-	}
-	else if (temperatureCelsius > m_breakTemperature)
-	{
-		if (m_prevTemperature <= m_breakTemperature && m_canReverseChange)
-		{
-			m_linkFragment->ToggleBreaking();
-		}
-	}
-	else
-	{
-		if (m_canReverseChange && m_prevTemperature > m_regularTemperature)
-		{
-			//in this case we were previously breaking and now need to repair
-			m_linkFragment->ChangeLinkType(ELinkType::ELink_HydrogenBond, true);
-		}
-	}
-
-	m_prevTemperature = temperatureCelsius;
-}
-
-void HydrogenBond::ToggleBreaking()
-{
-	m_linkFragment->ToggleBreaking();
-}
-
-void HydrogenBond::ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const FVector& newLocation)
-{
-	if (aminoAcidEnd == m_bondResidues[0])
-	{
-		//the residue is the starting residue
-		//m_linkFragment->SplineMeshComponent->SetStartPosition(newLocation);
-		FVector transformedLocation = m_linkFragment->SplineMeshComponent->GetComponentTransform().InverseSafe().TransformPosition(newLocation);
-		m_linkFragment->SplineMeshComponent->SetStartPosition(transformedLocation);
-
-		//lets try to also set the tangent
-		//m_linkFragment->SplineMeshComponent->SetStartTangent(tangent);
-	}
-	else if (aminoAcidEnd == m_bondResidues[1])
-	{
-		//the residue is the end
-		//m_linkFragment->SplineMeshComponent->SetEndPosition(newLocation);
-		FVector transformedLocation = m_linkFragment->SplineMeshComponent->GetComponentTransform().InverseSafe().TransformPosition(newLocation);
-		m_linkFragment->SplineMeshComponent->SetEndPosition(transformedLocation);
-
-		//m_linkFragment->SplineMeshComponent->SetEndTangent(tangent);
-	}
-}
-//============================================================
-
 //======================BetaSheet===========================
 BetaSheet::BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, GHProtein::ProteinModel* parentModel)
 : m_proteinModel(parentModel)
@@ -115,6 +14,8 @@ BetaSheet::BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, G
 
 void BetaSheet::SpawnHydrogenBonds()
 {
+	return;
+
 	//we are going to need to iterate through all the strands
 	SecondaryStructure* outerStrand = nullptr;
 	AAminoAcid* currentOuterResidue = nullptr;
@@ -163,30 +64,26 @@ void BetaSheet::SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue)
 			if (betaPartner && !residue->BondWithResidueExists(betaPartner))
 			{
 				//if the bond has not yet been created, then we create it
-				HydrogenBond* hBond = m_proteinModel->SpawnHydrogenBond(residue, betaPartner);
-
-				//add bond to the array of hydrogen bonds in the beta sheet
-
+				AHydrogenBond* hBond = m_proteinModel->SpawnHydrogenBond(residue, betaPartner);
 			}
 		}
 	}
 }
 //==========================================================
 
-SecondaryStructure* SecondaryStructure::s_selectedStructure = nullptr;
-
+//==========================SECONDARY STRUCTURE===========================================
 SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStructureType,
 	GHProtein::ProteinModel* parentModel)
-: m_secondaryStructureType(secondaryStructureType)
-, m_nextSecondaryStructure(nullptr)
-, m_headAminoAcid(nullptr)
-, m_tailAminoAcid(nullptr)
-, m_parentModel(parentModel)
-, m_irreversibleChangeTemperatureCelsius(50.f)
-, m_breakTemperature(41.f)
-, m_regularTemperature(23.5f)
-, m_prevTemperature(23.5f)
-, m_canReverseChange(true)
+	: m_secondaryStructureType(secondaryStructureType)
+	, m_nextSecondaryStructure(nullptr)
+	, m_headAminoAcid(nullptr)
+	, m_tailAminoAcid(nullptr)
+	, m_parentModel(parentModel)
+	, m_irreversibleChangeTemperatureCelsius(0.f)
+	, m_breakTemperatureCelsius(0.f)
+	, m_regularTemperatureCelsius(0.f)
+	, m_prevTemperatureCelsius(0.f)
+	, m_canReverseChange(true)
 {}
 
 SecondaryStructure::~SecondaryStructure()
@@ -223,6 +120,51 @@ void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure)
 	}
 	
 	m_nextSecondaryStructure = nextStructure;
+}
+
+void SecondaryStructure::SetEnviromentalProperties(float currentTemperatureCelsius, float regularTemperatureCelsius,
+	float breakTemperatureCelsius, float irreversibleChangeTemperatureCelsius)
+{
+	m_prevTemperatureCelsius = currentTemperatureCelsius;
+	m_regularTemperatureCelsius = regularTemperatureCelsius;
+	m_breakTemperatureCelsius = breakTemperatureCelsius;
+	m_irreversibleChangeTemperatureCelsius = irreversibleChangeTemperatureCelsius;
+
+	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix
+		|| m_secondaryStructureType == ESecondaryStructure::ssStrand)
+	{
+		if (currentTemperatureCelsius > m_irreversibleChangeTemperatureCelsius)
+		{
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+
+			BreakStructure(residues);
+
+			//add the secondary structure to the list of sturctures being modified
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+			m_canReverseChange = false;
+		}
+		else if (currentTemperatureCelsius > m_breakTemperatureCelsius)
+		{
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+
+			BreakStructure(residues);
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+		}
+		else
+		{
+			//technically, this should be able to stabilize also
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+
+			//stabilize the residues if possible
+			StabilizeResidues(residues);
+
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+		}
+	}
+	m_prevTemperatureCelsius = currentTemperatureCelsius;
 }
 
 void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
@@ -339,6 +281,8 @@ bool SecondaryStructure::ContainsSpecifiedResidue(AAminoAcid* residue)
 
 void SecondaryStructure::SpawnHydrogenBonds()
 {
+	return;
+
 	//we only spawn for alpha helix structures
 	if (m_secondaryStructureType != ESecondaryStructure::ssAlphaHelix)
 	{
@@ -361,7 +305,7 @@ void SecondaryStructure::SpawnHydrogenBonds()
 		if (index == 4)
 		{
 			//we found a valid partner residue to create a hydrogen bond
-			HydrogenBond* newlyCreatedBond = m_parentModel->SpawnHydrogenBond(currentResidue, partnerResidue);
+			AHydrogenBond* newlyCreatedBond = m_parentModel->SpawnHydrogenBond(currentResidue, partnerResidue);
 			m_hydrogenBonds.Add(newlyCreatedBond);
 		}
 		else
@@ -380,7 +324,7 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 		if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 		{
 			if (m_canReverseChange
-				&& m_prevTemperature <= m_breakTemperature)
+				&& m_prevTemperatureCelsius <= m_breakTemperatureCelsius)
 			{
 				TArray<AAminoAcid*> residues;
 				ExtractResidues(residues);
@@ -392,15 +336,15 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 			}
 
 			if (m_canReverseChange
-				&& m_prevTemperature <= m_irreversibleChangeTemperatureCelsius)
+				&& m_prevTemperatureCelsius <= m_irreversibleChangeTemperatureCelsius)
 			{
 				m_canReverseChange = false;
 			}
 		}
-		else if (temperatureCelsius > m_breakTemperature)
+		else if (temperatureCelsius > m_breakTemperatureCelsius)
 		{
 			if (m_canReverseChange
-				&& m_prevTemperature <= m_breakTemperature)
+				&& m_prevTemperatureCelsius <= m_breakTemperatureCelsius)
 			{
 				TArray<AAminoAcid*> residues;
 				ExtractResidues(residues);
@@ -409,10 +353,10 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 			}
 		}
-		else if (temperatureCelsius > m_regularTemperature)
+		else if (temperatureCelsius > m_regularTemperatureCelsius)
 		{
 			if (m_canReverseChange
-				&& m_prevTemperature > m_breakTemperature)
+				&& m_prevTemperatureCelsius > m_breakTemperatureCelsius)
 			{
 				//technically, this should be able to stabilize also
 				TArray<AAminoAcid*> residues;
@@ -431,7 +375,7 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 		{
 			if (m_canReverseChange)
 			{
-				if (m_prevTemperature > m_breakTemperature)
+				if (m_prevTemperatureCelsius > m_breakTemperatureCelsius)
 				{
 					//stabilize the residues
 					TArray<AAminoAcid*> residues;
@@ -441,7 +385,7 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 
 					this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 				}
-				else if (m_prevTemperature > m_regularTemperature)
+				else if (m_prevTemperatureCelsius > m_regularTemperatureCelsius)
 				{
 					//stop the shaking
 				}
@@ -449,7 +393,7 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 		}
 	}
 
-	m_prevTemperature = temperatureCelsius;
+	m_prevTemperatureCelsius = temperatureCelsius;
 }
 
 void SecondaryStructure::StabilizeResidues(TArray<AAminoAcid*>& residues)
@@ -496,134 +440,189 @@ void SecondaryStructure::ExtractResidues(TArray<AAminoAcid*>& out_residueContain
 
 void SecondaryStructure::BreakStructure(const TArray<AAminoAcid*>& residues)
 {
-	//This line fitting will only work appropriately for spirals, it makes assumptions other type of data
-	//will not meet
-	int num = residues.Num();
-	int axisToUse = -1;
-	double inverseNum = 1.f / num;
-
-	//extract the data we need from the cluster of points
-	FVector means = FVector::ZeroVector;
-	FVector sums = FVector::ZeroVector;
-	FVector sumsSquared = FVector::ZeroVector;
-	double sum_xy = 0.0;
-	double sum_xz = 0.0;
-	double sum_yz = 0.0;
-
-	FVector location;
-	for (int i = 0; i < residues.Num(); ++i)
-	{
-		location = residues[i]->GetActorLocation();
-		
-		//we want to make dure the residue keeps track of its original location
-		//this is so that it can later return to its original location if the
-		//change is reversible
-		residues[i]->KeepTrackOfLocation(location);
-
-		sums.X += location.X;
-		sums.Y += location.Y;
-		sums.Z += location.Z;
-
-		sumsSquared.X += (location.X * location.X);
-		sumsSquared.Y += (location.Y * location.Y);
-		sumsSquared.Z += (location.Z * location.Z);
-
-		sum_xy += (location.X * location.Y);
-		sum_xz += (location.X * location.Z);
-		sum_yz += (location.Y * location.Z);
-	}
-
 	if (m_secondaryStructureType == ESecondaryStructure::ssStrand)
 	{
+		AAminoAcid* currentResidue = m_headAminoAcid;
+		bool keepLooping = true;
+		while (currentResidue && keepLooping)
+		{
+			if (currentResidue == m_tailAminoAcid)
+			{
+				keepLooping = false;
+			}
+
+			currentResidue->KeepTrackOfLocation(currentResidue->GetActorLocation());
+			currentResidue->Break();
+			currentResidue = currentResidue->GetNextAminoAcidPtr();
+		}
+	}
+	else
+	{
+		//This line fitting will only work appropriately for spirals, it makes assumptions other type of data
+		//will not meet
+		int num = residues.Num();
+		int axisToUse = -1;
+		double inverseNum = 1.f / num;
+
+		//extract the data we need from the cluster of points
+		FVector means = FVector::ZeroVector;
+		FVector sums = FVector::ZeroVector;
+		FVector sumsSquared = FVector::ZeroVector;
+		double sum_xy = 0.0;
+		double sum_xz = 0.0;
+		double sum_yz = 0.0;
+
+		FVector location;
 		for (int i = 0; i < residues.Num(); ++i)
 		{
-			residues[i]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+			location = residues[i]->GetActorLocation();
+
+			//we want to make dure the residue keeps track of its original location
+			//this is so that it can later return to its original location if the
+			//change is reversible
+			residues[i]->KeepTrackOfLocation(location);
+
+			sums.X += location.X;
+			sums.Y += location.Y;
+			sums.Z += location.Z;
+
+			sumsSquared.X += (location.X * location.X);
+			sumsSquared.Y += (location.Y * location.Y);
+			sumsSquared.Z += (location.Z * location.Z);
+
+			sum_xy += (location.X * location.Y);
+			sum_xz += (location.X * location.Z);
+			sum_yz += (location.Y * location.Z);
 		}
 
-		return;
-	}
-
-	//store the multiplicative sums in their appropriate place
-	TArray<FVector> multiplicativeSums;
-	multiplicativeSums.SetNum(3);
-	multiplicativeSums[0].Set(0.f, sum_xy, sum_xz);
-	multiplicativeSums[1].Set(sum_xy, 0.f, sum_yz);
-	multiplicativeSums[2].Set(sum_xz, sum_yz, 0.f);
-
-	//calculate the means
-	for (int i = 0; i < 3; ++i)
-	{
-		means[i] = sums[i] * inverseNum;
-	}
-
-	//calculate the possible run values of the slope formula
-	FVector possibleRunVariables = FVector::ZeroVector;
-	for (int i = 0; i < 3; ++i)
-	{
-		possibleRunVariables[i] = sumsSquared[i] - (sums[i] * means[i]);
-	}
-
-	//precalculate some of the possible values we will need for the point slope formula
-	TArray<FVector> possibleSlopes;
-	TArray<FVector> possibleIntercepts;
-	possibleSlopes.SetNum(3);
-	possibleIntercepts.SetNum(3);
-
-	for (int i = 0; i < 3; ++i)
-	{
-		for (int j = 0; j < 3; ++j)
+		if (m_secondaryStructureType == ESecondaryStructure::ssStrand)
 		{
-			if (i != j)
+			for (int i = 0; i < residues.Num(); ++i)
 			{
-				//at the moment we are only calculating the possible rise values of the slope formula
-				possibleSlopes[i][j] = (multiplicativeSums[i][j] - sums[i] * means[j]);
+				residues[i]->ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+			}
+
+			return;
+		}
+
+		//store the multiplicative sums in their appropriate place
+		TArray<FVector> multiplicativeSums;
+		multiplicativeSums.SetNum(3);
+		multiplicativeSums[0].Set(0.f, sum_xy, sum_xz);
+		multiplicativeSums[1].Set(sum_xy, 0.f, sum_yz);
+		multiplicativeSums[2].Set(sum_xz, sum_yz, 0.f);
+
+		//calculate the means
+		for (int i = 0; i < 3; ++i)
+		{
+			means[i] = sums[i] * inverseNum;
+		}
+
+		//calculate the possible run values of the slope formula
+		FVector possibleRunVariables = FVector::ZeroVector;
+		for (int i = 0; i < 3; ++i)
+		{
+			possibleRunVariables[i] = sumsSquared[i] - (sums[i] * means[i]);
+		}
+
+		//precalculate some of the possible values we will need for the point slope formula
+		TArray<FVector> possibleSlopes;
+		TArray<FVector> possibleIntercepts;
+		possibleSlopes.SetNum(3);
+		possibleIntercepts.SetNum(3);
+
+		for (int i = 0; i < 3; ++i)
+		{
+			for (int j = 0; j < 3; ++j)
+			{
+				if (i != j)
+				{
+					//at the moment we are only calculating the possible rise values of the slope formula
+					possibleSlopes[i][j] = (multiplicativeSums[i][j] - sums[i] * means[j]);
+				}
 			}
 		}
-	}
 
-	double currentMax = possibleRunVariables[0];
-	axisToUse = 0;
-	for (int i = 1; i < 3 && currentMax == 0.0; ++i)
-	{
-		currentMax = abs(possibleRunVariables[i]);
-		axisToUse = i;
-	}
-
-	//check which axis we are going to use as the independent variable
-	for (int i = 0; i < 3; ++i)
-	{
-		if (possibleRunVariables[i] != 0.0
-			&& currentMax < abs(possibleRunVariables[i]))
+		double currentMax = possibleRunVariables[0];
+		axisToUse = 0;
+		for (int i = 1; i < 3 && currentMax == 0.0; ++i)
 		{
-			//we can use this variable as the independent variable
 			currentMax = abs(possibleRunVariables[i]);
 			axisToUse = i;
 		}
-	}
 
-	//finish constructing the slopes
-	for (int i = 0; i < 3; ++i)
-	{
-		if (i != axisToUse)
+		//check which axis we are going to use as the independent variable
+		for (int i = 0; i < 3; ++i)
 		{
-			possibleSlopes[axisToUse][i] /= possibleRunVariables[axisToUse];
-
-			//calculate the intercepts
-			possibleIntercepts[axisToUse][i] = means[i] - (possibleSlopes[axisToUse][i] * means[axisToUse]);
+			if (possibleRunVariables[i] != 0.0
+				&& currentMax < abs(possibleRunVariables[i]))
+			{
+				//we can use this variable as the independent variable
+				currentMax = abs(possibleRunVariables[i]);
+				axisToUse = i;
+			}
 		}
-	}
 
-	//find the min and max distance from the projected position to the actual position
-	FVector actorLocation = FVector::ZeroVector;
-	FVector projectedLocation = FVector::ZeroVector;
-	float shortestDistanceSquared = 0.f;
-	float longestDistanceSquared = 0.f;
+		//finish constructing the slopes
+		for (int i = 0; i < 3; ++i)
+		{
+			if (i != axisToUse)
+			{
+				possibleSlopes[axisToUse][i] /= possibleRunVariables[axisToUse];
 
-	for (int i = 0; i < residues.Num(); ++i)
-	{
-		actorLocation = residues[i]->GetActorLocation();
+				//calculate the intercepts
+				possibleIntercepts[axisToUse][i] = means[i] - (possibleSlopes[axisToUse][i] * means[axisToUse]);
+			}
+		}
+
+		//find the min and max distance from the projected position to the actual position
+		FVector actorLocation = FVector::ZeroVector;
+		FVector projectedLocation = FVector::ZeroVector;
+		float shortestDistanceSquared = 0.f;
+		float longestDistanceSquared = 0.f;
+
+		for (int i = 0; i < residues.Num(); ++i)
+		{
+			actorLocation = residues[i]->GetActorLocation();
+			projectedLocation = actorLocation;
+
+			for (int j = 0; j < 3; ++j)
+			{
+				if (j != axisToUse)
+				{
+					projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
+				}
+			}
+
+			float currentDistance = FVector::DistSquared(actorLocation, projectedLocation);
+			if (i != 0)
+			{
+				if (currentDistance > longestDistanceSquared)
+				{
+					longestDistanceSquared = currentDistance;
+				}
+				else if (currentDistance < shortestDistanceSquared)
+				{
+					shortestDistanceSquared = currentDistance;
+				}
+			}
+			else
+			{
+				longestDistanceSquared = FVector::DistSquared(actorLocation, projectedLocation);
+				shortestDistanceSquared = longestDistanceSquared;
+			}
+		}
+
+		float shortestDistance = sqrt(shortestDistanceSquared);
+		float longestDistance = sqrt(longestDistanceSquared);
+
+
+		//calculate the end and start points of the line we use to visualize the best fit line
+		FVector startLocation = FVector::ZeroVector;
+		FVector endLocation = FVector::ZeroVector;
+
+		actorLocation = residues[0]->GetActorLocation();
 		projectedLocation = actorLocation;
-
 		for (int j = 0; j < 3; ++j)
 		{
 			if (j != axisToUse)
@@ -631,110 +630,74 @@ void SecondaryStructure::BreakStructure(const TArray<AAminoAcid*>& residues)
 				projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
 			}
 		}
+		startLocation = projectedLocation;
 
-		float currentDistance = FVector::DistSquared(actorLocation, projectedLocation);
-		if (i != 0)
+		actorLocation = residues.Last()->GetActorLocation();
+		projectedLocation = actorLocation;
+		for (int j = 0; j < 3; ++j)
 		{
-			if (currentDistance > longestDistanceSquared)
+			if (j != axisToUse)
 			{
-				longestDistanceSquared = currentDistance;
-			}
-			else if (currentDistance < shortestDistanceSquared)
-			{
-				shortestDistanceSquared = currentDistance;
+				projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
 			}
 		}
-		else
+		endLocation = projectedLocation;
+
+		FVector startToEnd = endLocation - startLocation;
+		float distanceStartToEnd = FVector::Dist(endLocation, startLocation);
+		startToEnd.Normalize();
+
+		//apply the gram schmidtt process for getting a perpendicular line
+		//start
+
+		//start to end is our direction
+		//get index of min
+		float minMagnitude = startToEnd.X;
+		int indexOfMin = 0;
+
+		for (int i = 1; i < 3; ++i)
 		{
-			longestDistanceSquared = FVector::DistSquared(actorLocation, projectedLocation);
-			shortestDistanceSquared = longestDistanceSquared;
+			if (abs(minMagnitude) > abs(startToEnd[i]))
+			{
+				minMagnitude = startToEnd[i];
+				indexOfMin = i;
+			}
 		}
-	}
 
-	float shortestDistance = sqrt(shortestDistanceSquared);
-	float longestDistance = sqrt(longestDistanceSquared);
+		//create a vector where the min index is set to 1 and the rest to 0
+		FVector baseVector = FVector::ZeroVector;
+		baseVector[indexOfMin] = 1.f;
 
+		//now project the new base vector onto the line we have
+		//since we know that startToEnd is a normalized vector
+		//we do not have to divide in our projection equation
+		FVector projectedVector = FVector::DotProduct(baseVector, startToEnd) * startToEnd;
 
-	//calculate the end and start points of the line we use to visualize the best fit line
-	FVector startLocation = FVector::ZeroVector;
-	FVector endLocation = FVector::ZeroVector;
+		//subtract the portion that was projected from the base vector
+		baseVector -= projectedVector;
 
-	actorLocation = residues[0]->GetActorLocation();
-	projectedLocation = actorLocation;
-	for (int j = 0; j < 3; ++j)
-	{
-		if (j != axisToUse)
+		//cross product should give us the other basis vector
+		FVector baseVector2 = FVector::CrossProduct(baseVector, startToEnd);
+
+		//Gram-Schmitt process end
+		//end
+
+		//randomly move all of the residues that conform the alpha helix
+		float  distanceBetweenIncrements = distanceStartToEnd / (num - 1);
+		FVector tempLocation = FVector::ZeroVector;
+		for (int i = 1; i < num - 1; ++i)
 		{
-			projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
+			float rads = (PI * 0.5 * i) + (.5 * PI);
+			float sinVal = sinf(rads);
+
+			tempLocation = startLocation + (i * distanceBetweenIncrements * startToEnd) + (sinVal * longestDistance * baseVector);
+			residues[i]->Break(tempLocation);
 		}
+
+		//change the structure type of the first and last residue in the structure
+		residues[0]->Break();
+		residues.Last()->Break();
 	}
-	startLocation = projectedLocation;
-
-	actorLocation = residues.Last()->GetActorLocation();
-	projectedLocation = actorLocation;
-	for (int j = 0; j < 3; ++j)
-	{
-		if (j != axisToUse)
-		{
-			projectedLocation[j] = (possibleSlopes[axisToUse][j] * projectedLocation[axisToUse]) + possibleIntercepts[axisToUse][j];
-		}
-	}
-	endLocation = projectedLocation;
-
-	FVector startToEnd = endLocation - startLocation;
-	float distanceStartToEnd = FVector::Dist(endLocation, startLocation);
-	startToEnd.Normalize();
-
-	//apply the gram schmidtt process for getting a perpendicular line
-	//start
-
-	//start to end is our direction
-	//get index of min
-	float minMagnitude = startToEnd.X;
-	int indexOfMin = 0;
-
-	for (int i = 1; i < 3; ++i)
-	{
-		if (abs(minMagnitude) > abs(startToEnd[i]))
-		{
-			minMagnitude = startToEnd[i];
-			indexOfMin = i;
-		}
-	}
-
-	//create a vector where the min index is set to 1 and the rest to 0
-	FVector baseVector = FVector::ZeroVector;
-	baseVector[indexOfMin] = 1.f;
-
-	//now project the new base vector onto the line we have
-	//since we know that startToEnd is a normalized vector
-	//we do not have to divide in our projection equation
-	FVector projectedVector = FVector::DotProduct(baseVector, startToEnd) * startToEnd;
-
-	//subtract the portion that was projected from the base vector
-	baseVector -= projectedVector;
-
-	//cross product should give us the other basis vector
-	FVector baseVector2 = FVector::CrossProduct(baseVector, startToEnd);
-	
-	//Gram-Schmitt process end
-	//end
-
-	//randomly move all of the residues that conform the alpha helix
-	float  distanceBetweenIncrements = distanceStartToEnd / (num - 1);
-	FVector tempLocation = FVector::ZeroVector;
-	for (int i = 1; i < num - 1; ++i)
-	{
-		float rads = (PI * 0.5 * i) + (.5 * PI);
-		float sinVal = sinf(rads);
-
-		tempLocation = startLocation + (i * distanceBetweenIncrements * startToEnd) + (sinVal * longestDistance * baseVector);
-		residues[i]->Break(tempLocation);
-	}
-
-	//change the structure type of the first and last residue in the structure
-	residues[0]->Break();
-	residues.Last()->Break();
 }
 
 void SecondaryStructure::AddToListOfModifiedResidues(AAminoAcid* residueModified)

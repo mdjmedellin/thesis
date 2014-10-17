@@ -4,66 +4,13 @@
 #include "LinkFragment.h"
 
 class AAminoAcid;
+class AHydrogenBond;
 class SecondaryStructure;
 
 namespace GHProtein
 {
 	class ProteinModel;
 }
-
-class HydrogenBond
-{
-public:
-	HydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue, ALinkFragment* linkFragment)
-		: m_linkFragment(linkFragment)
-		, m_relativeRotation(FRotator::ZeroRotator)
-		, m_prevTemperature(23.5)
-		, m_irreversibleChangeTemperatureCelsius(50.f)
-		, m_breakTemperature(41.f)
-		, m_regularTemperature(23.5f)
-		, m_canReverseChange(true)
-	{
-		m_bondResidues[0] = startResidue;
-		m_bondResidues[1] = endResidue;
-
-		m_linkFragment->ChangeLinkType(ELinkType::ELink_HydrogenBond);
-	};
-
-	bool ContainsSpecifiedResidue(const AAminoAcid* residue)
-	{
-		for (int i = 0; i < 2; ++i)
-		{
-			if (m_bondResidues[i] == residue)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	void Hide()
-	{
-		m_linkFragment->Hide();
-	}
-
-	void ToggleBreaking();
-	void ToggleShake();
-	void Translate(const FVector& displacement);
-	void RotateAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
-	void ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const FVector& newLocation);
-	void SetTemperature(float temperatureCelsius);
-
-private:
-	FRotator m_relativeRotation;
-	AAminoAcid* m_bondResidues[2];
-	ALinkFragment* m_linkFragment;
-	float m_prevTemperature;
-	float m_irreversibleChangeTemperatureCelsius;
-	float m_breakTemperature;
-	float m_regularTemperature;
-	bool m_canReverseChange;
-};
 
 class BetaSheet
 {
@@ -72,6 +19,7 @@ public:
 	void SpawnHydrogenBonds();
 	void SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue);
 
+public:
 	TArray<SecondaryStructure*> m_strands;
 	GHProtein::ProteinModel* m_proteinModel;
 };
@@ -86,6 +34,8 @@ public:
 	~SecondaryStructure();
 
 	void SetNextStructurePtr(SecondaryStructure* nextStructure);
+	void SetEnviromentalProperties(float currentTemperatureCelsius, float regularTemperatureCelsius,
+		float breakTemperatureCelsius, float irreversibleChangeTemperatureCelsius);
 	void AppendAminoAcid(AAminoAcid* residue);
 	SecondaryStructure* GetNextStructurePtr();
 	AAminoAcid* GetHeadResidue();
@@ -117,19 +67,17 @@ private:
 	AAminoAcid* m_tailAminoAcid;
 
 	TArray<uint32> m_bridgeLabels;
-	TArray<HydrogenBond*> m_hydrogenBonds;
+	TArray<AHydrogenBond*> m_hydrogenBonds;
 	TArray<AAminoAcid*> m_modifiedResidues;
 
 	float m_irreversibleChangeTemperatureCelsius;
-	float m_breakTemperature;
-	float m_regularTemperature;
-	float m_prevTemperature;
-
+	float m_breakTemperatureCelsius;
+	float m_regularTemperatureCelsius;
+	float m_prevTemperatureCelsius;
 	bool m_canReverseChange;
 
 	GHProtein::ProteinModel* m_parentModel;
 
-	static SecondaryStructure* s_selectedStructure;
 public:
 	
 };

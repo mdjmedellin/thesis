@@ -17,14 +17,11 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		TSubobjectPtr<USplineMeshComponent> SplineMeshComponent;
 
-private:
+protected:
 	UMaterialInstanceDynamic* m_dynamicMaterial;
-	FVector m_prevEndTangent;
 	bool m_shake;
 	float m_timeVal;
 	float m_maxTime;
-	FVector m_minVals;
-	FVector m_maxVals;
 	FVector m_currentSizeScale;
 	FColor m_normalColor;
 	FColor m_helixColor;
@@ -50,13 +47,14 @@ public:
 	void ChangeLinkType(ESecondaryStructure::Type secondaryStructureType, bool smoothInterpolate = false);
 	virtual void Tick(float DeltaSeconds) OVERRIDE;
 	void ToggleShake();
-	void ToggleBreaking();
+	void Break();
 	void Hide();
 	void Translate(const FVector& deltaLocation);
 	void UpdateTangents(const FVector& startTangent, const FVector& endtangent);
 	bool IsAnimating();
+	void RotateAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint);
 
-private:
+protected:
 	void SetColor(const FColor& linkColor);
 	void UpdateRendering(bool smoothInterpolate = false);
 };

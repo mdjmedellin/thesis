@@ -4,6 +4,7 @@
 #include "SecondaryStructure.h"
 #include "AminoAcid.h"
 #include "LinkFragment.h"
+#include "HydrogenBond.h"
 #include "ProteinModel.h"
 
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
@@ -30,6 +31,7 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_isAnimating(false)
 	, m_locationToKeepTrackOf(FVector::ZeroVector)
 	, m_locationInterpolator(Interpolator())
+	, m_notMoving(false)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -56,6 +58,10 @@ void AAminoAcid::Tick(float DeltaSeconds)
 {
 	if (m_locationInterpolator.IsPlaying())
 	{
+		if (m_notMoving)
+		{
+			int x = 1;
+		}
 		//because the residue is moving independently, we are not going to translate it
 		MoveTo(m_locationInterpolator.Poll());
 	}
@@ -124,7 +130,7 @@ const Residue* AAminoAcid::GetResidueInformation() const
 	return m_residueInformation;
 }
 
-void AAminoAcid::AddHydrogenBond(HydrogenBond* newBond)
+void AAminoAcid::AddHydrogenBond(AHydrogenBond* newBond)
 {
 	m_hydrogenBonds.Add(newBond);
 }
@@ -561,7 +567,7 @@ void AAminoAcid::Stabilize(ESecondaryStructure::Type structureType)
 {
 	//do nothing for the moment
 	//go back to the location we were keeping track of
-	MoveTo(m_locationToKeepTrackOf, false, true);
+	//MoveTo(m_locationToKeepTrackOf, false, true);
 	ChangeSecondaryStructureType(structureType, true);
 	m_secondaryStructure->AddToListOfModifiedResidues(this);
 	m_isAnimating = true;
@@ -579,7 +585,10 @@ void AAminoAcid::Break()
 {
 	ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
 	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	//make sure it does not move
+	//MoveTo(m_locationToKeepTrackOf, false, true);		//location to keep track of should be the original location
 	m_isAnimating = true;
+	m_notMoving = true;
 }
 
 void AAminoAcid::Shake()
