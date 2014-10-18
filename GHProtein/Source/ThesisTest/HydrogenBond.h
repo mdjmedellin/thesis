@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LinkFragment.h"
+#include "ThesisStaticLibrary.h"
 #include "HydrogenBond.generated.h"
 
 namespace GHProtein
@@ -37,6 +38,7 @@ public:
 private:
 	//private functions
 	void UpdateRendering(bool smoothInterpolate = false);
+	void UpdateBondAccordingToSpecifiedTemperature(float temperatureCelsius);
 
 public:
 	//public data members
@@ -50,14 +52,12 @@ private:
 	bool m_wasAnimating;
 
 	//temperature variables
+	ETemperatureState::Type m_temperatureState;
 	bool m_canReverseChange;
 	float m_prevTemperatureCelsius;
 	float m_regularTemperatureCelsius;
 	float m_breakTemperatureCelsius;
 	float m_irreversibleChangeTemperatureCelsius;
-
-	float m_sizeInterpolationSpeed;
-	float m_colorInterpolationSpeed;
 
 	AAminoAcid* m_bondResidues[2];
 };

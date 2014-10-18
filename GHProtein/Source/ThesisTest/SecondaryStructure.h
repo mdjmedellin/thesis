@@ -58,8 +58,10 @@ private:
 	void BreakStructure(const TArray<AAminoAcid*>& residues);
 	void ShakeResidues(TArray<AAminoAcid*>& residues);
 	void StabilizeResidues(TArray<AAminoAcid*>& residues);
+	void UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius);
 
 private:
+	ETemperatureState::Type m_temperatureState;
 	ESecondaryStructure::Type m_secondaryStructureType;
 	SecondaryStructure* m_nextSecondaryStructure;
 

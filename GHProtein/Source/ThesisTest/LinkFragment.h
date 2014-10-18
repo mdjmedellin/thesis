@@ -33,10 +33,16 @@ protected:
 	float m_hydrogenBondWidth;
 	float m_normalHeight;
 
-	ELinkType::Type m_linkType;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+	float m_sizeInterpolationSpeed;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+	float m_colorInterpolationSpeed;
 
 	Interpolator* m_sizeInterpolator;
 	Interpolator* m_colorInterpolator;
+
+	ELinkType::Type m_linkType;
 
 public:
 	virtual void BeginPlay();
@@ -46,8 +52,8 @@ public:
 	void ChangeLinkType(ELinkType::Type linkType, bool smoothInterpolate = false);
 	void ChangeLinkType(ESecondaryStructure::Type secondaryStructureType, bool smoothInterpolate = false);
 	virtual void Tick(float DeltaSeconds) OVERRIDE;
+	virtual void Break();
 	void ToggleShake();
-	void Break();
 	void Hide();
 	void Translate(const FVector& deltaLocation);
 	void UpdateTangents(const FVector& startTangent, const FVector& endtangent);
@@ -56,5 +62,5 @@ public:
 
 protected:
 	void SetColor(const FColor& linkColor);
-	void UpdateRendering(bool smoothInterpolate = false);
+	virtual void UpdateRendering(bool smoothInterpolate = false);
 };

@@ -114,9 +114,11 @@ private:
 	FVector m_locationToKeepTrackOf;
 	Interpolator m_locationInterpolator;
 
-	bool m_notMoving;
-
 	TArray<AHydrogenBond*> m_hydrogenBonds;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+		float m_locationInterpolationSpeed;
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)

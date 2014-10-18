@@ -233,6 +233,7 @@ namespace GHProtein
 			SecondaryStructure* currentSecondaryStructure = nullptr;
 
 			//iterate over all of the residues and spawn an amino acid actor for each one of them
+			//also creates the secondary structures
 			for (int residueIndex = 0; residueIndex < m_residueVector.Num(); ++residueIndex)
 			{
 				currentResidue = m_residueVector[residueIndex];
@@ -244,6 +245,7 @@ namespace GHProtein
 				currentAminoAcid->SetResidueInformation(currentResidue);
 				currentAminoAcid->SetParentModel(this);
 
+				//link the previous amino acid to this
 				if (previousAminoAcid)
 				{
 					previousAminoAcid->SetNextAminoAcid(currentAminoAcid);
@@ -262,7 +264,6 @@ namespace GHProtein
 					m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 				}
-
 
 				//set the residue's secondary structure and updates the current secondary structure
 				currentAminoAcid->ChangeSecondaryStructureType(currentResidue->GetSecondaryStructure());

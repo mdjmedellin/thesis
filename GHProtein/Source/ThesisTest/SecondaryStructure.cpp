@@ -14,8 +14,6 @@ BetaSheet::BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, G
 
 void BetaSheet::SpawnHydrogenBonds()
 {
-	return;
-
 	//we are going to need to iterate through all the strands
 	SecondaryStructure* outerStrand = nullptr;
 	AAminoAcid* currentOuterResidue = nullptr;
@@ -69,7 +67,7 @@ void BetaSheet::SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue)
 		}
 	}
 }
-//==========================================================
+//========================================================================================
 
 //==========================SECONDARY STRUCTURE===========================================
 SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStructureType,
@@ -84,6 +82,7 @@ SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStruct
 	, m_regularTemperatureCelsius(0.f)
 	, m_prevTemperatureCelsius(0.f)
 	, m_canReverseChange(true)
+	, m_temperatureState(ETemperatureState::ETemperatureState_Stable)
 {}
 
 SecondaryStructure::~SecondaryStructure()
@@ -130,41 +129,7 @@ void SecondaryStructure::SetEnviromentalProperties(float currentTemperatureCelsi
 	m_breakTemperatureCelsius = breakTemperatureCelsius;
 	m_irreversibleChangeTemperatureCelsius = irreversibleChangeTemperatureCelsius;
 
-	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix
-		|| m_secondaryStructureType == ESecondaryStructure::ssStrand)
-	{
-		if (currentTemperatureCelsius > m_irreversibleChangeTemperatureCelsius)
-		{
-			TArray<AAminoAcid*> residues;
-			ExtractResidues(residues);
-
-			BreakStructure(residues);
-
-			//add the secondary structure to the list of sturctures being modified
-			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-			m_canReverseChange = false;
-		}
-		else if (currentTemperatureCelsius > m_breakTemperatureCelsius)
-		{
-			TArray<AAminoAcid*> residues;
-			ExtractResidues(residues);
-
-			BreakStructure(residues);
-			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-		}
-		else
-		{
-			//technically, this should be able to stabilize also
-			TArray<AAminoAcid*> residues;
-			ExtractResidues(residues);
-
-			//stabilize the residues if possible
-			StabilizeResidues(residues);
-
-			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-		}
-	}
-	m_prevTemperatureCelsius = currentTemperatureCelsius;
+	UpdateStructureAccordingToSpecifiedTemperature(currentTemperatureCelsius);
 }
 
 void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
@@ -281,8 +246,6 @@ bool SecondaryStructure::ContainsSpecifiedResidue(AAminoAcid* residue)
 
 void SecondaryStructure::SpawnHydrogenBonds()
 {
-	return;
-
 	//we only spawn for alpha helix structures
 	if (m_secondaryStructureType != ESecondaryStructure::ssAlphaHelix)
 	{
@@ -318,82 +281,82 @@ void SecondaryStructure::SpawnHydrogenBonds()
 
 void SecondaryStructure::SetTemperature(float temperatureCelsius)
 {
+	//temperature changes only affect secondary structures
+	//to be more specific, it only affects alpha helices and beta strands
 	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix
 		|| m_secondaryStructureType == ESecondaryStructure::ssStrand)
 	{
-		if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
+		//check if the structure can reverse the change
+		if (m_canReverseChange)
 		{
-			if (m_canReverseChange
-				&& m_prevTemperatureCelsius <= m_breakTemperatureCelsius)
-			{
-				TArray<AAminoAcid*> residues;
-				ExtractResidues(residues);
-
-				BreakStructure(residues);
-
-				//add the secondary structure to the list of sturctures being modified
-				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-			}
-
-			if (m_canReverseChange
-				&& m_prevTemperatureCelsius <= m_irreversibleChangeTemperatureCelsius)
-			{
-				m_canReverseChange = false;
-			}
-		}
-		else if (temperatureCelsius > m_breakTemperatureCelsius)
-		{
-			if (m_canReverseChange
-				&& m_prevTemperatureCelsius <= m_breakTemperatureCelsius)
-			{
-				TArray<AAminoAcid*> residues;
-				ExtractResidues(residues);
-
-				BreakStructure(residues);
-				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-			}
-		}
-		else if (temperatureCelsius > m_regularTemperatureCelsius)
-		{
-			if (m_canReverseChange
-				&& m_prevTemperatureCelsius > m_breakTemperatureCelsius)
-			{
-				//technically, this should be able to stabilize also
-				TArray<AAminoAcid*> residues;
-				ExtractResidues(residues);
-
-				//stabilize the residues if possible
-				StabilizeResidues(residues);
-
-				this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-
-				//start shaking
-				//ShakeResidues(residues);
-			}
-		}
-		else
-		{
-			if (m_canReverseChange)
-			{
-				if (m_prevTemperatureCelsius > m_breakTemperatureCelsius)
-				{
-					//stabilize the residues
-					TArray<AAminoAcid*> residues;
-					ExtractResidues(residues);
-
-					StabilizeResidues(residues);
-
-					this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
-				}
-				else if (m_prevTemperatureCelsius > m_regularTemperatureCelsius)
-				{
-					//stop the shaking
-				}
-			}
+			//modify the secondary structure accordingly
+			UpdateStructureAccordingToSpecifiedTemperature(temperatureCelsius);
 		}
 	}
 
 	m_prevTemperatureCelsius = temperatureCelsius;
+}
+
+void SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius)
+{
+	m_canReverseChange = true;
+
+	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
+	{
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Melting)
+		{
+			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+			BreakStructure(residues);
+
+			//add the secondary structure to the list of sturctures being modified
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+		}
+
+		if (m_canReverseChange)
+		{
+			m_canReverseChange = false;
+		}
+	}
+	else if (temperatureCelsius > m_breakTemperatureCelsius)
+	{
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Melting)
+		{
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+			BreakStructure(residues);
+
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
+		}
+	}
+	else if (temperatureCelsius > m_regularTemperatureCelsius)
+	{
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Stable)
+		{
+			//technically, this should be able to stabilize also
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+			StabilizeResidues(residues);
+
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+			m_temperatureState = ETemperatureState::ETemperatureState_Stable;
+		}
+	}
+	else
+	{
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Stable)
+		{
+			//stabilize the residues
+			TArray<AAminoAcid*> residues;
+			ExtractResidues(residues);
+			StabilizeResidues(residues);
+
+			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
+			m_temperatureState = ETemperatureState::ETemperatureState_Stable;
+		}
+	}
 }
 
 void SecondaryStructure::StabilizeResidues(TArray<AAminoAcid*>& residues)

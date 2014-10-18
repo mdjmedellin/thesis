@@ -31,7 +31,7 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	, m_isAnimating(false)
 	, m_locationToKeepTrackOf(FVector::ZeroVector)
 	, m_locationInterpolator(Interpolator())
-	, m_notMoving(false)
+	, m_locationInterpolationSpeed(1.f)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -58,10 +58,6 @@ void AAminoAcid::Tick(float DeltaSeconds)
 {
 	if (m_locationInterpolator.IsPlaying())
 	{
-		if (m_notMoving)
-		{
-			int x = 1;
-		}
 		//because the residue is moving independently, we are not going to translate it
 		MoveTo(m_locationInterpolator.Poll());
 	}
@@ -515,7 +511,7 @@ void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment
 {
 	if (interpolate)
 	{
-		m_locationInterpolator.ResetInterpolator(GetActorLocation(), finalLocation, 1.f, false, false, 1);
+		m_locationInterpolator.ResetInterpolator(GetActorLocation(), finalLocation, m_locationInterpolationSpeed, false, false, 1);
 	}
 	else
 	{
@@ -567,7 +563,7 @@ void AAminoAcid::Stabilize(ESecondaryStructure::Type structureType)
 {
 	//do nothing for the moment
 	//go back to the location we were keeping track of
-	//MoveTo(m_locationToKeepTrackOf, false, true);
+	MoveTo(m_locationToKeepTrackOf, false, true);
 	ChangeSecondaryStructureType(structureType, true);
 	m_secondaryStructure->AddToListOfModifiedResidues(this);
 	m_isAnimating = true;
@@ -588,7 +584,6 @@ void AAminoAcid::Break()
 	//make sure it does not move
 	//MoveTo(m_locationToKeepTrackOf, false, true);		//location to keep track of should be the original location
 	m_isAnimating = true;
-	m_notMoving = true;
 }
 
 void AAminoAcid::Shake()

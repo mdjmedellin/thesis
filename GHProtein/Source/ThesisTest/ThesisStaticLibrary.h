@@ -6,6 +6,17 @@
 #include "ThesisStaticLibrary.generated.h"
 
 UENUM()
+namespace ETemperatureState
+{
+	enum Type
+	{
+		ETemperatureState_Melting,
+		ETemperatureState_Stable,
+		ETemperatureState_Count
+	};
+}
+
+UENUM()
 namespace ELinkType
 {
 	enum Type

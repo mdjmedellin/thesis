@@ -14,6 +14,7 @@ AHydrogenBond::AHydrogenBond(const class FPostConstructInitializeProperties& PCI
 	, m_regularTemperatureCelsius(0.f)
 	, m_breakTemperatureCelsius(0.f)
 	, m_irreversibleChangeTemperatureCelsius(0.f)
+	, m_temperatureState(ETemperatureState::ETemperatureState_Stable)
 {
 	m_linkType = ELinkType::ELink_HydrogenBond;
 }
@@ -35,19 +36,39 @@ void AHydrogenBond::SetEnviromentalProperties(float currentTemperatureCelsius, f
 	m_breakTemperatureCelsius = breakTemperatureCelsius;
 	m_irreversibleChangeTemperatureCelsius = irreversibleChangeTemperatureCelsius;
 
-	//set the initial state of the bond
-	if (currentTemperatureCelsius > m_irreversibleChangeTemperatureCelsius)
+	UpdateBondAccordingToSpecifiedTemperature(currentTemperatureCelsius);
+}
+
+void AHydrogenBond::UpdateBondAccordingToSpecifiedTemperature(float temperatureCelsius)
+{
+	m_canReverseChange = true;
+
+	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 	{
-		Break();
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Melting)
+		{
+			Break();
+			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
+		}
+
 		m_canReverseChange = false;
 	}
-	else if (currentTemperatureCelsius > m_breakTemperatureCelsius)
+	else if (temperatureCelsius > m_breakTemperatureCelsius)
 	{
-		Break();
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Melting)
+		{
+			Break();
+			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
+		}
 	}
 	else
 	{
-		Stabilize();
+		if (m_temperatureState != ETemperatureState::ETemperatureState_Stable)
+		{
+			//in this case we were previously breaking and now need to repair
+			Stabilize();
+			m_temperatureState = ETemperatureState::ETemperatureState_Stable;
+		}
 	}
 }
 
@@ -146,38 +167,7 @@ void AHydrogenBond::ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, cons
 
 void AHydrogenBond::SetTemperature(float newTemperatureCelsius)
 {
-	if (newTemperatureCelsius > m_irreversibleChangeTemperatureCelsius)
-	{
-		if (m_canReverseChange 
-			&& m_prevTemperatureCelsius <= m_breakTemperatureCelsius)
-		{
-			//if it was previously on a regular temperature, we switch to breaking the bond
-			Break();
-		}
-
-		if (m_canReverseChange)
-		{
-			m_canReverseChange = false;
-		}
-	}
-	else if (newTemperatureCelsius > m_breakTemperatureCelsius)
-	{
-		if (m_canReverseChange
-			&& m_prevTemperatureCelsius <= m_breakTemperatureCelsius)
-		{
-			Break();
-		}
-	}
-	else
-	{
-		if (m_canReverseChange 
-			&& m_prevTemperatureCelsius > m_regularTemperatureCelsius)
-		{
-			//in this case we were previously breaking and now need to repair
-			Stabilize();
-		}
-	}
-
+	UpdateBondAccordingToSpecifiedTemperature(newTemperatureCelsius);
 	m_prevTemperatureCelsius = newTemperatureCelsius;
 }
 

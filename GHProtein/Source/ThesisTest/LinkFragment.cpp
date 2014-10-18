@@ -21,6 +21,8 @@ ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCI
 	, m_hydrogenBondWidth(0.f)
 	, m_linkType(ELinkType::ELink_None)
 	, m_currentSizeScale(FVector::ZeroVector)
+	, m_sizeInterpolationSpeed(1.f)
+	, m_colorInterpolationSpeed(1.f)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	//Create the static mesh component
@@ -138,14 +140,14 @@ void ALinkFragment::UpdateRendering(bool smoothInterpolate)
 
 	if (smoothInterpolate)
 	{
-		m_sizeInterpolator->ResetInterpolator(m_currentSizeScale, endScale, 0.01f, false, false, 1);
+		m_sizeInterpolator->ResetInterpolator(m_currentSizeScale, endScale, m_sizeInterpolationSpeed, false, false, 1);
 		
 		FLinearColor currentColor = FLinearColor::White;
 		m_dynamicMaterial->GetVectorParameterValue("color", currentColor);
 		
 		FVector currentColorVector = currentColor;
 		FVector desiredColor = renderColor.ReinterpretAsLinear();
-		m_colorInterpolator->ResetInterpolator(currentColorVector, desiredColor, 0.01f, false, false, 1);
+		m_colorInterpolator->ResetInterpolator(currentColorVector, desiredColor, m_colorInterpolationSpeed, false, false, 1);
 	}
 	else
 	{
@@ -153,9 +155,8 @@ void ALinkFragment::UpdateRendering(bool smoothInterpolate)
 		SplineMeshComponent->SetStartScale(newScale);
 		SplineMeshComponent->SetEndScale(newScale);
 		m_currentSizeScale = FVector(newScale.X, newScale.Y, 0.f);
+		SetColor(renderColor);
 	}
-
-	SetColor(renderColor);
 }
 
 void ALinkFragment::ChangeLinkType(ELinkType::Type linkType, bool smoothInterpolate)
@@ -163,7 +164,7 @@ void ALinkFragment::ChangeLinkType(ELinkType::Type linkType, bool smoothInterpol
 	if (m_linkType != linkType)
 	{
 		m_linkType = linkType;
-		UpdateRendering(smoothInterpolate);
+		this->UpdateRendering(smoothInterpolate);
 	}
 }
 
