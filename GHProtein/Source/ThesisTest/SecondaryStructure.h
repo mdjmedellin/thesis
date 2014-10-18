@@ -46,7 +46,7 @@ public:
 	bool IsPartOfSpecifiedBridgeLabels(const TArray<uint32>& bridgeLabels) const;
 	AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 	void SpawnHydrogenBonds();
-	void SetTemperature(float temperatureCelsius);
+	bool SetTemperature(float temperatureCelsius);
 	void AddToListOfModifiedResidues(AAminoAcid* residueModified);
 	void RemoveFromListOfModifiedResidues(AAminoAcid* residueModified);
 
@@ -58,7 +58,7 @@ private:
 	void BreakStructure(const TArray<AAminoAcid*>& residues);
 	void ShakeResidues(TArray<AAminoAcid*>& residues);
 	void StabilizeResidues(TArray<AAminoAcid*>& residues);
-	void UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius);
+	bool UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius);
 
 private:
 	ETemperatureState::Type m_temperatureState;

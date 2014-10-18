@@ -27,7 +27,7 @@ public:
 	void ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, const FVector& newLocation);
 	void SetParentModelAndResiduesInformation(GHProtein::ProteinModel* parentModel,
 		AAminoAcid* startResidue, AAminoAcid* endResidue);
-	void SetTemperature(float newTemperatureCelsius);
+	bool SetTemperature(float newTemperatureCelsius);
 	bool ContainsSpecifiedResidue(const AAminoAcid* residueToLookFor);
 	
 	void Tick(float DeltaSeconds);
@@ -38,7 +38,7 @@ public:
 private:
 	//private functions
 	void UpdateRendering(bool smoothInterpolate = false);
-	void UpdateBondAccordingToSpecifiedTemperature(float temperatureCelsius);
+	bool UpdateBondAccordingToSpecifiedTemperature(float temperatureCelsius);
 
 public:
 	//public data members

@@ -39,15 +39,17 @@ void AHydrogenBond::SetEnviromentalProperties(float currentTemperatureCelsius, f
 	UpdateBondAccordingToSpecifiedTemperature(currentTemperatureCelsius);
 }
 
-void AHydrogenBond::UpdateBondAccordingToSpecifiedTemperature(float temperatureCelsius)
+bool AHydrogenBond::UpdateBondAccordingToSpecifiedTemperature(float temperatureCelsius)
 {
 	m_canReverseChange = true;
+	bool changeInTemperatureTriggeredAnimation = false;
 
 	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 	{
 		if (m_temperatureState != ETemperatureState::ETemperatureState_Melting)
 		{
 			Break();
+			changeInTemperatureTriggeredAnimation = true;
 			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
 		}
 
@@ -58,6 +60,7 @@ void AHydrogenBond::UpdateBondAccordingToSpecifiedTemperature(float temperatureC
 		if (m_temperatureState != ETemperatureState::ETemperatureState_Melting)
 		{
 			Break();
+			changeInTemperatureTriggeredAnimation = true;
 			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
 		}
 	}
@@ -67,9 +70,12 @@ void AHydrogenBond::UpdateBondAccordingToSpecifiedTemperature(float temperatureC
 		{
 			//in this case we were previously breaking and now need to repair
 			Stabilize();
+			changeInTemperatureTriggeredAnimation = true;
 			m_temperatureState = ETemperatureState::ETemperatureState_Stable;
 		}
 	}
+
+	return changeInTemperatureTriggeredAnimation;
 }
 
 void AHydrogenBond::UpdateRendering(bool smoothInterpolate)
@@ -165,10 +171,10 @@ void AHydrogenBond::ChangeLocationOfAssociatedEnd(AAminoAcid* aminoAcidEnd, cons
 	}
 }
 
-void AHydrogenBond::SetTemperature(float newTemperatureCelsius)
+bool AHydrogenBond::SetTemperature(float newTemperatureCelsius)
 {
-	UpdateBondAccordingToSpecifiedTemperature(newTemperatureCelsius);
 	m_prevTemperatureCelsius = newTemperatureCelsius;
+	return UpdateBondAccordingToSpecifiedTemperature(newTemperatureCelsius);
 }
 
 void AHydrogenBond::Stabilize()

@@ -649,16 +649,28 @@ namespace GHProtein
 	{
 		SecondaryStructure* currentStructure = m_headSecondaryStructure;
 
+		bool changeInTemperatureTriggeredAnimation = false;
+
 		while (currentStructure != nullptr)
 		{
-			currentStructure->SetTemperature(m_temperatureCelsius);
+			changeInTemperatureTriggeredAnimation = currentStructure->SetTemperature(m_temperatureCelsius);
 			currentStructure = currentStructure->GetNextStructurePtr();
 		}
 
 		//set the temperature on all of the hydrogen bonds
 		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
 		{
-			m_hydrogenBonds[i]->SetTemperature(m_temperatureCelsius);
+			changeInTemperatureTriggeredAnimation = m_hydrogenBonds[i]->SetTemperature(m_temperatureCelsius);
+		}
+
+		if (changeInTemperatureTriggeredAnimation)
+		{
+			//trigger the event that indicates the model is being animated
+			AThesisTestGameMode* gameMode = (AThesisTestGameMode*)(m_world->GetAuthGameMode());
+			if (gameMode)
+			{
+				gameMode->StartedProteinAnimation();
+			}
 		}
 	}
 

@@ -29,6 +29,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "ProteinEvents")
 		void FinishedProteinAnimation();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "ProteinEvents")
+		void StartedProteinAnimation();
+
 public:
 	GHProtein::ProteinModel* m_proteinModel;
 

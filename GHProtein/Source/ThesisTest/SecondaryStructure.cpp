@@ -279,8 +279,9 @@ void SecondaryStructure::SpawnHydrogenBonds()
 	}
 }
 
-void SecondaryStructure::SetTemperature(float temperatureCelsius)
+bool SecondaryStructure::SetTemperature(float temperatureCelsius)
 {
+	bool changeInTemperatureTriggeredChange = false;
 	//temperature changes only affect secondary structures
 	//to be more specific, it only affects alpha helices and beta strands
 	if (m_secondaryStructureType == ESecondaryStructure::ssAlphaHelix
@@ -290,16 +291,19 @@ void SecondaryStructure::SetTemperature(float temperatureCelsius)
 		if (m_canReverseChange)
 		{
 			//modify the secondary structure accordingly
-			UpdateStructureAccordingToSpecifiedTemperature(temperatureCelsius);
+			changeInTemperatureTriggeredChange =  UpdateStructureAccordingToSpecifiedTemperature(temperatureCelsius);
 		}
 	}
 
 	m_prevTemperatureCelsius = temperatureCelsius;
+	return changeInTemperatureTriggeredChange;
 }
 
-void SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius)
+bool SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius)
 {
 	m_canReverseChange = true;
+
+	bool structureIsBeingModified = false;
 
 	if (temperatureCelsius > m_irreversibleChangeTemperatureCelsius)
 	{
@@ -309,6 +313,7 @@ void SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float te
 			TArray<AAminoAcid*> residues;
 			ExtractResidues(residues);
 			BreakStructure(residues);
+			structureIsBeingModified = true;
 
 			//add the secondary structure to the list of sturctures being modified
 			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
@@ -326,6 +331,7 @@ void SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float te
 			TArray<AAminoAcid*> residues;
 			ExtractResidues(residues);
 			BreakStructure(residues);
+			structureIsBeingModified = true;
 
 			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 			m_temperatureState = ETemperatureState::ETemperatureState_Melting;
@@ -339,6 +345,7 @@ void SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float te
 			TArray<AAminoAcid*> residues;
 			ExtractResidues(residues);
 			StabilizeResidues(residues);
+			structureIsBeingModified = true;
 
 			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 			m_temperatureState = ETemperatureState::ETemperatureState_Stable;
@@ -352,11 +359,14 @@ void SecondaryStructure::UpdateStructureAccordingToSpecifiedTemperature(float te
 			TArray<AAminoAcid*> residues;
 			ExtractResidues(residues);
 			StabilizeResidues(residues);
+			structureIsBeingModified = true;
 
 			this->m_parentModel->AddToListOfModifiedSecondaryStructures(this);
 			m_temperatureState = ETemperatureState::ETemperatureState_Stable;
 		}
 	}
+
+	return structureIsBeingModified;
 }
 
 void SecondaryStructure::StabilizeResidues(TArray<AAminoAcid*>& residues)
