@@ -250,12 +250,13 @@ namespace GHProtein
 		}
 	}
 
-	void NeuralNetDataSet::GetInputValues(int fileIndex, int residueIndex, std::vector< std::vector<double> >& out_inputs) const
+	void NeuralNetDataSet::GetInputValues(int fileIndex, int residueIndex, std::vector< std::vector<double> >& out_inputs,
+		int numberOfInputsToExtract) const
 	{
 		if (fileIndex >= 0
 			&& fileIndex < m_proteinModels.size())
 		{
-			m_proteinModels[fileIndex]->GetInputValues(residueIndex, out_inputs);
+			m_proteinModels[fileIndex]->GetInputValues(residueIndex, out_inputs, numberOfInputsToExtract);
 		}
 	}
 
@@ -352,6 +353,7 @@ namespace GHProtein
 			outputVal += m_outputVals[i];
 		}
 
+		//TODO: remove this test
 		//check that the output value is 1
 		if (m_outputVals.size() > 1
 			&& outputVal != 1.0)
@@ -375,6 +377,8 @@ namespace GHProtein
 					break;
 				}
 			}
+
+			return 0;
 		}
 		else
 		{
@@ -387,7 +391,7 @@ namespace GHProtein
 		//this is not as simple
 		//since our inputs can be an array, then we need to have a separate weight for each one of the elements in the array
 
-		//Special case, if the inputs is an array of one element, then return the first deltaWeigh, otherwise check for the
+		//Special case, if the inputs is an array of one element, then return the first deltaWeight, otherwise check for the
 		//corresponding deltaWeight
 		double deltaWeight = m_outputConnections[connectionIndex].m_deltaWeight[0];
 		if (m_outputVals.size() != 1)
@@ -410,10 +414,13 @@ namespace GHProtein
 	{
 		double weight = m_outputConnections[connectionIndex].m_weight[0];
 
+		//the following section of code is only executed when the output is an
+		//array of values, instead of a single value
 		if (m_outputVals.size() != 1)
 		{
 			for (int i = 0; i < m_outputVals.size(); ++i)
 			{
+				//the first value to be nonzero is the weight we return
 				if (m_outputVals[i] > 0.f)
 				{
 					weight = m_outputConnections[connectionIndex].m_weight[i];
@@ -458,14 +465,24 @@ namespace GHProtein
 		double sum = 0.0;
 
 		int weightIndex = GetIndexOfValidOutputValue();
+
 		// Sum our contributions of the errors at the nodes we feed.
-		// the reason we subtract 1 is to avoid doing this to the bias neuron
-		for (int n = 0; n < nextLayer.m_neurons.size() - 1; ++n)
+		
+		//find the number of outputs (number of neurons in the next layer)
+		int numberOfNeurons = nextLayer.m_neurons.size();
+		if (nextLayer.m_hasBias)
+		{
+			//we do not care about the bias. This is mostly due to the fact that the bias is always
+			// equal to 1 * associated weight
+			numberOfNeurons -= 1;
+		}
+
+		for (int n = 0; n < numberOfNeurons; ++n)
 		{
 			//connection to the specified neuron
 			const FNeuronConnection& outputConnection = m_outputConnections[n];
 
-			//get the weight corresponding weight
+			//get the corresponding weight
 			double weight = outputConnection.m_weight[weightIndex];
 			sum += weight * nextLayer.m_neurons[n].m_gradient;
 		}
@@ -525,10 +542,33 @@ namespace GHProtein
 
 		SetOutputValue(FNeuron::S_TransferFunction(sum));
 	}
+
+	void FNeuron::SaveWeights(std::ostream& out_file)
+	{
+		//iterate through all the connections
+		out_file << "NUMBER_OF_CONNECTIONS: " << m_outputConnections.size() << "\n";
+
+		for (int connectionIndex = 0; connectionIndex < m_outputConnections.size(); ++connectionIndex)
+		{
+			for (int weightIndex = 0; weightIndex < m_outputVals.size(); ++weightIndex)
+			{
+				out_file << m_outputConnections[connectionIndex].m_weight[weightIndex];
+
+				if (weightIndex != m_outputVals.size() - 1)
+				{
+					out_file << "|";
+				}
+			}
+
+			out_file << "\n";
+		}
+	}
 	//===================================================================
 
 	//===========================NEURONLAYER=============================
 	FNeuronLayer::FNeuronLayer(int numberOfNeurons, int numberOfOutputs, int numberOfVariablesInInput, bool addBiasNeuron)
+		: m_numberOfNeurons(numberOfNeurons)
+		, m_hasBias(addBiasNeuron)
 	{
 		for (int i = 0; i < numberOfNeurons; ++i)
 		{
@@ -541,6 +581,16 @@ namespace GHProtein
 			//the bias only has one variable per input
 			m_neurons.push_back(FNeuron(numberOfOutputs, numberOfNeurons));
 			m_neurons.back().SetOutputValue(1.0);
+		}
+	}
+
+	void FNeuronLayer::SaveWeights(std::ostream& out_file)
+	{
+		out_file << "NEURON_COUNT: " << m_neurons.size() << "\n";
+
+		for (int i = 0; i < m_neurons.size(); ++i)
+		{
+			m_neurons[i].SaveWeights(out_file);
 		}
 	}
 	//===================================================================
@@ -564,6 +614,29 @@ namespace GHProtein
 
 			m_neuronLayers.push_back(new FNeuronLayer(numberOfNeuronsInLayer, numOutputs, numberOfVariablesInInput, addBiasNeuron));
 		}
+	}
+
+	void NeuralNet::SaveWeights(const std::string& fileName)
+	{
+		std::ofstream saveFile;
+		saveFile.open(fileName);
+
+		for (int i = 0; i < m_neuronLayers.size(); ++i)
+		{
+			saveFile << "LAYER: " << i << "\n";
+
+			m_neuronLayers[i]->SaveWeights(saveFile);
+		}
+	}
+
+	int NeuralNet::GetNumberOfRequiredInputs() const
+	{
+		if (m_neuronLayers.size() > 1)
+		{
+			return m_neuronLayers[0]->m_numberOfNeurons;
+		}
+
+		return 0;
 	}
 
 	void NeuralNet::GetResults(std::vector<double>& resultVals) const
@@ -699,6 +772,7 @@ namespace GHProtein
 	void TrainingData::LoadTrainingData()
 	{
 		LoadTopology();
+		LoadFilterTopology();
 		GetTrainingData();
 	}
 
@@ -747,6 +821,57 @@ namespace GHProtein
 			}
 
 			m_topology.push_back(integerPair);
+		}
+
+		//the next line should be empty, thus we skip it
+		getline(m_trainingDataFile, line);
+	}
+
+	void TrainingData::LoadFilterTopology()
+	{
+		std::string line;
+		std::string label;
+
+		getline(m_trainingDataFile, line);
+		std::stringstream ss(line);
+		ss >> label;
+
+		//the first line should be the topology line
+		if (this->isEOF() || label.compare("filterTopology:") != 0)
+		{
+			abort();
+		}
+
+		//parse the line into the topology
+		std::vector<std::string> results;
+
+		TokenizeString(results, line, " ");
+
+		//at this point I should have the information about each one of the layers
+		std::string pair;
+		std::pair<int, int> integerPair;
+		std::vector<std::string> tokenized_pair;
+		for (int i = 1; i < results.size(); ++i)
+		{
+			pair = results[i];
+			//now we have to separate the pair into the two ints
+			TokenizeString(tokenized_pair, pair, "|");
+
+			//the tokenized pair should have at most 2 and at least 1 integer value
+			assert(tokenized_pair.size() > 0 && tokenized_pair.size() < 3);
+
+			integerPair.first = atoi(tokenized_pair[0].c_str());
+
+			if (tokenized_pair.size() == 2)
+			{
+				integerPair.second = atoi(tokenized_pair[1].c_str());
+			}
+			else
+			{
+				integerPair.second = 1;
+			}
+
+			m_filterTopology.push_back(integerPair);
 		}
 
 		//the next line should be empty, thus we skip it
