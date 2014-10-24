@@ -95,9 +95,39 @@ void CalculateCorrelationCoefficients(std::vector<double>& out_correlationCoeffi
 	}
 }
 
+void ConvertToInput(std::vector<double>& out_vector)
+{
+	if (!out_vector.empty())
+	{
+		int largestIndex = 0;
+		double largestNumber = out_vector[0];
+
+		for (int index = 1; index < out_vector.size(); ++index)
+		{
+			if (largestNumber < out_vector[index])
+			{
+				largestIndex = index;
+				largestNumber = out_vector[index];
+			}
+		}
+
+		for (int index = 0; index < out_vector.size(); ++index)
+		{
+			if (index != largestIndex)
+			{
+				out_vector[index] = 0.0;
+			}
+			else
+			{
+				out_vector[index] = 1.0;
+			}
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
-	int MAX_TRAINING = 1000;
+	int MAX_TRAINING = 2000;
 
 	//open the file we are going to write our test results into
 	std::ofstream resultsDataFile;
@@ -148,6 +178,7 @@ int main(int argc, char* argv[])
 					testNet->FeedForward(inputVals);
 					//save the current results
 					testNet->GetResults(currentResults);
+					ConvertToInput(currentResults);
 					resultsHolder.push_back(currentResults);
 
 					currentDataSet->GetOutputValues(j, residueIndex, outputVals);
@@ -160,7 +191,9 @@ int main(int argc, char* argv[])
 				{
 					int requiredInputs = testFilter->GetNumberOfRequiredInputs();
 					int windowWidth = (requiredInputs - 1) * .5f;
-					std::vector<double> emptyResults(3, 0.0);
+					std::vector<double> emptyResults(4, 0.0);
+					std::vector<double> currentInput(4, 0.0);
+					emptyResults[3] = 1.0;
 
 					for (int currentPredictionIndex = 0; currentPredictionIndex < trainingDataLength; ++currentPredictionIndex)
 					{
@@ -177,7 +210,12 @@ int main(int argc, char* argv[])
 							}
 							else
 							{
-								inputVals.push_back(resultsHolder[currentIndex]);
+								for (int i = 0; i < 3; ++i)
+								{
+									currentInput[i] = resultsHolder[currentIndex][i];
+								}
+
+								inputVals.push_back(currentInput);
 							}
 						}
 
@@ -266,7 +304,8 @@ int main(int argc, char* argv[])
 
 					int requiredInputs = testFilter->GetNumberOfRequiredInputs();
 					int windowWidth = (requiredInputs - 1) * .5f;
-					std::vector<double> emptyResults(3, 0.0);
+					std::vector<double> emptyResults(4, 0.0);
+					std::vector<double> currentInput(4, 0.0);
 
 					for (int currentPredictionIndex = 0; currentPredictionIndex < trainingDataLength; ++currentPredictionIndex)
 					{
@@ -283,7 +322,12 @@ int main(int argc, char* argv[])
 							}
 							else
 							{
-								inputVals.push_back(resultsHolder[currentIndex]);
+								for (int i = 0; i < 3; ++i)
+								{
+									currentInput[i] = resultsHolder[currentIndex][i];
+								}
+
+								inputVals.push_back(currentInput);
 							}
 						}
 
