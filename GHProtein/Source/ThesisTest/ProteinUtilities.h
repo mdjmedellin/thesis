@@ -1,14 +1,25 @@
 #pragma once
-#ifndef __ProteinUtilities_h__
-#define __ProteinUtilities_h__
 
 namespace GHProtein
 {
-	//This should be inlined
+	static const double INVERSE_RAND_MAX = 1.0 / double(RAND_MAX);
+
 	template< typename OutType >
 	void GetTypeFromString(OutType& out_variable, FString in_stringLine)
 	{
 		TTypeFromString<OutType>::FromString(out_variable, *(in_stringLine.Trim().TrimTrailing()));
+	}
+
+	template< typename OutType >
+	OutType GetMax(const OutType& val1, const OutType& val2)
+	{
+		return (val1 < val2 ? val2 : val1);
+	}
+
+	template< typename OutType >
+	OutType GetMin(const OutType& val1, const OutType& val2)
+	{
+		return (val1 < val2 ? val1 : val2);
 	}
 
 	//void GetIntFromString(int& out_int, FString in_stringLine);
@@ -46,6 +57,7 @@ namespace GHProtein
 	bool IsWhiteSpace(TCHAR Char);
 
 	void ReadFromLine(const FString& lineToReadFrom, FString& out_substringDestination, int& startingIndex, int charactersToRead);
-}
 
-#endif
+	double RandZeroToN(double maxValue);
+	double RandNToN(double maxValue = 1.0, double minValue = 0.0);
+}

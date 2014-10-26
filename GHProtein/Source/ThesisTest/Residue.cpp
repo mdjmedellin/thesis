@@ -4,27 +4,27 @@
 #include <assert.h>
 
 const ResidueInfo kResidueInfo[] = {
-	{ EResidueType::kUnknownResidue, 'X', "UNK" },
-	{ EResidueType::kAlanine, 'A', "ALA" },
-	{ EResidueType::kArginine, 'R', "ARG" },
-	{ EResidueType::kAsparagine, 'N', "ASN" },
-	{ EResidueType::kAsparticAcid, 'D', "ASP" },
-	{ EResidueType::kCysteine, 'C', "CYS" },
-	{ EResidueType::kGlutamicAcid, 'E', "GLU" },
-	{ EResidueType::kGlutamine, 'Q', "GLN" },
-	{ EResidueType::kGlycine, 'G', "GLY" },
-	{ EResidueType::kHistidine, 'H', "HIS" },
-	{ EResidueType::kIsoleucine, 'I', "ILE" },
-	{ EResidueType::kLeucine, 'L', "LEU" },
-	{ EResidueType::kLysine, 'K', "LYS" },
-	{ EResidueType::kMethionine, 'M', "MET" },
-	{ EResidueType::kPhenylalanine, 'F', "PHE" },
-	{ EResidueType::kProline, 'P', "PRO" },
-	{ EResidueType::kSerine, 'S', "SER" },
-	{ EResidueType::kThreonine, 'T', "THR" },
-	{ EResidueType::kTryptophan, 'W', "TRP" },
-	{ EResidueType::kTyrosine, 'Y', "TYR" },
-	{ EResidueType::kValine, 'V', "VAL" }
+	{ EResidueType::kUnknownResidue, 'X', "UNK", "UNKNOWN" },
+	{ EResidueType::kAlanine, 'A', "ALA", "ALANINE" },
+	{ EResidueType::kArginine, 'R', "ARG", "ARGININE" },
+	{ EResidueType::kAsparagine, 'N', "ASN", "ASPARAGINE" },
+	{ EResidueType::kAsparticAcid, 'D', "ASP", "ASPARTIC ACID" },
+	{ EResidueType::kCysteine, 'C', "CYS", "CYSTEINE" },
+	{ EResidueType::kGlutamicAcid, 'E', "GLU", "GLUTAMIC ACID" },
+	{ EResidueType::kGlutamine, 'Q', "GLN", "GLUTAMINE" },
+	{ EResidueType::kGlycine, 'G', "GLY", "GLYCINE" },
+	{ EResidueType::kHistidine, 'H', "HIS", "HISTIDINE" },
+	{ EResidueType::kIsoleucine, 'I', "ILE", "ISOLEUCINE" },
+	{ EResidueType::kLeucine, 'L', "LEU", "LEUCINE" },
+	{ EResidueType::kLysine, 'K', "LYS", "LYSINE" },
+	{ EResidueType::kMethionine, 'M', "MET", "METHIONINE" },
+	{ EResidueType::kPhenylalanine, 'F', "PHE", "PHENYLALANINE" },
+	{ EResidueType::kProline, 'P', "PRO", "PROLINE" },
+	{ EResidueType::kSerine, 'S', "SER", "SERINE" },
+	{ EResidueType::kThreonine, 'T', "THR", "THREONINE" },
+	{ EResidueType::kTryptophan, 'W', "TRP", "TRYPTOPHAN" },
+	{ EResidueType::kTyrosine, 'Y', "TYR", "TYROSINE" },
+	{ EResidueType::kValine, 'V', "VAL", "VALINE" }
 };
 
 const char SecondaryStructureInfo[] = {
@@ -38,7 +38,20 @@ const char SecondaryStructureInfo[] = {
 	, 'S'
 };
 
-EResidueType::Type MapResidue( FString inName)
+ResidueInfo MapResidueInfo(EResidueType::Type ResidueType)
+{
+	for (uint32 i = 0; i < EResidueType::kResidueTypeCount; ++i)
+	{
+		if (kResidueInfo[i].type == ResidueType)
+		{
+			return kResidueInfo[i];
+		}
+	}
+
+	return kResidueInfo[0];
+}
+
+EResidueType::Type MapResidue(FString inName)
 {
 	inName.Trim();
 	inName.TrimTrailing();
@@ -309,6 +322,11 @@ void Residue::SetType(char inResidueType)
 	}
 }
 
+void Residue::SetType(EResidueType::Type inResidueType)
+{
+	mType = inResidueType;
+}
+
 void Residue::SetHelixFlags(const char* inHelixFlags)
 {
 	for (int index = 0; index < 3; ++index)
@@ -346,7 +364,7 @@ void Residue::SetBridgeLabels(char* inBridgeLabels)
 {
 	//JM
 	//TODO:
-	//This needs to be revisited because we cannot extract all teh information about the
+	//This needs to be revisited because we cannot extract all the information about the
 	//beta partners at this moment
 	BridgePartner* currentBridgePartner;
 

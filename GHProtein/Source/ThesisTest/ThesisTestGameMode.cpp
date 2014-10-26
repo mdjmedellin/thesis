@@ -2,25 +2,34 @@
 
 #include "ThesisTest.h"
 #include "ThesisTestGameMode.h"
+#include "ThesisStaticLibrary.h"
+#include "ProteinUtilities.h"
 #include "ThesisTestHUD.h"
 #include "CameraPlayerController.h"
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
 #include "AminoAcid.h"
+#include "NeuralNetwork.h"
+#include "ProteinModelSpawnPoint.h"
 
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
+	, m_proteinModel(nullptr)
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
-	, m_aminoAcidBlueprint(nullptr)
+	, DefaultHydrogenBondClass(nullptr)
 	, m_linkWidth(100.f)
 	, m_linkHeight(100.f)
 	, m_distanceScale(1.f)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
+	, m_normalColor(FColor::White)
+	, m_hydrogenBondColor(FColor::White)
 	, m_helixLinkWidth(100.f)
 	, m_betaStrandLinkWidth(100.f)
+	, m_hydrogenBondLinkWidth(100.f)
+	, m_predictionNeuralNetwork(nullptr)
 {
 	/*
 	FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt") );
@@ -94,7 +103,12 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 		testString = "./ThesisData/Lysozyme.dssp";
 	}
 	PdbFile->LoadFile(testString);
-	m_proteinModel = PdbFile->GetCurrentProteinModel();
+	m_proteinModel = PdbFile->GetCurrentProteinModel(GetWorld());
+
+	//Create the neural network
+	m_predictionNeuralNetwork = new NeuralNetwork(m_predictionWeightsFileLocation);
+
+	int x = 1;
 
 	/*FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt"));
 	if (SaveFile)
@@ -107,15 +121,121 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 	}*/
 }
 
+void AThesisTestGameMode::Tick(float DeltaSeconds)
+{
+	Interpolator::UpdateInterpolators(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
+}
+
 void AThesisTestGameMode::StartMatch()
 {
 	Super::StartMatch();
 
+	//Get the spawn location of the protein
+	AProteinModelSpawnPoint* bestModelSpawnPoint = GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_ProteinModel);
+
 	//check if we received a valid protein model
-	if (m_proteinModel && DefaultAminoAcidClass)
+	if (m_proteinModel 
+		&& DefaultAminoAcidClass
+		&& DefaultHydrogenBondClass
+		&& bestModelSpawnPoint)
 	{
+		m_proteinModelCenterLocation = bestModelSpawnPoint->GetActorLocation();
+
+		//set the render properties for the protein model
+		m_proteinModel->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+			m_linkWidth, m_linkHeight, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_aminoAcidSize,
+			DefaultHydrogenBondClass);
+
+		//se the enviromental properties of the model
+		m_proteinModel->SetEnviromentalProperties(m_startingTemperatureCelsius, m_stableTemperatureCelsius,
+			m_meltingTemperatureCelsius, m_irreversibleTemperatureCelsius, m_temperatureStep);
+
 		UWorld* const World = GetWorld();
-		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_aminoAcidSize, m_proteinModelCenterLocation
-			, m_linkWidth, m_linkHeight, m_distanceScale, m_helixColor, m_betaStrandColor, m_helixLinkWidth, m_betaStrandLinkWidth);
+		m_proteinModel->SpawnAminoAcids(World, DefaultAminoAcidClass, m_proteinModelCenterLocation,
+			m_distanceScale);
+	}
+}
+
+AProteinModelSpawnPoint* AThesisTestGameMode::GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType)
+{
+	//at the moment we only expect to have one protein model spawn point
+	if (ProteinModelSpawnPoints.Num() > 0)
+	{
+		for (int i = 0; i < ProteinModelSpawnPoints.Num(); ++i)
+		{
+			if (ProteinModelSpawnPoints[i]->m_typeOfSpawnPoint == spawnType)
+			{
+				return ProteinModelSpawnPoints[i];
+			}
+		}
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
+void AThesisTestGameMode::AddProteinModelSpawnPoint(AProteinModelSpawnPoint* NewProteinModelSpawnPoint)
+{
+	ProteinModelSpawnPoints.AddUnique(NewProteinModelSpawnPoint);
+}
+
+void AThesisTestGameMode::RemoveProteinModelSpawnPoint(AProteinModelSpawnPoint* RemovedProteinModelSpawnPoint)
+{
+	ProteinModelSpawnPoints.Remove(RemovedProteinModelSpawnPoint);
+}
+
+void AThesisTestGameMode::GetInputVals(const TArray<AAminoAcid*>& residues, int residueIndex, int slidingWindowWidth,
+	TArray< TArray<double> >& out_values)
+{
+	out_values.Empty();
+
+	TArray<double> unknownResidue;
+	unknownResidue.Init(0.0, 21);
+	unknownResidue[EResidueType::kUnknownResidue] = 1.0;
+
+	for (int index = residueIndex - slidingWindowWidth; index <= residueIndex + slidingWindowWidth; ++index)
+	{
+		if (index < 0
+			|| index >= residues.Num())
+		{
+			out_values.Add(unknownResidue);
+		}
+		else
+		{
+			out_values.Add(residues[index]->GetVectorRepresentationOfResidueType());
+		}
+	}
+}
+
+bool AThesisTestGameMode::PredictSecondaryStructure(TArray<AAminoAcid*>& residues)
+{
+	if (m_predictionNeuralNetwork != nullptr)
+	{
+		TArray< TArray<double> > inputValsArray;
+		TArray< TArray< double > > resultsHolder;
+		TArray< double > currentResults;
+		ESecondaryStructure::Type secondaryStructureType;
+
+		//the reason we subtract 1 from the width is that the current residue is always in the middle
+		int numberOfInputs = m_predictionNeuralNetwork->GetNumberOfRequiredInputs() - 1;
+		int slidingWindowWidth = numberOfInputs * 0.5f;
+
+		for (int residueIndex = 0; residueIndex < residues.Num(); ++residueIndex)
+		{
+			GetInputVals(residues, residueIndex, slidingWindowWidth, inputValsArray);
+			m_predictionNeuralNetwork->FeedForward(inputValsArray);
+			m_predictionNeuralNetwork->GetResults(currentResults);
+			resultsHolder.Add(currentResults);
+
+			secondaryStructureType = UThesisStaticLibrary::GetSecondaryStructureTypeFromVector(currentResults);
+			residues[residueIndex]->ChangeSecondaryStructureType(secondaryStructureType);
+		}
+
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }

@@ -53,4 +53,16 @@ namespace GHProtein
 		//at this point we did not find the partner to the residue
 		return nullptr;
 	}
+
+	Residue* ResidueContainer::GetFirstResidue()
+	{
+		if (m_residues.Num() > 0)
+		{
+			return m_residues[0];
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
 }

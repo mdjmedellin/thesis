@@ -1,7 +1,6 @@
 #pragma once
-#ifndef __Residue_h__
-#define __Residue_h__
-
+#include "UObjectBaseUtility.h"
+#include "ThesisStaticLibrary.h"
 
 //JM: Globals that seem to be used thorughout
 // --------------------------------------------------------------------
@@ -26,33 +25,6 @@ kRadiusWater = 1.4;
 // --------------------------------------------------------------------
 
 class Residue;
-
-// a limited set of known atoms. This is an obvious candidate for improvement of DSSP.
-namespace EAtomType
-{
-	enum Type
-	{
-		kUnknownAtom,
-		kHydrogen,
-		// ...
-		kCarbon,
-		kNitrogen,
-		kOxygen,
-		kFluorine,
-		// ...
-		kPhosphorus,
-		kSulfur,
-		kChlorine,
-		kMagnesium,
-		kPotassium,
-		kCalcium,
-		kZinc,
-		kSelenium,
-
-		kAtomTypeCount
-	};
-}
-
 EAtomType::Type MapElement(FString inElement);
 
 // for now, Atom contains exactly what the ATOM line contains in a PDB file
@@ -81,66 +53,26 @@ struct Atom
 	operator FVector&()						{ return mLoc; }
 };
 
-namespace EResidueType
-{
-	enum Type
-	{
-		kUnknownResidue,
-
-		//
-		kAlanine,				// A	ala
-		kArginine,				// R	arg
-		kAsparagine,			// N	asn
-		kAsparticAcid,			// D	asp
-		kCysteine,				// C	cys
-		kGlutamicAcid,			// E	glu
-		kGlutamine,				// Q	gln
-		kGlycine,				// G	gly
-		kHistidine,				// H	his
-		kIsoleucine,			// I	ile
-		kLeucine,				// L	leu
-		kLysine,				// K	lys
-		kMethionine,			// M	met
-		kPhenylalanine,			// F	phe
-		kProline,				// P	pro
-		kSerine,				// S	ser
-		kThreonine,				// T	thr
-		kTryptophan,			// W	trp
-		kTyrosine,				// Y	tyr
-		kValine,				// V	val
-
-		kResidueTypeCount
-	};
-}
-
 struct ResidueInfo
 {
-	EResidueType::Type		type;
+	EResidueType::Type	type;
 	char				code;
 	char				name[4];
+	FString				fullName;
 };
 
 // a residue number to info mapping
 extern const ResidueInfo kResidueInfo[];
 
 EResidueType::Type MapResidue(FString inName);
+EResidueType::Type MapResidue(char inChar);
+ResidueInfo MapResidueInfo(EResidueType::Type ResidueType);
 
 struct HBond
 {
 	Residue*		residue;
 	double			energy;
 };
-
-namespace EBridgeType
-{
-	enum Type
-	{
-		btNoBridge
-		,btParallel
-		,btAntiParallel
-		,btCount
-	};
-}
 
 struct BridgePartner
 {
@@ -157,40 +89,12 @@ struct BridgePartner
 	int				number;
 };
 
-namespace EHelixFlag
-{
-	enum Type
-	{
-		helixNone
-		,helixStart
-		,helixEnd
-		,helixStartAndEnd
-		,helixMiddle
-		,helixCount
-	};
-}
-
-namespace ESecondaryStructure
-{
-	enum Type
-	{
-		ssLoop			//' '
-		, ssAlphaHelix	// H
-		, ssBetaBridge	// B
-		, ssStrand		// E
-		, ssHelix_3		// G
-		, ssHelix_5		// I
-		, ssTurn		// T
-		, ssBend		// S
-		,ssCount		
-	};
-}
-
 extern const char SecondaryStructureInfo[];
 ESecondaryStructure::Type MapSecondaryStructure(char inSSCharLabel);
 
 class Residue
 {
+
 public:
 	Residue();
 	//Residue(const Residue& residue);
@@ -202,6 +106,7 @@ public:
 	char				GetChainID() const							{ return mChainID; }
 	EResidueType::Type	GetType() const								{ return mType; }
 	void				SetType(char inResidueType);
+	void				SetType(EResidueType::Type inResidueType);
 	const Atom&			GetCAlpha() const							{ return mCA; }
 	const Atom&			GetC() const								{ return mC; }
 	const Atom&			GetN() const								{ return mN; }
@@ -343,9 +248,4 @@ protected:
 	//FVector				mBox[2];		// The 3D box containing all atoms
 	//FVector				mCenter;		// and the 3d Sphere containing all atoms
 	//double				mRadius;
-
-private:
-	Residue&			operator=(const Residue& residue);
 };
-
-#endif

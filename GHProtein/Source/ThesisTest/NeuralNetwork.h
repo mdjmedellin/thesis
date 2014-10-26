@@ -1,19 +1,38 @@
 #pragma once
 #include "NeuralNetwork.generated.h"
 
+//it seems that UE4 does not have the equivalent of a pair
+USTRUCT()
+struct FIntPair
+{
+public:
+	GENERATED_USTRUCT_BODY()
+	FIntPair(int firstInt = 0, int secondInt = 0)
+	{
+		first = firstInt;
+		second = secondInt;
+	}
+
+private:
+
+public:
+	int first;
+	int second;
+};
+
 USTRUCT()
 struct FNeuronConnection
 {
+public:
 	GENERATED_USTRUCT_BODY()
 
-public:
 	FNeuronConnection(int numberOfWeights = 1);
+	FNeuronConnection(const TArray<FString>& stringWeightValues);
 	void RandomizeWeights();
 	void SetDeltaWeight(double deltaWeight, int deltaWeightIndex);
 	void AddToWeight(double amountToAdd, int weightIndex);
 
 private:
-	static double S_RandomWeight(void) { return rand() / double(RAND_MAX); }
 
 public:
 	TArray<double> m_weight;
@@ -25,21 +44,22 @@ struct FNeuronLayer;
 USTRUCT()
 struct FNeuron
 {
-	GENERATED_USTRUCT_BODY()
-
 public:
+	GENERATED_USTRUCT_BODY()
+	
 	FNeuron();
 	FNeuron(int numberOfOutputs, int myIndex, int numberOfinputs = 1);
-	void SetOutputValues(TArray<double>& values);
+	FNeuron(const TArray<FString>& stringArray, int& index, int neuronIndex);
+	void SetOutputValues(const TArray<double>& values);
 	void SetOutputValue(double value, int index = 0);
 	double GetOutputValue() const;
 	double GetDeltaWeight(int connectionIndex) const;
 	double GetWeight(int connectionIndex) const;
 	int GetIndexOfValidOutputValue() const;
-	void FeedForward(const FNeuronLayer &prevLayer);
+	void FeedForward(const FNeuronLayer& prevLayer);
 	void CalculateOutputGradients(double targetVal);
-	void CalculateHiddenGradients(const FNeuronLayer &nextLayer);
-	void UpdateInputWeights(FNeuronLayer &prevLayer);
+	void CalculateHiddenGradients(const FNeuronLayer& nextLayer);
+	void UpdateInputWeights(FNeuronLayer& prevLayer);
 
 private:
 	static double s_eta;   // [0.0..1.0] overall net training rate
@@ -59,10 +79,14 @@ struct FNeuronLayer
 	GENERATED_USTRUCT_BODY()
 
 	int m_numberOfNeurons;
+	bool m_hasBias;
 	TArray<FNeuron> m_neurons;
 
 	//constructor
+	FNeuronLayer(int numberOfNeurons, int numberOfOutputs, int numberOfInputs, bool addBiasNeuron);
+	FNeuronLayer(const TArray<FString>& stringArray, int &index, int neuronCount, bool hasBias);
 	FNeuronLayer();
+	//void LoadWeights();
 };
 
 /**
@@ -71,16 +95,23 @@ struct FNeuronLayer
 class THESISTEST_API NeuralNetwork
 {
 public:
-	NeuralNetwork(const TArray<int>& topology);
+	NeuralNetwork(const FString& weightsFileLocation);
+	NeuralNetwork(const TArray<FIntPair>& topology, bool addBiasNeuron = false);
 	~NeuralNetwork();
 
-	void FeedForward(const TArray<double>& inputValues);			//this is our update function, it is the one that passes the input to the network
+	void FeedForward(const TArray< TArray<double> >& inputValues);			//this is our update function, it is the one that passes the input to the network
 	void BackPropagation(const TArray<double>& targetValues);
 	void GetResults(TArray<double>& resultValues)const;
+	int GetNumberOfRequiredInputs() const;
 	double GetRecentAverageError() const { return m_recentAverageError; }
+	void SaveWeights(const FString& fileName);
+	void LoadWeights(const FString& fileName);
 
 private:
 	//private functions
+	void InitializeNeuralNetwork(const TArray<FIntPair>& topology, bool addBiasNeuron);
+	void InitializeNetworkFromFile(const TArray<FString>& atringArray);
+	void ExtractNeuralLayer(const TArray<FString>& stringArray, int& index);
 
 public:
 	//public data members
@@ -91,152 +122,8 @@ private:
 	int m_numberOfOutputs;
 	int m_numberOfHiddenLayers;
 
-	TArray<FNeuronLayer> m_neuronLayers;
+	TArray<FNeuronLayer*> m_neuronLayers;
 	double m_error;
 	double m_recentAverageError;
 	static double m_recentAverageSmoothingFactor;
 };
-
-
-/*
-// Silly class to read training data from a text file -- Replace This.
-// Replace class TrainingData with whatever you need to get input data into the
-// program, e.g., connect to a database, or take a stream of data from stdin, or
-// from a file specified by a command line argument, etc.
-
-class TrainingData
-{
-public:
-	TrainingData(const string filename);
-	bool isEof(void) { return m_trainingDataFile.eof(); }
-	void getTopology(vector<unsigned> &topology);
-
-	// Returns the number of input values read from the file:
-	unsigned getNextInputs(vector<double> &inputVals);
-	unsigned getTargetOutputs(vector<double> &targetOutputVals);
-
-private:
-	ifstream m_trainingDataFile;
-};
-
-void TrainingData::getTopology(vector<unsigned> &topology)
-{
-	string line;
-	string label;
-
-	getline(m_trainingDataFile, line);
-	stringstream ss(line);
-	ss >> label;
-	if (this->isEof() || label.compare("topology:") != 0) {
-		abort();
-	}
-
-	while (!ss.eof()) {
-		unsigned n;
-		ss >> n;
-		topology.push_back(n);
-	}
-
-	return;
-}
-
-TrainingData::TrainingData(const string filename)
-{
-	m_trainingDataFile.open(filename.c_str());
-}
-
-unsigned TrainingData::getNextInputs(vector<double> &inputVals)
-{
-	inputVals.clear();
-
-	string line;
-	getline(m_trainingDataFile, line);
-	stringstream ss(line);
-
-	string label;
-	ss >> label;
-	if (label.compare("in:") == 0) {
-		double oneValue;
-		while (ss >> oneValue) {
-			inputVals.push_back(oneValue);
-		}
-	}
-
-	return inputVals.size();
-}
-
-unsigned TrainingData::getTargetOutputs(vector<double> &targetOutputVals)
-{
-	targetOutputVals.clear();
-
-	string line;
-	getline(m_trainingDataFile, line);
-	stringstream ss(line);
-
-	string label;
-	ss >> label;
-	if (label.compare("out:") == 0) {
-		double oneValue;
-		while (ss >> oneValue) {
-			targetOutputVals.push_back(oneValue);
-		}
-	}
-
-	return targetOutputVals.size();
-}
-
-
-void showVectorVals(string label, vector<double> &v)
-{
-	cout << label << " ";
-	for (unsigned i = 0; i < v.size(); ++i) {
-		cout << v[i] << " ";
-	}
-
-	cout << endl;
-}
-
-
-int main()
-{
-	TrainingData trainData("/tmp/trainingData.txt");
-
-	// e.g., { 3, 2, 1 }
-	vector<unsigned> topology;
-	trainData.getTopology(topology);
-
-	Net myNet(topology);
-
-	vector<double> inputVals, targetVals, resultVals;
-	int trainingPass = 0;
-
-	while (!trainData.isEof()) {
-		++trainingPass;
-		cout << endl << "Pass " << trainingPass;
-
-		// Get new input data and feed it forward:
-		if (trainData.getNextInputs(inputVals) != topology[0]) {
-			break;
-		}
-		showVectorVals(": Inputs:", inputVals);
-		myNet.feedForward(inputVals);
-
-		// Collect the net's actual output results:
-		myNet.getResults(resultVals);
-		showVectorVals("Outputs:", resultVals);
-
-		// Train the net what the outputs should have been:
-		trainData.getTargetOutputs(targetVals);
-		showVectorVals("Targets:", targetVals);
-		assert(targetVals.size() == topology.back());
-
-		myNet.backProp(targetVals);
-
-		// Report how well the training is working, average over recent samples:
-		cout << "Net recent average error: "
-			<< myNet.getRecentAverageError() << endl;
-	}
-
-	cout << endl << "Done" << endl;
-}
-*/

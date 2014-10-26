@@ -1,9 +1,6 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 #pragma once
 
-#ifndef __ProteinBuilder_h__
-#define __ProteinBuilder_h__
-
 namespace GHProtein
 {
 	class ProteinModel;
@@ -44,7 +41,7 @@ public:
 	/** Gets a pointer to a protein created from the file that is currently loader
 	*	@return null if no file has been laoded
 	*/
-	GHProtein::ProteinModel* GetCurrentProteinModel();
+	GHProtein::ProteinModel* GetCurrentProteinModel(UWorld* proteinWorld);
 
 private:
 
@@ -64,5 +61,3 @@ private:
 	/** Array that keeps the file's information separated by lines */
 	TArray<FString> m_inputLines;
 };
-
-#endif

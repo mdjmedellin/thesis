@@ -1,17 +1,38 @@
 #include "ThesisTest.h"
+#include "ThesisTestGameMode.h"
+#include "AminoAcid.h"
+#include "LinkFragment.h"
+#include "ProteinUtilities.h"
 #include "ProteinModel.h"
 #include "ResidueContainer.h"
-#include "AminoAcid.h"
+#include "HydrogenBond.h"
 #include "SecondaryStructure.h"
 
 namespace GHProtein
 {
-	ProteinModel::ProteinModel()
-		: m_minBounds3D(FVector(0.f, 0.f, 0.f))
-		, m_maxBounds3D(FVector(0.f, 0.f, 0.f))
+	ProteinModel::ProteinModel(UWorld* proteinWorld)
+		: m_minBounds3D(FVector::ZeroVector)
+		, m_maxBounds3D(FVector::ZeroVector)
+		, m_centerOfBoundingBox(FVector::ZeroVector)
 		, m_headPtr(nullptr)
 		, m_headSecondaryStructure(nullptr)
 		, m_tailSecondaryStructure(nullptr)
+		, m_hydrogenBondLinkWidth(0.f)
+		, m_linkHeight(0.f)
+		, m_linkWidth(0.f)
+		, m_helixLinkWidth(0.f)
+		, m_betaStrandLinkWidth(0.f)
+		, m_normalColor(FColor::White)
+		, m_helixColor(FColor::White)
+		, m_betaStrandColor(FColor::White)
+		, m_hydrogenBondColor(FColor::White)
+		, m_world(proteinWorld)
+		, m_temperatureStep(1.f)
+		, m_stableTemperatureCelsius(0.f)
+		, m_meltingTemperatureCelsius(0.f)
+		, m_irreversibleTemperatureCelsius(0.f)
+		, m_temperatureCelsius(0.f)						//we start the model with a temperature equal to a human's average body temperatures
+		, m_hydrogenBondClass(nullptr)
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -62,6 +83,28 @@ namespace GHProtein
 		return true;
 	}
 
+	Residue* ProteinModel::GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue)
+	{
+		ResidueContainer** residues = ResidueIDMap.Find(residueNumber);
+		Residue* foundResidue = nullptr;
+
+		if (residues && *residues)
+		{
+			//we have found the appropriate residue container
+			//if we have a partner residue specified, then we return the residue whose partner is the specified residue
+			if (partnerResidue)
+			{
+				foundResidue = (*residues)->FindBetaPartnerToResidue(partnerResidue);
+			}
+			else
+			{
+				foundResidue = (*residues)->GetFirstResidue();
+			}
+		}
+
+		return foundResidue;
+	}
+
 	void ProteinModel::BuildProteinModel()
 	{
 		int numberOfResidues = m_residueVector.Num();
@@ -86,19 +129,8 @@ namespace GHProtein
 				{
 					//at this point we know that we have a beta partner
 					//now we need to get the right reference to it
-
-					ResidueContainer** residues = ResidueIDMap.Find(currentBridgePartner.number);
-
-					if (residues && *residues)
-					{
-						//we found the residue container that contains the bridge partner
-						betaPartnerResidue = (*residues)->FindBetaPartnerToResidue(currentResidue);
-					}
-					else
-					{
-						betaPartnerResidue = nullptr;
-					}
-
+					betaPartnerResidue = GetResidueWithSpecifiedID(currentBridgePartner.number, currentResidue);
+					
 					//set the beta partner residue
 					currentResidue->SetBetaPartnerResidue(betaPartnerID, betaPartnerResidue);
 				}
@@ -119,11 +151,72 @@ namespace GHProtein
 		return;
 	}
 
-	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, float aminoAcidSize, const FVector& proteinModelCenterLocation
-		, float linkWidth, float linkHeight, float distanceScale, const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-		, float betaStrandLinkWidth)
+	void ProteinModel::UpdateMinAndMaxBounds(const FVector& newPoint)
 	{
-		if (!world || !blueprint || aminoAcidSize <= 0.f)
+		m_minBounds3D.X = GetMin(m_minBounds3D.X, newPoint.X);
+		m_minBounds3D.Y = GetMin(m_minBounds3D.Y, newPoint.Y);
+		m_minBounds3D.Z = GetMin(m_minBounds3D.Z, newPoint.Z);
+
+		m_maxBounds3D.X = GetMax(m_maxBounds3D.X, newPoint.X);
+		m_maxBounds3D.Y = GetMax(m_maxBounds3D.Y, newPoint.Y);
+		m_maxBounds3D.Z = GetMax(m_maxBounds3D.Z, newPoint.Z);
+
+		//get the center of the bounds
+		m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
+	}
+
+	void ProteinModel::MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation)
+	{
+		//translate all amino acids
+		AAminoAcid* currentAminoAcid = m_headPtr;
+		FVector newResidueLocation = FVector::ZeroVector;
+		while (currentAminoAcid)
+		{
+			currentAminoAcid->Translate(proteinModelCenterLocation - m_centerOfBoundingBox);
+			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//offset the bounding box
+		m_minBounds3D = m_minBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
+		m_maxBounds3D = m_maxBounds3D - m_centerOfBoundingBox + proteinModelCenterLocation;
+		m_centerOfBoundingBox = proteinModelCenterLocation;
+	}
+
+	void ProteinModel::UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+		const FColor& hydrogenBondColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
+		float hydrogenBondLinkWidth, float aminoAcidSize, UClass* hydrogenBondClass)
+	{
+		m_normalColor = normalColor;
+		m_helixColor = helixColor;
+		m_betaStrandColor = betaStrandColor;
+		m_hydrogenBondColor = hydrogenBondColor;
+
+		m_linkWidth = normalLinkWidth;
+		m_helixLinkWidth = helixLinkWidth;
+		m_betaStrandLinkWidth = betaStrandLinkWidth;
+		m_hydrogenBondLinkWidth = hydrogenBondLinkWidth;
+
+		m_linkHeight = normalLinkHeight;
+
+		m_aminoAcidSize = aminoAcidSize;
+
+		m_hydrogenBondClass = hydrogenBondClass;
+	}
+
+	void ProteinModel::SetEnviromentalProperties(float startingTemperatureCelsius, float stableTemperatureCelsius,
+		float meltingTemperatureCelsius, float irreversibleTemperatureCelsius, float temperatureStep)
+	{
+		m_temperatureCelsius = startingTemperatureCelsius;
+		m_stableTemperatureCelsius = stableTemperatureCelsius;
+		m_meltingTemperatureCelsius = meltingTemperatureCelsius;
+		m_irreversibleTemperatureCelsius = irreversibleTemperatureCelsius;
+		m_temperatureStep = temperatureStep;
+	}
+
+	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& proteinModelCenterLocation,
+		float distanceScale)
+	{
+		if (!world || !blueprint || m_aminoAcidSize <= 0.f)
 		{
 			//we need to have a valid world and blueprint
 			//we can only spawn amino acids with a positive non-zero size
@@ -131,7 +224,6 @@ namespace GHProtein
 		}
 		else
 		{
-			FVector originLocation = FVector::ZeroVector;
 			FRotator originRotation = FRotator::ZeroRotator;
 			AAminoAcid* previousAminoAcid = nullptr;
 			AAminoAcid* currentAminoAcid = nullptr;
@@ -140,33 +232,31 @@ namespace GHProtein
 			ESecondaryStructure::Type currentSecondaryStructureType = ESecondaryStructure::ssCount;
 			SecondaryStructure* currentSecondaryStructure = nullptr;
 
-			//iterate over all of the amino acids and spawn an actor for each one of them
+			//iterate over all of the residues and spawn an amino acid actor for each one of them
+			//also creates the secondary structures
 			for (int residueIndex = 0; residueIndex < m_residueVector.Num(); ++residueIndex)
 			{
 				currentResidue = m_residueVector[residueIndex];
 				currentResidue->GetCALocation(aminoAcidLocation);
-				aminoAcidLocation += originLocation;
 				aminoAcidLocation *= distanceScale; // this is done in order to space out the proteins
+
 				currentAminoAcid = UThesisStaticLibrary::SpawnBP<AAminoAcid>(world, blueprint, aminoAcidLocation, originRotation);
-				currentAminoAcid->SetAminoAcidSize(aminoAcidSize);
+				currentAminoAcid->SetAminoAcidSize(m_aminoAcidSize);
 				currentAminoAcid->SetResidueInformation(currentResidue);
 				currentAminoAcid->SetParentModel(this);
 
+				//link the previous amino acid to this
 				if (previousAminoAcid)
 				{
 					previousAminoAcid->SetNextAminoAcid(currentAminoAcid);
 				}
 				previousAminoAcid = currentAminoAcid;
 
+
+				//update bounding box
 				if (m_headPtr)
 				{
-					m_minBounds3D.X = m_minBounds3D.X < aminoAcidLocation.X ? m_minBounds3D.X : aminoAcidLocation.X;
-					m_minBounds3D.Y = m_minBounds3D.Y < aminoAcidLocation.Y ? m_minBounds3D.Y : aminoAcidLocation.Y;
-					m_minBounds3D.Z = m_minBounds3D.Z < aminoAcidLocation.Z ? m_minBounds3D.Z : aminoAcidLocation.Z;
-
-					m_maxBounds3D.X = m_maxBounds3D.X > aminoAcidLocation.X ? m_maxBounds3D.X : aminoAcidLocation.X;
-					m_maxBounds3D.Y = m_maxBounds3D.Y > aminoAcidLocation.Y ? m_maxBounds3D.Y : aminoAcidLocation.Y;
-					m_maxBounds3D.Z = m_maxBounds3D.Z > aminoAcidLocation.Z ? m_maxBounds3D.Z : aminoAcidLocation.Z;
+					UpdateMinAndMaxBounds(aminoAcidLocation);
 				}
 				else
 				{
@@ -175,69 +265,83 @@ namespace GHProtein
 					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
 				}
 
-				currentAminoAcid->SetSecondaryStructure(currentResidue->GetSecondaryStructure());
+				//set the residue's secondary structure and updates the current secondary structure
+				currentAminoAcid->ChangeSecondaryStructureType(currentResidue->GetSecondaryStructure());
 
-				if (currentSecondaryStructureType == ESecondaryStructure::ssCount
-					|| currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
+				if (currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
 				{
-					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
-					currentSecondaryStructure = new SecondaryStructure();
-
 					if (currentSecondaryStructure)
 					{
 						AppendSecondaryStructure(currentSecondaryStructure);
 					}
+
+					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
+					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType, this);
 				}
-
 				currentSecondaryStructure->AppendAminoAcid(currentAminoAcid);
-			}
 
+			}
 			AppendSecondaryStructure(currentSecondaryStructure);
 
-			//get the center of the bounds
-			m_centerOfBoundingBox = (m_minBounds3D * .5f) + (m_maxBounds3D * .5f);
 
-			//we want to bring everything to the center, so subtract the middle from all locations
+			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
+			MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
+
+			//iterate over the chain of amino acids and spawn the link fragments
 			currentAminoAcid = m_headPtr;
 			while (currentAminoAcid)
 			{
-				currentAminoAcid->SetActorLocation(currentAminoAcid->GetActorLocation() - m_centerOfBoundingBox);
+				currentAminoAcid->SetRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+					m_linkWidth, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
+
+				currentAminoAcid->SpawnLinkParticleToNextAminoAcid();
 				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 			}
 
-			//offset the bounding box
-			m_minBounds3D -= m_centerOfBoundingBox;
-			m_maxBounds3D -= m_centerOfBoundingBox;
-			m_centerOfBoundingBox -= m_centerOfBoundingBox;
-
-			//iterate ove the chain of amino acids and spawn the link particle effect
-			currentAminoAcid = m_headPtr;
-			while (currentAminoAcid)
+			//spawn the hydrogen bonds in the beta sheet
+			for (int betaSheetIndex = 0; betaSheetIndex < m_betaSheets.Num(); ++betaSheetIndex)
 			{
-				currentAminoAcid->SpawnLinkParticleToNextAminoAcid(linkWidth, linkHeight);
-				currentAminoAcid->SetRenderProperties(helixColor, betaStrandColor, helixLinkWidth, betaStrandLinkWidth);
-				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+				m_betaSheets[betaSheetIndex]->SpawnHydrogenBonds();
+			}
+
+			for (SecondaryStructure* currentStructure = m_headSecondaryStructure;
+				currentStructure; currentStructure = currentStructure->GetNextStructurePtr())
+			{
+				currentStructure->SpawnHydrogenBonds();
 			}
 		}
 	}
 
-	void ProteinModel::HighlightSecondaryStructure(AAminoAcid* residueMember)
+	AHydrogenBond* ProteinModel::SpawnHydrogenBond(AAminoAcid* startResidue, AAminoAcid* endResidue)
 	{
-		//iterate through the secondary structures to see what to highlight
-		for (SecondaryStructure* currentSecondaryStructure = m_headSecondaryStructure;
-			currentSecondaryStructure != nullptr && (m_tailSecondaryStructure && currentSecondaryStructure != m_tailSecondaryStructure->GetNextStructurePtr());
-			currentSecondaryStructure = currentSecondaryStructure->GetNextStructurePtr())
-		{
-			if (currentSecondaryStructure->ContainsSpecifiedResidue(residueMember))
-			{
-				currentSecondaryStructure->SetSelected();
-				break;
-			}
-		}
-	}
+		//Get the size of the hydrogen bond link fragment from the game mode
+		FVector startLocation = startResidue->GetActorLocation();
+		FVector endLocation = endResidue->GetActorLocation();
+		UWorld* world = startResidue->GetWorld();
+
+		AHydrogenBond* hydrogenBond = UThesisStaticLibrary::SpawnBP<AHydrogenBond>(world, m_hydrogenBondClass,
+			FVector::ZeroVector, FRotator::ZeroRotator);
+
+		hydrogenBond->SplineMeshComponent->SetStartPosition(startLocation);
+		hydrogenBond->SplineMeshComponent->SetEndPosition(endLocation);
+
+		//set render properties for the bond
+		hydrogenBond->UpdateRenderProperties(m_hydrogenBondColor, m_hydrogenBondLinkWidth, m_linkHeight);
+		//set the parent model
+		hydrogenBond->SetParentModelAndResiduesInformation(this, startResidue, endResidue);
+		//set the enviromental properties
+		hydrogenBond->SetEnviromentalProperties(m_temperatureCelsius, m_stableTemperatureCelsius, m_meltingTemperatureCelsius,
+			m_irreversibleTemperatureCelsius);
+
+		//should probably add the hydrogen bond into the array of current hydrogen bonds
+		m_hydrogenBonds.Add(hydrogenBond);
+
+		return hydrogenBond;
+	};
 
 	AAminoAcid* ProteinModel::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	{
+		//search through all of the secondary structures and grab the residue with the specified sequence number
 		SecondaryStructure* currentSecondaryStructure = m_headSecondaryStructure;
 		AAminoAcid* foundResidue = nullptr;
 
@@ -275,6 +379,151 @@ namespace GHProtein
 			m_headSecondaryStructure = secondaryStructure;
 			m_tailSecondaryStructure = m_headSecondaryStructure;
 		}
+
+		//check if it is a beta strand
+		if (secondaryStructure->GetSecondaryStructureType() == ESecondaryStructure::ssStrand)
+		{
+			AddBetaStrand(secondaryStructure);
+		}
+
+		secondaryStructure->SetEnviromentalProperties(m_temperatureCelsius, m_stableTemperatureCelsius,
+			m_meltingTemperatureCelsius, m_irreversibleTemperatureCelsius);
+	}
+
+	void ProteinModel::AddBetaStrand(SecondaryStructure* newStrand)
+	{
+		TArray<uint32> bridgeLabels;
+		newStrand->GetBridgeLabels(bridgeLabels);
+
+		BetaSheet* currentBetaSheet = nullptr;
+		//look for other beta strands that share the same beta bridge label
+		for (int betaStrandIndex = 0; betaStrandIndex < m_betaStrands.Num(); ++betaStrandIndex)
+		{
+			//check if the strands are connected
+			if (m_betaStrands[betaStrandIndex]->IsPartOfSpecifiedBridgeLabels(bridgeLabels))
+			{
+				if (currentBetaSheet)
+				{
+					currentBetaSheet = MergeStrandIntoBetaSheet(m_betaStrands[betaStrandIndex], currentBetaSheet);
+				}
+				else
+				{
+					//if it is part of the same bridge label, then add it to the current beta strand collection for the beta sheet
+					currentBetaSheet = MergeStrands(newStrand, m_betaStrands[betaStrandIndex]);
+				}
+			}
+		}
+
+		if (m_betaStrands.Find(newStrand) == INDEX_NONE)
+		{
+			m_betaStrands.Add(newStrand);
+		}
+	}
+
+	BetaSheet* ProteinModel::MergeStrandIntoBetaSheet(SecondaryStructure* newStrand, BetaSheet* betaSheet)
+	{
+		//check if the strand is part of a beta sheet already
+		BetaSheet* out_betaSheet = nullptr;
+		BetaSheet** foundBetaSheet = m_strandToBetaSheetMap.Find(newStrand);
+		if (foundBetaSheet)
+		{
+			if (*foundBetaSheet == betaSheet)
+			{
+				//the strand already belongs to the specified sheet
+				out_betaSheet = betaSheet;
+			}
+			else
+			{
+				//the residue is already part of a beta sheet
+				//we need to merge the sheets into one
+				out_betaSheet = MergeBetaSheets(*foundBetaSheet, betaSheet);
+			}
+		}
+		else
+		{
+			out_betaSheet = betaSheet;
+			betaSheet->m_strands.Add(newStrand);
+			m_strandToBetaSheetMap.Add(newStrand, betaSheet);
+		}
+
+		return out_betaSheet;
+	}
+
+	BetaSheet* ProteinModel::MergeStrands(SecondaryStructure* strand1, SecondaryStructure* strand2)
+	{
+		//check if any of the two strands are part of a beta sheet already
+		BetaSheet** foundBetaSheet1 = m_strandToBetaSheetMap.Find(strand1);
+		BetaSheet** foundBetaSheet2 = m_strandToBetaSheetMap.Find(strand2);
+		BetaSheet* out_betaSheet = nullptr;
+
+		if (foundBetaSheet1 && foundBetaSheet2)
+		{
+			out_betaSheet = MergeBetaSheets(*foundBetaSheet1, *foundBetaSheet2);
+		}
+		else if (foundBetaSheet1)
+		{
+			out_betaSheet = *foundBetaSheet1;
+			(*foundBetaSheet1)->m_strands.Add(strand2);
+			m_strandToBetaSheetMap.Add(strand2, *foundBetaSheet1);
+		}
+		else if (foundBetaSheet2)
+		{
+			out_betaSheet = *foundBetaSheet2;
+			(*foundBetaSheet2)->m_strands.Add(strand1);
+			m_strandToBetaSheetMap.Add(strand1, *foundBetaSheet2);
+		}
+		else
+		{
+			//make a new beta sheet
+			BetaSheet* newBetaSheet = new BetaSheet(strand1, strand2, this);
+			m_strandToBetaSheetMap.Add(strand1, newBetaSheet);
+			m_strandToBetaSheetMap.Add(strand2, newBetaSheet);
+
+			m_betaSheets.Add(newBetaSheet);
+
+			out_betaSheet = newBetaSheet;
+		}
+
+		return out_betaSheet;
+	}
+
+	BetaSheet* ProteinModel::MergeBetaSheets(BetaSheet* sheet1, BetaSheet* sheet2)
+	{
+		//save the strands that were originally part of sheet1 so that their pointer is set the same
+		//as the other strands in the sheet
+		TArray<SecondaryStructure*> sheet1Strands = sheet1->m_strands;
+		BetaSheet* mergingSheet = sheet1;
+		BetaSheet* out_betaSheet = nullptr;
+
+		//iterate over the strands of sheet2 and modify the mapping of all the strands that compose it
+		for (int i = 0; i < sheet2->m_strands.Num(); ++i)
+		{
+			//we only add to the strands if it is not already part of the sheet1
+			if (mergingSheet->m_strands.Find(sheet2->m_strands[i]) == INDEX_NONE)
+			{
+				mergingSheet->m_strands.Add(sheet2->m_strands[i]);
+			}
+
+			//replace the mapping of the strand to the new sheet
+			m_strandToBetaSheetMap[sheet2->m_strands[i]] = mergingSheet;
+		}
+
+		//change the mapping of sheet1 original strands to the mergingSheet
+		for (int i = 0; i < sheet1Strands.Num(); ++i)
+		{
+			m_strandToBetaSheetMap[sheet1Strands[i]] = mergingSheet;
+		}
+
+		//remove sheet2 from the array of sheets
+		m_betaSheets.Remove(sheet2);
+
+		//delete sheet2
+		delete sheet2;
+		sheet2 = mergingSheet;
+
+		//return the new sheet
+		out_betaSheet = mergingSheet;
+		return out_betaSheet;
 	}
 
 	void ProteinModel::RotateModel(const FVector& anglesDegrees)
@@ -284,20 +533,192 @@ namespace GHProtein
 		//iterate ove the chain of amino acids and rotate them from the model's center point
 		AAminoAcid* currentAminoAcid = m_headPtr;
 		FRotator rotation(anglesDegrees.X, anglesDegrees.Y, anglesDegrees.Z);
-		
+		FRotationMatrix rotationMatrix(rotation);
+
+		FVector aminoAcidLocation = FVector::ZeroVector;
+		FVector rotationPoint = m_centerOfBoundingBox;
+
 		//update position of the amino acids
 		while (currentAminoAcid)
 		{
-			currentAminoAcid->RotateAminoAcidFromSpecifiedPoint(m_centerOfBoundingBox, rotation);
+			currentAminoAcid->RotateAminoAcidFromSpecifiedPoint(rotationMatrix, rotationPoint);
+			aminoAcidLocation = currentAminoAcid->GetActorLocation();
+
+			if (currentAminoAcid != m_headPtr)
+			{
+				UpdateMinAndMaxBounds(aminoAcidLocation);
+			}
+			else
+			{
+				m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+				m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+			}
+
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
 
-		//update links
-		currentAminoAcid = m_headPtr;
+		//update hydrogen bonds
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->RotateAboutSpecifiedPoint(rotationMatrix, rotationPoint);
+		}
+	}
+
+	FVector ProteinModel::GetDirectionFromCenter(const FVector& currentLocation)
+	{
+		FVector returnVector = currentLocation;
+		returnVector -= m_centerOfBoundingBox;
+		return returnVector;
+	}
+
+	void ProteinModel::TranslateModel(const FVector& displacement)
+	{
+		FVector distanceFromCenter = FVector::ZeroVector;
+
+		//iterate ove the chain of amino acids and rotate them from the model's center point
+		AAminoAcid* currentAminoAcid = m_headPtr;
+
+		//update position of the amino acids
 		while (currentAminoAcid)
 		{
-			currentAminoAcid->UpdateLinkToNextAminoAcid();
+			currentAminoAcid->Translate(displacement);
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+		}
+
+		//translate the bounding box min and max
+		m_minBounds3D += displacement;
+		m_maxBounds3D += displacement;
+		m_centerOfBoundingBox += displacement;
+
+		//displace the hydrogen bonds
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			//m_hydrogenBonds[i]->Translate(displacement);
+		}
+	}
+
+	FVector ProteinModel::GetBoundingBoxDimensions() const
+	{
+		return m_maxBounds3D - m_minBounds3D;
+	}
+
+	FVector ProteinModel::GetCenterLocation() const
+	{
+		return m_centerOfBoundingBox;
+	}
+
+	void ProteinModel::ToggleShake()
+	{
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->ToggleShake();
+		}
+	}
+
+	void ProteinModel::ToggleBreaking()
+	{
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->Break();
+		}
+	}
+
+	void ProteinModel::HideHydrogenBonds()
+	{
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->Hide();
+		}
+	}
+
+	void ProteinModel::ModifyTemperature(float temperatureModifierScale)
+	{
+		m_temperatureCelsius += (m_temperatureStep * temperatureModifierScale);
+
+		UpdateModelTemperature();
+	}
+
+	void ProteinModel::SetTemperature(float temperatureCelsius)
+	{
+		m_temperatureCelsius = temperatureCelsius;
+
+		UpdateModelTemperature();
+	}
+
+	void ProteinModel::UpdateModelTemperature()
+	{
+		SecondaryStructure* currentStructure = m_headSecondaryStructure;
+
+		bool changeInTemperatureTriggeredAnimation = false;
+
+		while (currentStructure != nullptr)
+		{
+			changeInTemperatureTriggeredAnimation = currentStructure->SetTemperature(m_temperatureCelsius);
+			currentStructure = currentStructure->GetNextStructurePtr();
+		}
+
+		//set the temperature on all of the hydrogen bonds
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			changeInTemperatureTriggeredAnimation = m_hydrogenBonds[i]->SetTemperature(m_temperatureCelsius);
+		}
+
+		if (changeInTemperatureTriggeredAnimation)
+		{
+			//trigger the event that indicates the model is being animated
+			AThesisTestGameMode* gameMode = (AThesisTestGameMode*)(m_world->GetAuthGameMode());
+			if (gameMode)
+			{
+				gameMode->StartedProteinAnimation();
+			}
+		}
+	}
+
+	float ProteinModel::GetCurrentTemperature()
+	{
+		return m_temperatureCelsius;
+	}
+
+	UWorld* ProteinModel::GetWorld()
+	{
+		return m_world;
+	}
+
+	void ProteinModel::AddToListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureBeingModified)
+	{
+		m_modifiedSecondaryStructures.AddUnique(secondaryStructureBeingModified);
+	}
+
+	void ProteinModel::RemoveFromListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureToRemove)
+	{
+		m_modifiedSecondaryStructures.Remove(secondaryStructureToRemove);
+
+		//once removed, lets check if there are any remaining structures being modified
+		CheckIfEndModificationEventShouldTrigger();
+	}
+
+	void ProteinModel::AddToListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondBeingModified)
+	{
+		m_modifiedHydrogenBonds.AddUnique(hydrogenBondBeingModified);
+	}
+
+	void ProteinModel::RemoveFromListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondToRemove)
+	{
+		m_modifiedHydrogenBonds.Remove(hydrogenBondToRemove);
+		CheckIfEndModificationEventShouldTrigger();
+	}
+
+	void ProteinModel::CheckIfEndModificationEventShouldTrigger()
+	{
+		if (m_modifiedSecondaryStructures.Num() == 0
+			&& m_modifiedHydrogenBonds.Num() == 0)
+		{
+			//triggerEvent
+			AThesisTestGameMode* gameMode = (AThesisTestGameMode*)(m_world->GetAuthGameMode());
+			if (gameMode)
+			{
+				gameMode->FinishedProteinAnimation();
+			}
 		}
 	}
 }

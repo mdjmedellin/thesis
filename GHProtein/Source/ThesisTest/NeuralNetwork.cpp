@@ -1,4 +1,5 @@
 #include "ThesisTest.h"
+#include "ProteinUtilities.h"
 #include "NeuralNetwork.h"
 
 //=========================FNeuronConnection========================
@@ -8,11 +9,23 @@ FNeuronConnection::FNeuronConnection(int numberOfWeights)
 	m_deltaWeight.Init(0.0, numberOfWeights);
 }
 
+FNeuronConnection::FNeuronConnection(const TArray<FString>& stringWeightValues)
+{
+	FString currentString = "";
+	double currentWeight = 0.0;
+	for (int weightIndex = 0; weightIndex < stringWeightValues.Num(); ++weightIndex)
+	{
+		currentString = stringWeightValues[weightIndex];
+		GHProtein::GetTypeFromString(currentWeight, currentString);
+		m_weight.Add(currentWeight);
+	}
+}
+
 void FNeuronConnection::RandomizeWeights()
 {
 	for (int i = 0; i < m_weight.Num(); ++i)
 	{
-		m_weight[i] = S_RandomWeight();
+		m_weight[i] = GHProtein::RandZeroToN(0.10);
 	}
 }
 
@@ -34,16 +47,18 @@ void FNeuronConnection::AddToWeight(double amountToAdd, int weightIndex)
 //==================================================================
 
 //=========================FNeuron==================================
-double FNeuron::s_eta = 0.15;    // overall net learning rate, [0.0..1.0]
+double FNeuron::s_eta = 0.075;    // overall net learning rate, [0.0..1.0]
 double FNeuron::s_alpha = 0.5;   // momentum, multiplier of last deltaWeight, [0.0..1.0]
 
 FNeuron::FNeuron()
+: m_gradient(0.0)
 {
 	m_outputConnections.Empty();
 	m_myIndex = -1;
 }
 
 FNeuron::FNeuron(int numberOfOutputs, int myIndex, int numberOfInputs)
+: m_gradient(0.0)
 {
 	for (int i = 0; i < numberOfOutputs; ++i)
 	{
@@ -53,16 +68,62 @@ FNeuron::FNeuron(int numberOfOutputs, int myIndex, int numberOfInputs)
 		m_outputConnections.Last().RandomizeWeights();
 	}
 
+	m_outputVals.Init(0.0, numberOfInputs);
 	m_myIndex = myIndex;
+}
+
+FNeuron::FNeuron(const TArray<FString>& stringArray, int& index, int neuronIndex)
+: m_gradient(0.0)
+, m_myIndex(neuronIndex)
+{
+	TArray<FString> currentLineStringsNoSpaces;
+
+	//the first line should indicate the number of connections
+	FString currentString = stringArray[index];
+	++index;
+
+	GHProtein::SplitLines(currentLineStringsNoSpaces, (*currentString), currentString.Len(), ' ');
+	int numberOfConnections = 0;
+	if (currentLineStringsNoSpaces.Num() > 1)
+	{
+		GHProtein::GetTypeFromString(numberOfConnections, currentLineStringsNoSpaces[1]);
+	}
+
+	for (int connectionIndex = 0; connectionIndex < numberOfConnections; ++connectionIndex)
+	{
+		//extract the strings with the values of the weights
+		currentString = stringArray[index];
+		++index;
+
+		//separate the values contained in the string into multiple strings
+		currentLineStringsNoSpaces.Empty();
+		GHProtein::SplitLines(currentLineStringsNoSpaces, (*currentString), currentString.Len(), '|');
+
+		//add a new neuron connection
+		m_outputConnections.Add(FNeuronConnection(currentLineStringsNoSpaces));
+	}
+
+	if (m_outputConnections.Num() > 0)
+	{
+		int numberOfInputs = m_outputConnections[0].m_weight.Num();
+		m_outputVals.Init(0.0, numberOfInputs);
+	}
+	else
+	{
+		m_outputVals.Init(0.0, 1);
+	}
 }
 
 //by default this will set the output value at 0 if no index is passed
 void FNeuron::SetOutputValue(double value, int index)
 {
-	m_outputVals[index] = value;
+	if (m_outputVals.Num() > 0)
+	{
+		m_outputVals[index] = value;
+	}
 }
 
-void FNeuron::SetOutputValues(TArray<double>& values)
+void FNeuron::SetOutputValues(const TArray<double>& values)
 {
 	m_outputVals = values;
 }
@@ -76,6 +137,8 @@ double FNeuron::GetOutputValue() const
 	{
 		outputVal += m_outputVals[i];
 	}
+
+	return outputVal;
 }
 
 int FNeuron::GetIndexOfValidOutputValue() const
@@ -91,6 +154,8 @@ int FNeuron::GetIndexOfValidOutputValue() const
 				break;
 			}
 		}
+
+		return 0;
 	}
 	else
 	{
@@ -236,33 +301,157 @@ void FNeuron::FeedForward(const FNeuronLayer& prevLayer)
 //===================================================================
 
 //===========================NEURONLAYER=============================
+FNeuronLayer::FNeuronLayer(int numberOfNeurons, int numberOfOutputs, int numberOfVariablesInInput, bool addBiasNeuron)
+: m_numberOfNeurons(numberOfNeurons)
+, m_hasBias(addBiasNeuron)
+{
+	for (int i = 0; i < numberOfNeurons; ++i)
+	{
+		m_neurons.Add(FNeuron(numberOfOutputs, i, numberOfVariablesInInput));
+	}
+
+	if (addBiasNeuron)
+	{
+		//add the bias
+		//the bias only has one vairableper input
+		m_neurons.Add(FNeuron(numberOfOutputs, numberOfNeurons));
+		m_neurons.Last().SetOutputValue(1.0);
+	}
+}
+
+FNeuronLayer::FNeuronLayer(const TArray<FString>& stringArray, int& index, int neuronCount, bool hasBias)
+: m_numberOfNeurons(neuronCount)
+, m_hasBias(hasBias)
+{
+	for (int neuronIndex = 0; neuronIndex < neuronCount; ++neuronIndex)
+	{
+		m_neurons.Add(FNeuron(stringArray, index, neuronIndex));
+	}
+
+	if (m_hasBias 
+		&& m_neurons.Num() > 0)
+	{
+		m_numberOfNeurons -= 1;
+		m_neurons.Last().SetOutputValue(1.0);
+	}
+}
+
 FNeuronLayer::FNeuronLayer()
 : m_numberOfNeurons(0)
+, m_hasBias(false)
 {}
 //===================================================================
 
 //===========================NEURALNETWORK===========================
-double NeuralNetwork::m_recentAverageSmoothingFactor = 100.0; // Number of training samples to average over
+double NeuralNetwork::m_recentAverageSmoothingFactor = 1.0; // Number of training samples to average over
 
-NeuralNetwork::NeuralNetwork(const TArray<int>& topology)
+NeuralNetwork::NeuralNetwork(const FString& weightsFileLocation)
+: m_numberOfInputs(0)
+, m_numberOfOutputs(0)
+, m_numberOfHiddenLayers(0)
+, m_error(0.0)
+, m_recentAverageError(0.0)
+{
+	TArray<FString> stringArray;
+
+	//lets load the file from the specified location
+	//Note: this will only load the file from filders within the GameContents directory
+	FString pathToFile = FPaths::GameContentDir() + weightsFileLocation;
+	
+	if (FFileHelper::LoadANSITextFileToStrings(*(pathToFile), NULL, stringArray))
+	{
+		InitializeNetworkFromFile(stringArray);
+	}
+}
+
+NeuralNetwork::NeuralNetwork(const TArray<FIntPair>& topology, bool addBiasNeuron)
+: m_numberOfInputs(0)
+, m_numberOfOutputs(0)
+, m_numberOfHiddenLayers(0)
+, m_error(0.0)
+, m_recentAverageError(0.0)
+{
+	InitializeNeuralNetwork(topology, addBiasNeuron);
+}
+
+void NeuralNetwork::InitializeNetworkFromFile(const TArray<FString>& stringArray)
+{
+	//the reason we don't increment the index is because ExtractNeuralLayer will offset
+	//the index accordingly when it extracts the information for that layer
+	for (int index = 0; index < stringArray.Num();)
+	{
+		ExtractNeuralLayer(stringArray, index);
+	}
+}
+
+void NeuralNetwork::ExtractNeuralLayer(const TArray<FString>& stringArray, int& index)
+{
+	FString currentString;
+	TArray<FString> currentLineNoSpaces;
+
+	//first string indicates the layer number
+	currentString = stringArray[index];
+	++index;
+
+	//if first line is empty, then we return
+	if (currentString.IsEmpty())
+	{
+		return;
+	}
+
+	//second string indicates the neuron count
+	currentString = stringArray[index];
+	++index;
+
+	//split the line according to the spaces
+	GHProtein::SplitLines(currentLineNoSpaces, *(currentString), currentString.Len(), ' ');
+	//second line is always the value of the key
+	int neuronCount = 0;
+	if (currentLineNoSpaces.Num() > 1)
+	{
+		GHProtein::GetTypeFromString(neuronCount, currentLineNoSpaces[1]);
+	}
+
+	//third string indicates wether the layer makes use of a bias neuron
+	currentString = stringArray[index];
+	++index;
+
+	currentLineNoSpaces.Empty();
+	GHProtein::SplitLines(currentLineNoSpaces, *(currentString), currentString.Len(), ' ');
+	bool hasBias = false;
+	if (currentLineNoSpaces.Num() > 1)
+	{
+		GHProtein::GetTypeFromString(hasBias, currentLineNoSpaces[1]);
+	}
+
+	m_neuronLayers.Add(new FNeuronLayer(stringArray, index, neuronCount, hasBias));
+}
+
+void NeuralNetwork::InitializeNeuralNetwork(const TArray<FIntPair>& topology, bool addBiasNeuron)
 {
 	int numLayers = topology.Num();
+	int numberOfNeuronsInLayer = 0;
+	int numberOfVariablesInInput = 0;
+
 	for (int layerNum = 0; layerNum < numLayers; ++layerNum)
 	{
-		//if we are on the last layer, then we are on the output layer and do not have any outputs
-		unsigned numOutputs = layerNum == numLayers - 1 ? 0 : topology[layerNum + 1];
+		numberOfNeuronsInLayer = topology[layerNum].first;
+		numberOfVariablesInInput = topology[layerNum].second;
 
-		// We have a new layer, now fill it with neurons, and
-		// add a bias neuron in each layer.
-		// The reason we have <= instead of < is that we want to add an extra neuron for the bias
-		for (int neuronNum = 0; neuronNum <= topology[layerNum]; ++neuronNum)
-		{
-			m_neuronLayers.Last().m_neurons.Add(FNeuron(numOutputs, neuronNum));
-		}
+		unsigned numOutputs = layerNum == numLayers - 1 ? 0 : topology[layerNum + 1].first;
 
-		// Force the bias node's output to 1.0 (it was the last neuron pushed in this layer):
-		m_neuronLayers.Last().m_neurons.Last().SetOutputValue(1.0);
+		m_neuronLayers.Add(new FNeuronLayer(numberOfNeuronsInLayer, numOutputs, numberOfVariablesInInput, addBiasNeuron));
 	}
+}
+
+int NeuralNetwork::GetNumberOfRequiredInputs() const
+{
+	if (m_neuronLayers.Num() > 1)
+	{
+		return m_neuronLayers[0]->m_numberOfNeurons;
+	}
+
+	return 0;
 }
 
 void NeuralNetwork::GetResults(TArray<double>& resultVals) const
@@ -270,26 +459,32 @@ void NeuralNetwork::GetResults(TArray<double>& resultVals) const
 	resultVals.Empty();
 
 	//we do not take into account the bias in the result on the output layer
-	for (int n = 0; n < m_neuronLayers.Last().m_neurons.Num() - 1; ++n)
+	int neuronCount = m_neuronLayers.Last()->m_neurons.Num();
+	if (m_neuronLayers.Last()->m_hasBias)
 	{
-		resultVals.Add(m_neuronLayers.Last().m_neurons[n].GetOutputValue());
+		neuronCount -= 1;
+	}
+
+	for (int n = 0; n < neuronCount; ++n)
+	{
+		resultVals.Add(m_neuronLayers.Last()->m_neurons[n].GetOutputValue());
 	}
 }
 
 void NeuralNetwork::BackPropagation(const TArray<double>& targetVals)
 {
 	// Calculate overall net error (RMS of output neuron errors)
-	FNeuronLayer& outputLayer = m_neuronLayers.Last();
+	FNeuronLayer* outputLayer = m_neuronLayers.Last();
 	m_error = 0.0;
 
 	//we do not care about the bias neuron on calculating the RMS
-	for (int n = 0; n < outputLayer.m_neurons.Num() - 1; ++n)
+	for (int n = 0; n < outputLayer->m_neurons.Num() - 1; ++n)
 	{
-		double delta = targetVals[n] - outputLayer.m_neurons[n].GetOutputValue();
+		double delta = targetVals[n] - outputLayer->m_neurons[n].GetOutputValue();
 		m_error += delta * delta;
 	}
 
-	m_error /= outputLayer.m_neurons.Num() - 1; // get average error squared
+	m_error /= outputLayer->m_neurons.Num() - 1; // get average error squared
 	m_error = sqrt(m_error); // RMS
 
 	// Implement a recent average measurement
@@ -298,20 +493,20 @@ void NeuralNetwork::BackPropagation(const TArray<double>& targetVals)
 		/ (m_recentAverageSmoothingFactor + 1.0);
 
 	// Calculate output layer gradients
-	for (int n = 0; n < outputLayer.m_neurons.Num() - 1; ++n)
+	for (int n = 0; n < outputLayer->m_neurons.Num() - 1; ++n)
 	{
-		outputLayer.m_neurons[n].CalculateOutputGradients(targetVals[n]);
+		outputLayer->m_neurons[n].CalculateOutputGradients(targetVals[n]);
 	}
 
 	// Calculate hidden layer gradients
 	for (int layerNum = m_neuronLayers.Num() - 2; layerNum > 0; --layerNum)
 	{
-		FNeuronLayer& hiddenLayer = m_neuronLayers[layerNum];
-		FNeuronLayer& nextLayer = m_neuronLayers[layerNum + 1];
+		FNeuronLayer* hiddenLayer = m_neuronLayers[layerNum];
+		FNeuronLayer* nextLayer = m_neuronLayers[layerNum + 1];
 
-		for (int n = 0; n < hiddenLayer.m_neurons.Num(); ++n)
+		for (int n = 0; n < hiddenLayer->m_neurons.Num(); ++n)
 		{
-			hiddenLayer.m_neurons[n].CalculateHiddenGradients(nextLayer);
+			hiddenLayer->m_neurons[n].CalculateHiddenGradients(*nextLayer);
 		}
 	}
 
@@ -319,41 +514,48 @@ void NeuralNetwork::BackPropagation(const TArray<double>& targetVals)
 	// update connection weights
 	for (int layerNum = m_neuronLayers.Num() - 1; layerNum > 0; --layerNum)
 	{
-		FNeuronLayer& layer = m_neuronLayers[layerNum];
-		FNeuronLayer& prevLayer = m_neuronLayers[layerNum - 1];
+		FNeuronLayer* layer = m_neuronLayers[layerNum];
+		FNeuronLayer* prevLayer = m_neuronLayers[layerNum - 1];
 
-		for (int n = 0; n < layer.m_neurons.Num() - 1; ++n)
+		for (int n = 0; n < layer->m_neurons.Num() - 1; ++n)
 		{
-			layer.m_neurons[n].UpdateInputWeights(prevLayer);
+			layer->m_neurons[n].UpdateInputWeights(*prevLayer);
 		}
 	}
 }
 
-void NeuralNetwork::FeedForward(const TArray<TArray<double>>& inputVals)
+void NeuralNetwork::FeedForward(const TArray< TArray<double> >& inputVals)
 {
-	check(inputVals.Num() == m_neuronLayers[0].m_neurons.Num() - 1);
+	check(inputVals.Num() == m_neuronLayers[0]->m_neurons.Num() - 1);
 	
 	// Assign (latch) the input values into the input neurons
 	for (int i = 0; i < inputVals.Num(); ++i)
 	{
-		m_neuronLayers[0].m_neurons[i].SetOutputValues(inputVals[i]);
+		m_neuronLayers[0]->m_neurons[i].SetOutputValues(inputVals[i]);
 	}
 
 	//forward propagate
 	//for every layer
 	for (int layerNum = 1; layerNum < m_neuronLayers.Num(); ++layerNum)
 	{
-		FNeuronLayer& prevLayer = m_neuronLayers[layerNum - 1];
+		FNeuronLayer* prevLayer = m_neuronLayers[layerNum - 1];
 		
 		//for every neuron in the layer
 		//NOTE: we do not feed forward into the last neuron, which is the bias
-		for (int n = 0; n < m_neuronLayers[layerNum].m_neurons.Num() - 1; ++n)
+		for (int n = 0; n < m_neuronLayers[layerNum]->m_neurons.Num() - 1; ++n)
 		{
-			m_neuronLayers[layerNum].m_neurons[n].FeedForward(prevLayer);
+			m_neuronLayers[layerNum]->m_neurons[n].FeedForward(*prevLayer);
 		}
 	}
 }
 
 NeuralNetwork::~NeuralNetwork()
 {
+	for (int i = 0; i < m_neuronLayers.Num(); ++i)
+	{
+		delete m_neuronLayers[i];
+		m_neuronLayers[i] = nullptr;
+	}
 }
+//===============================================================================
+

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef __Residue_Container_h__
-#define __Residue_Container_h__
 
 class Residue;
 
@@ -14,11 +12,10 @@ namespace GHProtein
 	public:
 		bool AddResidue(Residue* residueAttemptingToInsert);
 		Residue* FindBetaPartnerToResidue(Residue* partnerResidue);
+		Residue* GetFirstResidue();
 
 	private:
 		TArray< Residue* > m_residues;
 		TMap< Residue*, int > PointerResidueIDMap;
 	};
 }
-
-#endif

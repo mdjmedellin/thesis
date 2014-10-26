@@ -1,54 +1,19 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "ThesisStaticLibrary.h"
+#include "Residue.h"
 #include "AminoAcid.generated.h"
-
-/**
- * 
- */
-UENUM()
-namespace EAminoAcidType
-{
-	enum Type
-	{
-		Alanine
-		, Cysteine
-		, AsparticAcid
-		, GlutamicAcid
-		, Phenylalanine
-		, Glycine
-		, Histidine
-		, Isoleucine
-		, Lysine
-		, Leucine
-		, Methionine
-		, Asparagine
-		, Proline
-		, Glutamine
-		, Arginine
-		, Serine
-		, Threonine
-		, Valine
-		, Tryptophan
-		, Tyrosine
-		, Count						UMETA(Hidden)
-	};
-}
-
-namespace ESecondaryStructure
-{
-	enum Type;
-}
-
-class ALinkFragment;
-class Residue;
 
 namespace GHProtein
 {
 	class ProteinModel;
 }
+
+class ALinkFragment;
+class AHydrogenBond;
+class SecondaryStructure;
 
 UCLASS()
 class AAminoAcid : public AActor
@@ -58,15 +23,24 @@ class AAminoAcid : public AActor
 private:
 	void ClearNextAminoAcidPtr();
 	void ClearPreviousAminoAcidPtr();
+	void RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
+	void TranslateLinkFragment(const FVector& deltaLocation);
+	void UpdateLinkFragmentTangents();
+	void UpdateLinkFragmentRenderProperties();
 
 public:
+	~AAminoAcid();
 
 	virtual void BeginPlay();
+	virtual void Tick(float DeltaSeconds) OVERRIDE;
 
-	bool SpawnLinkParticleToNextAminoAcid(float width, float height);
+	bool SpawnLinkParticleToNextAminoAcid();
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);
+
+	void HideLinkFragment();
+	void ChangeSecondaryStructureType(ESecondaryStructure::Type typeOfStructure, bool smoothTranslation = false);
 
 	int GetSequenceNumber();
 	bool GetDistanceToNextAminoAcid(FVector& out_vector);
@@ -75,28 +49,45 @@ public:
 	AAminoAcid* GetNextAminoAcidPtr();
 	AAminoAcid* GetPreviousAminoAcidPtr();
 
-	void UpdateLinkToNextAminoAcid();
-	void UpdateHydrogenBonds(bool recurse = false);
+	const Residue* GetResidueInformation() const;
+	TArray<double> GetVectorRepresentationOfResidueType() const;
 
-	void RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation);
+	void UpdateLinkToNextAminoAcid();
+
+	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
 	void Translate(const FVector& deltaLocation);
+	void MoveTo(const FVector& finalLocation, bool translateLinkFragment = false, bool interpolate = false);
+
+	void KeepTrackOfLocation(const FVector& locationToKeepTrackOf);
 
 	void SetParentModel(GHProtein::ProteinModel* parentModel);
 	void SetResidueInformation(Residue* residueInformation);
-	void SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure);
-	void SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-		, float betaStrandLinkWidth);
-	void SetLinkFragmentColor(const FColor& fragmentColor);
-	void ResetLinkFragmentColorToDefault();
+	void SetSecondaryStructure(SecondaryStructure* secondaryStructure);
+
+	void SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+		const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, 
+		float hydrogenBondLinkWidth, float linkHeight);
+
+	void Stabilize(ESecondaryStructure::Type structureType);
+	void Break(const FVector& newLocation);
+	void Break();
+	void Shake();
 
 	ESecondaryStructure::Type GetSecondaryStructure();
 
-	void UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth);
-
 	void SetAminoAcidSize(float aminoAcidSize);
 
-	//static functions
-	static void SetTangentTension(float newTension);
+	bool BondWithResidueExists(const AAminoAcid* residue) const;
+	void AddHydrogenBond(AHydrogenBond* newBond);
+
+	UClass* GetDetaultLinkFragmentClass();
+	ResidueInfo GetAminoAcidInfo() const;
+
+	UFUNCTION(BlueprintCallable, Category = Residue)
+		FString GetResidueTypeString() const;
+
+	UFUNCTION(BlueprintCallable, Category = Residue)
+		void SetAminoAcidType(TEnumAsByte<EResidueType::Type> aminoAcidType);
 
 private:
 	//private data members
@@ -104,33 +95,35 @@ private:
 	AAminoAcid* m_previousAminoAcid;
 
 	UMaterialInstanceDynamic* m_dynamicMaterial;
-
-	float m_linkFragmentScalePerUnrealUnit;
-
-	UClass* DefaultLinkFragmentClass;
-
+	UClass* m_defaultLinkFragmentClass;
 	ALinkFragment* m_linkFragment;
-	ALinkFragment* m_betaPartner1;
-	ALinkFragment* m_betaPartner2;
+	Residue* m_residueInformation;
+	GHProtein::ProteinModel* m_model;
+	SecondaryStructure* m_secondaryStructure;
 
-	AAminoAcid* m_betaPartnerResidue1;
-	AAminoAcid* m_betaPartnerResidue2;
-
-	ESecondaryStructure::Type m_secondaryStructure;
+	ESecondaryStructure::Type m_secondaryStructureType;
+	FColor m_normalColor;
 	FColor m_helixColor;
 	FColor m_betaStrandColor;
+	FColor m_hydrogenBondColor;
+	float m_normalHeight;
+	float m_normalWidth;
+	float m_helixWidth;
+	float m_betaStrandWidth;
+	float m_hydrogenBondLinkWidth;
+	float m_linkFragmentScalePerUnrealUnit;
+	bool m_isAnimating;
 
-	Residue* m_residueInformation;
+	FVector m_locationToKeepTrackOf;
+	Interpolator m_locationInterpolator;
 
-	GHProtein::ProteinModel* m_model;
+	TArray<AHydrogenBond*> m_hydrogenBonds;
 
-	//static data members
-	static float s_tangentTension;
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
+		float m_locationInterpolationSpeed;
 
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
-		TEnumAsByte<EAminoAcidType::Type> m_typeOfAminoAcid;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		float m_lengthOfLinkFragment;
 
@@ -139,6 +132,9 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		TSubobjectPtr<UStaticMeshComponent> MeshComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AminoAcidInterface)
+		TSubobjectPtr<UTextRenderComponent> TextRenderComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = AminoAcidInterface)
 		UBlueprint* m_linkBlueprint;
