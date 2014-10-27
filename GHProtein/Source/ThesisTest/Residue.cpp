@@ -30,8 +30,8 @@ const ResidueInfo kResidueInfo[] = {
 const char SecondaryStructureInfo[] = {
 	' '
 	, 'H'
-	, 'B'
 	, 'E'
+	, 'B'
 	, 'G'
 	, 'I'
 	, 'T'

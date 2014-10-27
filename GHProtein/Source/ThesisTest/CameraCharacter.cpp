@@ -496,7 +496,7 @@ void ACameraCharacter::AddResiduesInFileToCustomChain(const FString& fileLocatio
 			FFileHelper::LoadANSITextFileToStrings(*(fileDirLocation), NULL, stringArray);
 			FString currentString = "";
 
-			for (int i = 0; i < stringArray.Num(); ++i)
+			for (int i = 0; i < stringArray.Num(); i+=3)
 			{
 				currentString = stringArray[i];
 

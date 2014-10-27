@@ -270,18 +270,14 @@ void FNeuron::CalculateOutputGradients(double targetVal)
 double FNeuron::S_TransferFunction(double x)
 {
 	//we use logsig as the transfer function
-	double dividend = 1.f + FGenericPlatformMath::Pow(EULERS_NUMBER, -x);
+	double dividend = 1.0 + FGenericPlatformMath::Pow(EULERS_NUMBER, -x);
 
-	return (1.f - dividend);
+	return (1.0 / dividend);
 }
 
 double FNeuron::S_TransferFunctionDerivative(double x)
 {
-	//logsig derivative
-	double logsigValue = S_TransferFunction(x);
-
-	double result = logsigValue * (1.f - logsigValue);
-
+	double result = x * (1.0 - x);
 	return result;
 }
 

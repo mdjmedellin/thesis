@@ -41,6 +41,9 @@ private:
 	void GetInputVals(const TArray<AAminoAcid*>& residues, int residueIndex, int slidingWindowWidth,
 		TArray< TArray<double> >& out_values);
 
+	void FilterSecondaryStructures(TArray<AAminoAcid*>& residues);
+	void ApplyChouFasmanAlgorithm(TArray<AAminoAcid*>& residues);
+
 public:
 	GHProtein::ProteinModel* m_proteinModel;
 

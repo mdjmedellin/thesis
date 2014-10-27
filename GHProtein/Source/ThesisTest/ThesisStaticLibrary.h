@@ -77,8 +77,8 @@ namespace ESecondaryStructure
 	{
 		ssLoop			//' '
 		, ssAlphaHelix	// H
-		, ssBetaBridge	// B
 		, ssStrand		// E
+		, ssBetaBridge	// B
 		, ssHelix_3		// G
 		, ssHelix_5		// I
 		, ssTurn		// T
