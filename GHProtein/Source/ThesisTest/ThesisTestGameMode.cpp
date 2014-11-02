@@ -30,67 +30,14 @@ AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializePro
 	, m_betaStrandLinkWidth(100.f)
 	, m_hydrogenBondLinkWidth(100.f)
 	, m_predictionNeuralNetwork(nullptr)
-{
-	/*
-	FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt") );
-	if (SaveFile)
-	{
-		FString MyString = TEXT("TestString");
-		*SaveFile << MyString;
-		SaveFile->Close();
-		delete SaveFile;
-		SaveFile = NULL;
-	}
-	*/
-
-	/*FPdbFile* PdbFile = new FPdbFile();
-	FString testString = "../../../ThesisData/Lysozyme.pdb";
-	PdbFile->LoadFile(testString);*/
-
-	// set default pawn class to our Blueprinted character
-	/*
-	static ConstructorHelpers::FObjectFinder<UBlueprint> PlayerPawnObject(TEXT("/Game/Blueprints/ThesisCameraCharacter"));
-	if (PlayerPawnObject.Object != NULL)
-	{
-		DefaultPawnClass = (UClass*)PlayerPawnObject.Object->GeneratedClass;
-	}
-
-	//Find the blueprint we are to use for the amino acids
-	static ConstructorHelpers::FObjectFinder<UBlueprint> AminoAcidBlueprint(TEXT("Blueprint'/Game/Blueprints/AminoAcid.AminoAcid'"));
-	if (AminoAcidBlueprint.Object)
-	{
-		DefaultAminoAcidClass = (UClass*)AminoAcidBlueprint.Object->GeneratedClass;
-	}
-	else
-	{
-		DefaultAminoAcidClass = nullptr;
-	}
-
-	// use our custom HUD class
-	HUDClass = AThesisTestHUD::StaticClass();
-	//use our custom controller
-	PlayerControllerClass = ACameraPlayerController::StaticClass();
-	*/
-
-	/*
-	static ConstructorHelpers::FObjectFinder<UBlueprint> AminoAcidBlueprint(TEXT("Blueprint'/Game/Blueprints/AminoAcid.AminoAcid'"));
-	if (AminoAcidBlueprint.Object)
-	{
-		DefaultAminoAcidClass = (UClass*)AminoAcidBlueprint.Object->GeneratedClass;
-	}
-	else
-	{
-		DefaultAminoAcidClass = nullptr;
-	}
-	*/
-}
+{}
 
 void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
 	//Load the pdb file used to create the protein model and parse the data inside of it
-	ProteinBuilder* PdbFile = new ProteinBuilder();
+	ProteinBuilder* localProteinBuilder = &ProteinBuilder::GetInstance();
 	FString testString = "";
 	bool debug_file = true;
 
@@ -102,23 +49,11 @@ void AThesisTestGameMode::InitGame(const FString& MapName, const FString& Option
 	{
 		testString = "./ThesisData/Lysozyme.dssp";
 	}
-	PdbFile->LoadFile(testString);
-	m_proteinModel = PdbFile->GetCurrentProteinModel(GetWorld());
+	localProteinBuilder->LoadFile(testString);
+	m_proteinModel = localProteinBuilder->GetCurrentProteinModel(GetWorld());
 
 	//Create the neural network
 	m_predictionNeuralNetwork = new NeuralNetwork(m_predictionWeightsFileLocation);
-
-	int x = 1;
-
-	/*FArchive* SaveFile = IFileManager::Get().CreateFileWriter(TEXT("FINDTHISFILE.txt"));
-	if (SaveFile)
-	{
-		FString MyString = TEXT("TestString");
-		*SaveFile << MyString;
-		SaveFile->Close();
-		delete SaveFile;
-		SaveFile = NULL;
-	}*/
 }
 
 void AThesisTestGameMode::Tick(float DeltaSeconds)
@@ -269,6 +204,7 @@ void AThesisTestGameMode::FilterSecondaryStructures(TArray<AAminoAcid*>& residue
 	}
 }
 
+/*
 void AThesisTestGameMode::CheckForHelicalStructureSection(TArray<AAminoAcid*>& residues,
 	int& startHelixIndex, int& endHelixIndex)
 {
@@ -364,6 +300,7 @@ void AThesisTestGameMode::ApplyChouFasmanAlgorithm(TArray<AAminoAcid*>& residues
 		}
 	}
 }
+*/
 
 bool AThesisTestGameMode::PredictSecondaryStructure(TArray<AAminoAcid*>& residues)
 {
@@ -390,7 +327,12 @@ bool AThesisTestGameMode::PredictSecondaryStructure(TArray<AAminoAcid*>& residue
 		}
 
 		FilterSecondaryStructures(residues);
-		ApplyChouFasmanAlgorithm(residues);
+		//ApplyChouFasmanAlgorithm(residues);
+
+		ProteinBuilder::GetInstance().CreateCustomChain(residues, m_aminoAcidSize, m_distanceScale,
+			m_linkWidth, m_linkHeight, m_betaStrandLinkWidth, m_helixLinkWidth, m_hydrogenBondLinkWidth,
+			m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor, DefaultHydrogenBondClass,
+			GetWorld());
 
 		return true;
 	}

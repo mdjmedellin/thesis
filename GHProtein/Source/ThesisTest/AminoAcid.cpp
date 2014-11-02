@@ -74,7 +74,7 @@ void AAminoAcid::Tick(float DeltaSeconds)
 	}
 }
 
-bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
+bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(bool isCustomChainModel)
 {
 	//we only spawn the link particles if we have an amino acid to connect to
 	//and we have not spawned them before
@@ -97,7 +97,14 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid()
 		linkFragment->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
 			m_normalWidth, m_helixWidth, m_betaStrandWidth, m_hydrogenBondLinkWidth, m_normalHeight);
 
-		linkFragment->ChangeLinkType(m_residueInformation->GetSecondaryStructure());
+		if (isCustomChainModel)
+		{
+			linkFragment->ChangeLinkType(m_secondaryStructureType);
+		}
+		else
+		{
+			linkFragment->ChangeLinkType(m_residueInformation->GetSecondaryStructure());
+		}
 
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;

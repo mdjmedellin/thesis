@@ -7,7 +7,6 @@ class ALinkFragment;
 class AHydrogenBond;
 class SecondaryStructure;
 class Residue;
-
 class BetaSheet;
 
 /** JM: Protein Model is intended to be the actual structure of the protein */
@@ -25,47 +24,57 @@ namespace GHProtein
 		~ProteinModel();
 
 	private:
-
 		/** No conversion allowed */
 		ProteinModel(const ProteinModel& rhs) {};
 		/** No assignment allowed */
 		ProteinModel& operator=(const ProteinModel& rhs) { return *this; };
 
+		//functions that directly manipulat the model
 		void UpdateModelTemperature();
-
-		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure);
+		void AppendSecondaryStructure(SecondaryStructure* secondaryStructure, bool buildBetaSheer = true);
 		void MoveCenterOfModelToSpecifiedLocation(const FVector& proteinModelCenterLocation);
+		
 		void UpdateMinAndMaxBounds(const FVector& newPoint);
 		
+		//functions involved on beta sheets creation
 		void AddBetaStrand(SecondaryStructure* newStrand);
 		BetaSheet* MergeStrands(SecondaryStructure* newStrand, SecondaryStructure* strandToMergeWith);
 		BetaSheet* MergeStrandIntoBetaSheet(SecondaryStructure* newStrand, BetaSheet* betaSheet);
 		BetaSheet* MergeBetaSheets(BetaSheet* sheet1, BetaSheet* sheet2);
 
+		void SpaceOutResidue(AAminoAcid* previousAminoAcid, AAminoAcid* currentAminoAcid,
+			SecondaryStructure* currentSecondaryStructure, float distanceScale, int index);
+
 		void CheckIfEndModificationEventShouldTrigger();
 
 	public:
-		/** Public utility methods go here */
 		bool AddResidue(Residue* insertedResidue);
+
+		//functions used when spawning a 3d model from a dssp file
 		void BuildProteinModel();
+		void SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& aminoAcidCenterLocation, float distanceScale);
 		
+		//functions used when creating a custom chain model from residues the user places in the world
+		void BuildCustomChain(float distanceScale, TArray<AAminoAcid*>& residues);
+
 		void UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 			const FColor& hydrogenColor, float normalLinkWidth, float normalLinkHeight, float helixLinkWidth, float betaStrandLinkWidth,
 			float hydrogenBondLinkWidth, float aminoAcidSize, UClass* hydrogenBondClass);
 
 		void SetEnviromentalProperties(float startingTemperatureCelsius, float stableTemperatureCelsius, float meltingTemperatureCelsius,
 			float irreversibleTemperatureCelsius, float temperatureStep);
-		
-		void SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& aminoAcidCenterLocation, float distanceScale);
 
+		AHydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
+		
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
 		void TranslateModel(const FVector& displacement);
 
 		Residue* GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue = nullptr);
+		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 		FVector GetDirectionFromCenter(const FVector& currentLocation);
 		FVector GetBoundingBoxDimensions() const;
 		FVector GetCenterLocation() const;
-		AHydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
+		
 		void ToggleShake();
 		void ToggleBreaking();
 		void HideHydrogenBonds();
@@ -78,8 +87,6 @@ namespace GHProtein
 		void RemoveFromListOfModifiedSecondaryStructures(SecondaryStructure* secondaryStructureToRemove);
 		void AddToListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondBeingModified);
 		void RemoveFromListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondToRemove);
-
-		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
 
 	public:
 		/** public data members go here */

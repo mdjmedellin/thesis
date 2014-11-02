@@ -22,6 +22,7 @@ namespace GHProtein
 		, m_linkWidth(0.f)
 		, m_helixLinkWidth(0.f)
 		, m_betaStrandLinkWidth(0.f)
+		, m_aminoAcidSize(0.f)
 		, m_normalColor(FColor::White)
 		, m_helixColor(FColor::White)
 		, m_betaStrandColor(FColor::White)
@@ -59,7 +60,6 @@ namespace GHProtein
 		//could traverse really quickly in order
 
 		//I know I am going to need a map
-		//TArray< Residue* >* residueArray = ResidueIDMap.Find(insertedResidue->GetNumber());
 		ResidueContainer** residues = ResidueIDMap.Find(residueAttemptingToInsert->GetNumber());
 
 		if (residues && *residues)
@@ -213,6 +213,153 @@ namespace GHProtein
 		m_temperatureStep = temperatureStep;
 	}
 
+	//space out the residue
+	void ProteinModel::SpaceOutResidue(AAminoAcid* previousAminoAcid, AAminoAcid* currentAminoAcid,
+		SecondaryStructure* currentSecondaryStructure, float distanceScale, int index)
+	{
+		if (previousAminoAcid)
+		{
+			//get the distance between the two residues
+			FVector previousResidueLocation = previousAminoAcid->GetActorLocation();
+			FVector currentResidueLocation = currentAminoAcid->GetActorLocation();
+			
+			//we only care about the distance along the x axis when constructing a custom chain
+			previousResidueLocation.Y = currentResidueLocation.Y;
+			previousResidueLocation.Z = currentResidueLocation.Z;
+
+			//get the horizontal distance between the previous and current amino acid
+			FVector distanceVector = currentResidueLocation - previousResidueLocation;
+			distanceVector.Normalize();
+
+			//get the current number of residues in the secondary structure
+			int numberOfResiduesInSecondaryStructure = currentSecondaryStructure->GetAminoAcidCount();
+			
+			//for the moment we assume that it is a residue in a random coil
+			//therefore we are going to offset the location of the residue as if it was part of a random coil
+			FVector offset = distanceVector * 3.8;
+
+			//check what type of secondary structure it is
+			switch (currentSecondaryStructure->GetSecondaryStructureType())
+			{
+			case ESecondaryStructure::ssAlphaHelix:
+				if (numberOfResiduesInSecondaryStructure != 0)
+				{
+					//this is not the first residue in the helix structure
+					//therefore we have to start rotating it as if it was a helix
+
+					//we know that each new rediue in the helix adds 1.5A along the helix's axis
+					offset = distanceVector * 1.5;
+
+					//we also know that there are 3.6 residues per rotation in the helix
+					float radians = ((2.0 * PI) / 3.6) * numberOfResiduesInSecondaryStructure;
+					offset.Z += cosf(radians) * 3.8;
+					offset.X += -sinf(radians) * 3.8;
+				}
+				break;
+			case ESecondaryStructure::ssStrand:
+				if (numberOfResiduesInSecondaryStructure != 0)
+				{
+					//we space the residue as a strand
+					//the average space between strands in a residue is 3.5
+					offset = distanceVector * 3.5;
+				}
+				break;
+			default:
+				break;
+			}
+
+			offset *= distanceScale;
+			currentResidueLocation += offset;
+
+			//assign the new position to the residue
+			currentAminoAcid->SetActorLocation(currentResidueLocation);
+		}
+	}
+
+	void ProteinModel::BuildCustomChain(float distanceScale, TArray<AAminoAcid*>& residues)
+	{
+		if (residues.Num() != 0)
+		{
+			AAminoAcid* previousAminoAcid = nullptr;
+			AAminoAcid* currentAminoAcid = nullptr;
+			ESecondaryStructure::Type currentSecondaryStructureType = ESecondaryStructure::ssCount;
+			SecondaryStructure* currentSecondaryStructure = nullptr;
+			FVector aminoAcidLocation = FVector::ZeroVector;
+
+			//iterate over all of the residues and space them according to their secondary structure
+			for (int residueIndex = 0; residueIndex < residues.Num(); ++residueIndex)
+			{
+				//get the type of secondary structure
+				currentAminoAcid = residues[residueIndex];
+
+				currentAminoAcid->SetAminoAcidSize(m_aminoAcidSize);
+				currentAminoAcid->SetParentModel(this);
+
+				//link the previous amino acid to this
+				if (previousAminoAcid)
+				{
+					previousAminoAcid->SetNextAminoAcid(currentAminoAcid);
+				}
+				previousAminoAcid = currentAminoAcid;
+
+
+				//update bounding box
+				if (m_headPtr)
+				{
+					UpdateMinAndMaxBounds(aminoAcidLocation);
+				}
+				else
+				{
+					m_headPtr = currentAminoAcid;
+					m_minBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+					m_maxBounds3D.Set(aminoAcidLocation.X, aminoAcidLocation.Y, aminoAcidLocation.Z);
+				}
+
+				if (currentSecondaryStructureType != currentAminoAcid->GetSecondaryStructure())
+				{
+					if (currentSecondaryStructure)
+					{
+						AppendSecondaryStructure(currentSecondaryStructure, false);
+					}
+
+					currentSecondaryStructureType = currentAminoAcid->GetSecondaryStructure();
+					currentSecondaryStructure = new SecondaryStructure(currentSecondaryStructureType, this);
+				}
+				//space out the residue
+				SpaceOutResidue(previousAminoAcid, currentAminoAcid, currentSecondaryStructure, distanceScale, residueIndex);
+				currentSecondaryStructure->AppendAminoAcid(currentAminoAcid, true);
+			}
+			AppendSecondaryStructure(currentSecondaryStructure, false);
+
+
+			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
+			//MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
+
+			//iterate over the chain of amino acids and spawn the link fragments
+			currentAminoAcid = m_headPtr;
+			while (currentAminoAcid)
+			{
+				currentAminoAcid->SetRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+					m_linkWidth, m_helixLinkWidth, m_betaStrandLinkWidth, m_hydrogenBondLinkWidth, m_linkHeight);
+
+				currentAminoAcid->SpawnLinkParticleToNextAminoAcid(true);
+				currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
+			}
+
+			//spawn the hydrogen bonds in the beta sheet
+			for (int betaSheetIndex = 0; betaSheetIndex < m_betaSheets.Num(); ++betaSheetIndex)
+			{
+				m_betaSheets[betaSheetIndex]->SpawnHydrogenBonds();
+			}
+
+			for (SecondaryStructure* currentStructure = m_headSecondaryStructure;
+				currentStructure; currentStructure = currentStructure->GetNextStructurePtr())
+			{
+				currentStructure->SpawnHydrogenBonds();
+			}
+		}
+	}
+
 	void ProteinModel::SpawnAminoAcids(UWorld* world, UClass* blueprint, const FVector& proteinModelCenterLocation,
 		float distanceScale)
 	{
@@ -322,20 +469,22 @@ namespace GHProtein
 		AHydrogenBond* hydrogenBond = UThesisStaticLibrary::SpawnBP<AHydrogenBond>(world, m_hydrogenBondClass,
 			FVector::ZeroVector, FRotator::ZeroRotator);
 
-		hydrogenBond->SplineMeshComponent->SetStartPosition(startLocation);
-		hydrogenBond->SplineMeshComponent->SetEndPosition(endLocation);
+		if (hydrogenBond)
+		{
+			hydrogenBond->SplineMeshComponent->SetStartPosition(startLocation);
+			hydrogenBond->SplineMeshComponent->SetEndPosition(endLocation);
 
-		//set render properties for the bond
-		hydrogenBond->UpdateRenderProperties(m_hydrogenBondColor, m_hydrogenBondLinkWidth, m_linkHeight);
-		//set the parent model
-		hydrogenBond->SetParentModelAndResiduesInformation(this, startResidue, endResidue);
-		//set the enviromental properties
-		hydrogenBond->SetEnviromentalProperties(m_temperatureCelsius, m_stableTemperatureCelsius, m_meltingTemperatureCelsius,
-			m_irreversibleTemperatureCelsius);
+			//set render properties for the bond
+			hydrogenBond->UpdateRenderProperties(m_hydrogenBondColor, m_hydrogenBondLinkWidth, m_linkHeight);
+			//set the parent model
+			hydrogenBond->SetParentModelAndResiduesInformation(this, startResidue, endResidue);
+			//set the enviromental properties
+			hydrogenBond->SetEnviromentalProperties(m_temperatureCelsius, m_stableTemperatureCelsius, m_meltingTemperatureCelsius,
+				m_irreversibleTemperatureCelsius);
 
-		//should probably add the hydrogen bond into the array of current hydrogen bonds
-		m_hydrogenBonds.Add(hydrogenBond);
-
+			//should probably add the hydrogen bond into the array of current hydrogen bonds
+			m_hydrogenBonds.Add(hydrogenBond);
+		}
 		return hydrogenBond;
 	};
 
@@ -362,7 +511,7 @@ namespace GHProtein
 		return foundResidue;
 	}
 
-	void ProteinModel::AppendSecondaryStructure(SecondaryStructure* secondaryStructure)
+	void ProteinModel::AppendSecondaryStructure(SecondaryStructure* secondaryStructure, bool buildBetaSheet)
 	{
 		if (!secondaryStructure)
 		{
@@ -381,7 +530,7 @@ namespace GHProtein
 		}
 
 		//check if it is a beta strand
-		if (secondaryStructure->GetSecondaryStructureType() == ESecondaryStructure::ssStrand)
+		if (secondaryStructure->GetSecondaryStructureType() == ESecondaryStructure::ssStrand && buildBetaSheet)
 		{
 			AddBetaStrand(secondaryStructure);
 		}

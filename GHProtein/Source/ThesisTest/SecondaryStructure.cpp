@@ -132,7 +132,7 @@ void SecondaryStructure::SetEnviromentalProperties(float currentTemperatureCelsi
 	UpdateStructureAccordingToSpecifiedTemperature(currentTemperatureCelsius);
 }
 
-void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
+void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue, bool isCustomChain)
 {
 	//Get the residue information
 	const Residue* residueInfo = residue->GetResidueInformation();
@@ -145,6 +145,8 @@ void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
 		m_headAminoAcid = residue;
 		m_tailAminoAcid = residue;
 		//set the structure type from the head amino acid
+
+		if (!isCustomChain)
 		m_secondaryStructureType = residueInfo->GetSecondaryStructure();
 	}
 	else
@@ -154,7 +156,7 @@ void SecondaryStructure::AppendAminoAcid(AAminoAcid* residue)
 	}
 
 	//if this is a beta strand, make sure to save the partners
-	if (m_secondaryStructureType == ESecondaryStructure::ssStrand)
+	if (m_secondaryStructureType == ESecondaryStructure::ssStrand && !isCustomChain)
 	{
 		//extract the character that indicates the partner strand
 		BridgePartner currentPartner;
@@ -225,6 +227,19 @@ AAminoAcid* SecondaryStructure::GetHeadResidue()
 AAminoAcid* SecondaryStructure::GetEndResidue()
 {
 	return m_tailAminoAcid;
+}
+
+int SecondaryStructure::GetAminoAcidCount()
+{
+	int count = 0;
+	for (AAminoAcid* currentResidue = m_headAminoAcid;
+		currentResidue != nullptr && (m_tailAminoAcid && currentResidue != m_tailAminoAcid->GetNextAminoAcidPtr());
+		currentResidue = currentResidue->GetNextAminoAcidPtr())
+	{
+		++count;
+	}
+
+	return count;
 }
 
 bool SecondaryStructure::ContainsSpecifiedResidue(AAminoAcid* residue)

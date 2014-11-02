@@ -61,11 +61,7 @@ void ACameraCharacter::SetupPlayerInputComponent(class UInputComponent* InputCom
 	// set up gameplay key bindings
 	check(InputComponent);
 
-	//InputComponent->BindAction( "Jump" , IE_Pressed, this, &ACameraCharacter::MoveUp);
-	//InputComponent->BindAction("Jump", IE_Released, this, &ACameraCharacter::MoveUp);
-
 	InputComponent->BindAction("Fire", IE_Pressed, this, &ACameraCharacter::OnFire);
-	//InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AThesisTestCharacter::TouchStarted);
 
 	InputComponent->BindAxis("MoveForward", this, &ACameraCharacter::MoveForward);
 	InputComponent->BindAxis("MoveRight", this, &ACameraCharacter::MoveRight);
@@ -316,31 +312,6 @@ void ACameraCharacter::UpdateModelLocation(float DeltaSeconds)
 		translationVector *= translationDistance;
 		m_proteinModel->TranslateModel(translationVector);
 	}
-
-	//The following is not used at the moment
-	/*
-	FVector currentLocation = GetActorLocation();
-	//check if the model is zooming in or out
-	if (m_enableZoom)
-	{
-		FVector direction = m_proteinModel->GetDirectionFromCenter(currentLocation);
-
-		//check if we should some in more
-		FVector halfDimensions = m_proteinModel->GetBoundingBoxDimensions() * 0.5f;
-		float maxDimension = halfDimensions.GetMax() + m_zoomBuffer;
-
-		maxDimension *= maxDimension;
-
-		if (direction.SizeSquared() > maxDimension
-			|| m_zoomDirection < 0.f)
-		{
-			direction.Normalize();
-			direction *= m_zoomDirection;
-			direction *= m_zoomStep;
-			m_proteinModel->TranslateModel(direction);
-		}
-	}
-	*/
 }
 
 void ACameraCharacter::Tick(float DeltaSeconds)
@@ -369,7 +340,6 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 	if (world)
 	{
 		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
-
 		if (gameMode)
 		{
 			FVector dimensions = FVector::ZeroVector;
@@ -418,7 +388,7 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 			newAminoAcid->SetAminoAcidType(residueType);
 			newAminoAcid->SetAminoAcidSize(m_customChainResidueDiameter);
 
-			//
+			//Handles edge case where the index given is not valid
 			if (index < 0 
 				|| (index + 1 >= m_customChain.Num()))
 			{

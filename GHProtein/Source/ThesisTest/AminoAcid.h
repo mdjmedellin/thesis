@@ -34,7 +34,7 @@ public:
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaSeconds) OVERRIDE;
 
-	bool SpawnLinkParticleToNextAminoAcid();
+	bool SpawnLinkParticleToNextAminoAcid(bool isCustomChain = false);
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
 	void SetPreviousAminoAcid(AAminoAcid* previousAminoAcid);

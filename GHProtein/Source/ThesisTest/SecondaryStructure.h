@@ -36,10 +36,11 @@ public:
 	void SetNextStructurePtr(SecondaryStructure* nextStructure);
 	void SetEnviromentalProperties(float currentTemperatureCelsius, float regularTemperatureCelsius,
 		float breakTemperatureCelsius, float irreversibleChangeTemperatureCelsius);
-	void AppendAminoAcid(AAminoAcid* residue);
+	void AppendAminoAcid(AAminoAcid* residue, bool isCustomChain = false);
 	SecondaryStructure* GetNextStructurePtr();
 	AAminoAcid* GetHeadResidue();
 	AAminoAcid* GetEndResidue();
+	int GetAminoAcidCount();
 	bool ContainsSpecifiedResidue(AAminoAcid* residue);
 	ESecondaryStructure::Type GetSecondaryStructureType() const;
 	void GetBridgeLabels(TArray<uint32>& out_bridgeLabels) const;
