@@ -23,5 +23,5 @@ public:
 	void ActivatePhysicsOnActor();
 
 	/** Begin AActorInterface */
-	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) OVERRIDE;
+	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 };

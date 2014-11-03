@@ -1,5 +1,6 @@
 #include "ThesisTest.h"
 #include "LinkFragment.h"
+#include "AminoAcid.h"
 
 
 ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCIP)
@@ -23,6 +24,7 @@ ALinkFragment::ALinkFragment(const class FPostConstructInitializeProperties& PCI
 	, m_currentSizeScale(FVector::ZeroVector)
 	, m_sizeInterpolationSpeed(1.f)
 	, m_colorInterpolationSpeed(1.f)
+	, m_linkOwner(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	//Create the static mesh component
@@ -179,6 +181,11 @@ void ALinkFragment::ChangeLinkType(ESecondaryStructure::Type secondaryStructureT
 	}
 }
 
+void ALinkFragment::SetLinkOwner(AAminoAcid* linkOwner)
+{
+	m_linkOwner = linkOwner;
+}
+
 void ALinkFragment::Translate(const FVector& deltaLocation)
 {
 	FVector currentLocation = GetActorLocation();
@@ -212,4 +219,14 @@ void ALinkFragment::RotateAboutSpecifiedPoint(const FRotationMatrix& rotationMat
 	FRotationMatrix currentRotationMatrix(GetActorRotation());
 	currentRotationMatrix *= rotationMatrix;
 	SetActorRotation(currentRotationMatrix.Rotator());
+}
+
+void ALinkFragment::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (m_linkOwner)
+	{
+		m_linkOwner->RemoveReferenceToLinkFragment(this);
+	}
 }

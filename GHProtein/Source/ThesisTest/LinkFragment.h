@@ -5,6 +5,8 @@
 #include "Components/SplineMeshComponent.h"
 #include "LinkFragment.generated.h"
 
+class AAminoAcid;
+
 /**
  * 
  */
@@ -42,16 +44,20 @@ protected:
 	Interpolator* m_sizeInterpolator;
 	Interpolator* m_colorInterpolator;
 
+	AAminoAcid* m_linkOwner;
+
 	ELinkType::Type m_linkType;
 
 public:
 	virtual void BeginPlay();
+	virtual void BeginDestroy();
+	void SetLinkOwner(AAminoAcid* linkOwner);
 	void UpdateRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
 		const FColor& hydrogenBondColor, float normalWidth, float helixWidth, float betaStrandWidth, float hydrogenBondWidth,
 		float normalHeight);
 	void ChangeLinkType(ELinkType::Type linkType, bool smoothInterpolate = false);
 	void ChangeLinkType(ESecondaryStructure::Type secondaryStructureType, bool smoothInterpolate = false);
-	virtual void Tick(float DeltaSeconds) OVERRIDE;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void Break();
 	void ToggleShake();
 	void Hide();

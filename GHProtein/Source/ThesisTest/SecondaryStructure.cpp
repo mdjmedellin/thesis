@@ -129,189 +129,29 @@ AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	return foundResidue;
 }
 
-void SecondaryStructure::SetPreviousSecondaryStructure(SecondaryStructure* previousSecondaryStructure, bool recurse,
-	bool setNextSecondaryStructure)
+void SecondaryStructure::SetPreviousSecondaryStructure(SecondaryStructure* previousSecondaryStructure)
 {
-	//check if we alreay have a valid ptr to the next secondary structure
-	if (m_previousSecondaryStructure)
+	SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
+	m_previousSecondaryStructure = previousSecondaryStructure;
+	previousSecondaryStructure->m_previousSecondaryStructure = localPreviousSecondaryStructure;
+	previousSecondaryStructure->m_nextSecondaryStructure = this;
+
+	if (localPreviousSecondaryStructure)
 	{
-		if (previousSecondaryStructure)
-		{
-			if (setDirectly)
-			{
-				SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
-				m_previousSecondaryStructure = previousSecondaryStructure;
-
-				if (localPreviousSecondaryStructure)
-				{
-					localPreviousSecondaryStructure->m_nextSecondaryStructure = nullptr;
-				}
-			}
-			else if (recurse)
-			{
-				previousSecondaryStructure->SetPreviousSecondaryStructure(m_previousSecondaryStructure, false, setNextSecondaryStructure);
-				m_previousSecondaryStructure = previousSecondaryStructure;
-			}
-			else
-			{
-				SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
-				SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
-
-				m_previousSecondaryStructure = previousSecondaryStructure;
-				m_nextSecondaryStructure = previousSecondaryStructure->m_nextSecondaryStructure;
-				m_previousSecondaryStructure->m_nextSecondaryStructure = this;
-				m_nextSecondaryStructure->m_previousSecondaryStructure = this;
-
-				if (localPreviousSecondaryStructure)
-				localPreviousSecondaryStructure->m_nextSecondaryStructure = localNextSecondaryStructure;
-				
-				if (localNextSecondaryStructure)
-				localNextSecondaryStructure->m_previousSecondaryStructure = localPreviousSecondaryStructure;
-				
-				/*
-				//go to the first secondary structure
-				bool continueTraversing = m_previousSecondaryStructure != nullptr;
-				SecondaryStructure* currentSecondaryStructure = this;
-				while (continueTraversing)
-				{
-					if (!currentSecondaryStructure->m_previousSecondaryStructure)
-					{
-						continueTraversing = false;
-					}
-					else
-					{
-						currentSecondaryStructure = currentSecondaryStructure->m_previousSecondaryStructure;
-					}
-				}
-
-				//now that you have the secondary structure that is at the head
-				//set the previous structure as its previous secondary structure
-				currentSecondaryStructure->m_previousSecondaryStructure = previousSecondaryStructure;
-
-				SecondaryStructure* nextSecondaryStructureOfSecondChain = previousSecondaryStructure->m_nextSecondaryStructure;
-				previousSecondaryStructure->m_nextSecondaryStructure = currentSecondaryStructure;
-
-				if (nextSecondaryStructureOfSecondChain)
-				{
-					nextSecondaryStructureOfSecondChain->m_previousSecondaryStructure = nullptr;
-				}
-				*/
-			}
-		}
-		else if (setNextSecondaryStructure)
-		{
-			m_previousSecondaryStructure->SetNextStructurePtr(nullptr, false, false);
-		}
-		else
-		{
-			m_previousSecondaryStructure = nullptr;
-		}
-	}
-	else
-	{
-		m_previousSecondaryStructure = previousSecondaryStructure;
-
-		if (setNextSecondaryStructure)
-		{
-			m_previousSecondaryStructure->SetNextStructurePtr(this, false, false, true);
-		}
-		else
-		{
-			m_previousSecondaryStructure->m_nextSecondaryStructure = this;
-		}
+		localPreviousSecondaryStructure->m_nextSecondaryStructure = previousSecondaryStructure;
 	}
 }
 
-void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure, bool recurse,
-	bool setPreviousSecondaryStructure)
+void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure)
 {
-	//check if we alreay have a valid ptr to the next secondary structure
-	if (m_nextSecondaryStructure)
+	SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
+	m_nextSecondaryStructure = nextStructure;
+	nextStructure->m_nextSecondaryStructure = localNextSecondaryStructure;
+	nextStructure->m_previousSecondaryStructure = this;
+
+	if (localNextSecondaryStructure)
 	{
-		if (nextStructure)
-		{
-			if (setDirectly)
-			{
-				SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
-				m_nextSecondaryStructure = nextStructure;
-
-				if (localNextSecondaryStructure)
-				{
-					localNextSecondaryStructure->m_previousSecondaryStructure = nullptr;
-				}
-			}
-			else if (recurse)
-			{
-				nextStructure->SetNextStructurePtr(m_nextSecondaryStructure, false, setPreviousSecondaryStructure);
-				m_nextSecondaryStructure = nextStructure;
-			}
-			else
-			{
-				SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
-				SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
-
-				m_nextSecondaryStructure = nextStructure;
-				m_previousSecondaryStructure = nextStructure->m_previousSecondaryStructure;
-				m_previousSecondaryStructure->m_nextSecondaryStructure = this;
-				m_nextSecondaryStructure->m_previousSecondaryStructure = this;
-
-				if (localPreviousSecondaryStructure)
-				localPreviousSecondaryStructure->m_nextSecondaryStructure = localNextSecondaryStructure;
-				
-				if (localNextSecondaryStructure)
-				localNextSecondaryStructure->m_previousSecondaryStructure = localPreviousSecondaryStructure;
-
-
-				/*
-				//go to the last secondary structure connected to this one
-				bool continueTraversing = m_nextSecondaryStructure != nullptr;
-				SecondaryStructure* currentSecondaryStructure = this;
-				while (continueTraversing)
-				{
-					if (!currentSecondaryStructure->m_nextSecondaryStructure)
-					{
-						continueTraversing = false;
-					}
-					else
-					{
-						currentSecondaryStructure = currentSecondaryStructure->m_nextSecondaryStructure;
-					}
-				}
-
-				SecondaryStructure* previousSecondaryStructureOfSecondChain = nextStructure->m_previousSecondaryStructure;
-				nextStructure->m_previousSecondaryStructure = currentSecondaryStructure;
-					
-				currentSecondaryStructure->m_nextSecondaryStructure = nextStructure;
-				SecondaryStructure* previousSecondaryStructureOfFirstChain = m_previousSecondaryStructure;
-				m_previousSecondaryStructure = previousSecondaryStructureOfSecondChain;
-				if (previousSecondaryStructureOfFirstChain)
-				{
-					previousSecondaryStructureOfFirstChain->m_nextSecondaryStructure = nullptr;
-				}
-				*/
-			}
-		}
-		else if (setPreviousSecondaryStructure)
-		{
-			m_nextSecondaryStructure->SetPreviousSecondaryStructure(nullptr, false, false);
-		}
-		else
-		{
-			m_nextSecondaryStructure = nullptr;
-		}
-	}
-	else
-	{
-		m_nextSecondaryStructure = nextStructure;
-
-		if (setPreviousSecondaryStructure)
-		{
-			m_nextSecondaryStructure->SetPreviousSecondaryStructure(this, false, false, true);
-		}
-		else
-		{
-			m_nextSecondaryStructure->m_previousSecondaryStructure = this;
-		}
+		localNextSecondaryStructure->m_previousSecondaryStructure = nextStructure;
 	}
 }
 
@@ -411,6 +251,11 @@ ESecondaryStructure::Type SecondaryStructure::GetSecondaryStructureType() const
 SecondaryStructure* SecondaryStructure::GetNextStructurePtr()
 {
 	return m_nextSecondaryStructure;
+}
+
+SecondaryStructure* SecondaryStructure::GetPreviousSecondaryStructure()
+{
+	return m_previousSecondaryStructure;
 }
 
 AAminoAcid* SecondaryStructure::GetHeadResidue()

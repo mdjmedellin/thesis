@@ -39,6 +39,7 @@ public:
 		float breakTemperatureCelsius, float irreversibleChangeTemperatureCelsius);
 	void AppendAminoAcid(AAminoAcid* residue, bool isCustomChain = false);
 	SecondaryStructure* GetNextStructurePtr();
+	SecondaryStructure* GetPreviousSecondaryStructure();
 	AAminoAcid* GetHeadResidue();
 	AAminoAcid* GetEndResidue();
 	int GetAminoAcidCount();
@@ -52,6 +53,8 @@ public:
 	void AddToListOfModifiedResidues(AAminoAcid* residueModified);
 	void RemoveFromListOfModifiedResidues(AAminoAcid* residueModified);
 	void RemoveReferencesToAminoAcid(AAminoAcid* referenceToRemove);
+	void SetNextStructurePtr(SecondaryStructure* nextStructure);
+	void SetPreviousSecondaryStructure(SecondaryStructure* previousSecondaryStructure);
 
 	static SecondaryStructure* GetSelectedStructure();
 
@@ -62,10 +65,6 @@ private:
 	void ShakeResidues(TArray<AAminoAcid*>& residues);
 	void StabilizeResidues(TArray<AAminoAcid*>& residues);
 	bool UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius);
-	void SetNextStructurePtr(SecondaryStructure* nextStructure, bool recurse,
-		bool setNextSecondaryStructure);
-	void SetPreviousSecondaryStructure(SecondaryStructure* previousSecondaryStructure, bool recurse,
-		bool setNextSecondaryStructure);
 
 private:
 	ETemperatureState::Type m_temperatureState;

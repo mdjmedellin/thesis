@@ -31,6 +31,6 @@ class THESISTEST_API AProteinModelSpawnPoint : public AActor
 		TEnumAsByte<EProteinSpawnPointType::Type> m_typeOfSpawnPoint;
 
 
-	virtual void PostInitializeComponents() OVERRIDE;
-	virtual void PostUnregisterAllComponents() OVERRIDE;
+	virtual void PostInitializeComponents() override;
+	virtual void PostUnregisterAllComponents() override;
 };

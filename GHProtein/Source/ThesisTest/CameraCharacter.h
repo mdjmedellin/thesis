@@ -173,15 +173,15 @@ public:
 
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();
-	virtual void Tick(float DeltaSeconds) OVERRIDE;
+	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void HandleControllerYawInput(float deltaYaw);
 	virtual void HandleControllerPitchInput(float deltaPitch);
 
 protected:
 	// APawn interface
-	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) OVERRIDE;
-	virtual void PostInitializeComponents() OVERRIDE;
-	virtual void Restart() OVERRIDE;
+	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
+	virtual void PostInitializeComponents() override;
+	virtual void Restart() override;
 	// End of APawn interface
 };

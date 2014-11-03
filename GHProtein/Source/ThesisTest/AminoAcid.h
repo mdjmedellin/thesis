@@ -29,8 +29,6 @@ private:
 	void UpdateLinkFragmentRenderProperties();
 
 public:
-	~AAminoAcid();
-
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaSeconds);
 	virtual void BeginDestroy();
@@ -82,6 +80,7 @@ public:
 	bool BondWithResidueExists(const AAminoAcid* residue) const;
 	void AddHydrogenBond(AHydrogenBond* newBond);
 	void RemoveReferencesToHydrogenBond(AHydrogenBond* bondToRemove);
+	void RemoveReferenceToLinkFragment(ALinkFragment* linkToRemove);
 
 	UClass* GetDetaultLinkFragmentClass();
 	ResidueInfo GetAminoAcidInfo() const;

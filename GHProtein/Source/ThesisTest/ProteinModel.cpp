@@ -34,6 +34,7 @@ namespace GHProtein
 		, m_irreversibleTemperatureCelsius(0.f)
 		, m_temperatureCelsius(0.f)						//we start the model with a temperature equal to a human's average body temperatures
 		, m_hydrogenBondClass(nullptr)
+		, m_isCustomChainModel(false)
 	{}
 
 	ProteinModel::~ProteinModel()
@@ -318,6 +319,8 @@ namespace GHProtein
 	{
 		if (residues.Num() != 0)
 		{
+			m_isCustomChainModel = true;
+
 			AAminoAcid* previousAminoAcid = nullptr;
 			AAminoAcid* currentAminoAcid = nullptr;
 			ESecondaryStructure::Type currentSecondaryStructureType = ESecondaryStructure::ssCount;
@@ -368,10 +371,6 @@ namespace GHProtein
 				currentSecondaryStructure->AppendAminoAcid(currentAminoAcid, true);
 			}
 			AppendSecondaryStructure(currentSecondaryStructure, false);
-
-
-			//we want to bring everything to the center, so subtract the middle of the bounding box from all locations
-			//MoveCenterOfModelToSpecifiedLocation(proteinModelCenterLocation);
 
 			//iterate over the chain of amino acids and spawn the link fragments
 			currentAminoAcid = m_headPtr;
@@ -912,8 +911,10 @@ namespace GHProtein
 		}
 		else if (m_tailSecondaryStructure == secondaryStructureToDestroy)
 		{
-			m_tailSecondaryStructure = secondaryStructureToDestroy->Previous
+			m_tailSecondaryStructure = secondaryStructureToDestroy->GetPreviousSecondaryStructure();
 		}
+
+		delete secondaryStructureToDestroy;
 	}
 
 	void ProteinModel::DestroyHydrogenBond(AHydrogenBond* hydrogenBondToDestroy)
@@ -945,35 +946,37 @@ namespace GHProtein
 			}
 			return;
 		}
-
-		//check if the start amino acid is the head ptr
-		if (m_headPtr && m_headPtr == startAminoAcid)
+		else
 		{
-			if (endAminoAcid)
+			//check if the start amino acid is the head ptr
+			if (m_headPtr && m_headPtr == startAminoAcid)
 			{
-				m_headPtr = endAminoAcid->GetNextAminoAcidPtr();
+				if (endAminoAcid)
+				{
+					m_headPtr = endAminoAcid->GetNextAminoAcidPtr();
+				}
+				else
+				{
+					m_headPtr = nullptr;
+				}
 			}
-			else
-			{
-				m_headPtr = nullptr;
-			}
-		}
 
-		//iterate from start amino acid to end amino acid and delete the actor
-		AAminoAcid* nextAminoAcid = startAminoAcid;
-		AAminoAcid* aminoAcidToDestroy = nullptr;
-		bool keepDestroying = nextAminoAcid != nullptr;
-		while (keepDestroying)
-		{
-			keepDestroying = nextAminoAcid != endAminoAcid;
-			aminoAcidToDestroy = nextAminoAcid;
-			nextAminoAcid = nextAminoAcid->GetNextAminoAcidPtr();
-
-			if (!automaticallyDestroySecondaryStructures)
+			//iterate from start amino acid to end amino acid and delete the actor
+			AAminoAcid* nextAminoAcid = startAminoAcid;
+			AAminoAcid* aminoAcidToDestroy = nullptr;
+			bool keepDestroying = nextAminoAcid != nullptr;
+			while (keepDestroying)
 			{
-				aminoAcidToDestroy->SetSecondaryStructure(nullptr);
+				keepDestroying = nextAminoAcid != endAminoAcid;
+				aminoAcidToDestroy = nextAminoAcid;
+				nextAminoAcid = nextAminoAcid->GetNextAminoAcidPtr();
+
+				if (!automaticallyDestroySecondaryStructures)
+				{
+					aminoAcidToDestroy->SetSecondaryStructure(nullptr);
+				}
+				aminoAcidToDestroy->Destroy();
 			}
-			aminoAcidToDestroy->Destroy();
 		}
 	}
 

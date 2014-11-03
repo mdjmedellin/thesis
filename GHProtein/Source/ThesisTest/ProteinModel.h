@@ -90,7 +90,7 @@ namespace GHProtein
 
 		void DestroySecondaryStructure(SecondaryStructure* secondaryStructureToDestroy);
 		void DestroyHydrogenBond(AHydrogenBond* hydrogenBondToDestroy);
-		void DestroyAminoAcids(AAminoAcid* startAminoAcid, AAminoAcid* endAminoAcid);
+		void DestroyAminoAcids(AAminoAcid* startAminoAcid, AAminoAcid* endAminoAcid, bool automaticallyDestroySecondaryStructures = true);
 
 	public:
 		/** public data members go here */
@@ -139,5 +139,7 @@ namespace GHProtein
 
 		TArray<BetaSheet*> m_betaSheets;
 		TArray<AHydrogenBond*> m_hydrogenBonds;
+
+		bool m_isCustomChainModel;
 	};
 }

@@ -97,6 +97,8 @@ bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(bool isCustomChainModel)
 		linkFragment->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
 			m_normalWidth, m_helixWidth, m_betaStrandWidth, m_hydrogenBondLinkWidth, m_normalHeight);
 
+		linkFragment->SetLinkOwner(this);
+
 		if (isCustomChainModel)
 		{
 			linkFragment->ChangeLinkType(m_secondaryStructureType);
@@ -157,6 +159,14 @@ void AAminoAcid::RemoveReferencesToHydrogenBond(AHydrogenBond* bondToRemove)
 			m_hydrogenBonds.RemoveAt(i);
 			break;
 		}
+	}
+}
+
+void AAminoAcid::RemoveReferenceToLinkFragment(ALinkFragment* linkToRemove)
+{
+	if (m_linkFragment && m_linkFragment == linkToRemove)
+	{
+		m_linkFragment = nullptr;
 	}
 }
 
@@ -585,10 +595,15 @@ void AAminoAcid::BeginDestroy()
 	Super::BeginDestroy();
 
 	//first, make sure to rearrange the linked list so that this actor is dropped from it
+	if (m_nextAminoAcid)
 	m_nextAminoAcid->m_previousAminoAcid = m_previousAminoAcid;
+	
+	if (m_previousAminoAcid)
+	m_previousAminoAcid->m_nextAminoAcid = m_nextAminoAcid;
 
-	//delete the residue information
-	if (m_residueInformation)
+	//if we have a model
+	//the model will take care of the residue information when it is destroyed
+	if (!m_model)
 	{
 		delete m_residueInformation;
 	}
@@ -606,6 +621,7 @@ void AAminoAcid::DestroyLinkFragmentAndHydrogenBonds()
 	//destroy the link fragment
 	if (m_linkFragment)
 	{
+		m_linkFragment->SetLinkOwner(nullptr);
 		m_linkFragment->Destroy();
 		m_linkFragment = nullptr;
 	}
