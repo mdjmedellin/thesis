@@ -1,69 +1,66 @@
 #include "ThesisTest.h"
 #include "ProteinBuilder.h"
 #include "ProteinModel.h"
+#include "AminoAcid.h"
 #include "Residue.h"
 #include "ProteinUtilities.h"
 
+ProteinBuilder& ProteinBuilder::GetInstance()
+{
+	static ProteinBuilder s_ProteinBuilder;
+
+	return s_ProteinBuilder;
+}
+
 bool ProteinBuilder::LoadFile(const FString& inFile)
 {
-	// Remove any file stuff if it already exists
-	Clear();
-
-	// So far no error (Early so it can be overwritten below by errors)
-	//ErrorMessage = NSLOCTEXT("PdbParser", "LoadSuccess", "PdbFile was loaded successfully").ToString();
-
-	// Create file reader
-	TUniquePtr<FArchive> fileReader(IFileManager::Get().CreateFileReader(*inFile));
-	if (!fileReader)
+	//Check if this file was already loaded
+	if (inFile != LoadedFile || m_inputLines.Num() == 0)
 	{
-		//ErrorMessage = NSLOCTEXT("PdbParser", "FileLoadFail", "Failed to load the file").ToString();
-		//ErrorMessage += TEXT("\"");
-		//ErrorMessage += InFile;
-		//ErrorMessage += TEXT("\"");
-		fileReader->AtEnd();
-		return false;
+		// Remove any file stuff if it already exists
+		Clear();
+
+		// Create file reader
+		TUniquePtr<FArchive> fileReader(IFileManager::Get().CreateFileReader(*inFile));
+		if (!fileReader)
+		{
+			fileReader->AtEnd();
+			return false;
+		}
+
+		// Create buffer for file input
+		uint32 bufferSize = fileReader->TotalSize();
+		void* buffer = FMemory::Malloc(bufferSize);
+		fileReader->Serialize(buffer, bufferSize);
+
+		//TODO:
+		// JM: At some point we should add a check to see what is the size of a character on the platform we are running on
+		GHProtein::SplitLines(m_inputLines, static_cast<const uint8*>(buffer), bufferSize);
+
+		// We have stored the file in the an array of strings
+		// We no longer need the buffer at this point
+		// Release resources
+		FMemory::Free(buffer);
+
+		// All done with creation, set up necessary information
+		// we only say that we have succesfully loaded a file when there are contents in the file
+		if (m_inputLines.Num() > 0)
+		{
+			LoadedFile = inFile;
+			bFileLoaded = true;
+		}
 	}
-
-	// Create buffer for file input
-	uint32 bufferSize = fileReader->TotalSize();
-	// MAKE SURE TO DEALLOCATE Buffer
-	void* buffer = FMemory::Malloc(bufferSize);
-	fileReader->Serialize(buffer, bufferSize);
-
-	//TODO:
-	// JM: At some point we should add a check to see what is the size of a character on the platform we are running on
-	GHProtein::SplitLines(m_inputLines, static_cast<const uint8*>(buffer), bufferSize);
-
-	// We have stored the file in the an array of strings
-	// We no longer need the buffer at this point
-	// Release resources
-	FMemory::Free(buffer);
-
-	// Pre-process the input
-	//PreProcessInput(Input);
-
-	// All done with creation, set up necessary information
-	LoadedFile = inFile;
-	bFileLoaded = true;
 
 	return true;
 }
 
-FString ProteinBuilder::GetLastError() const
-{
-	return ErrorMessage;
-}
-
 void ProteinBuilder::Clear()
 {
-	//TODO:
-	//JM: Actually use the variable bFileLoaded in order to detect when we have contents of a file
 	if (bFileLoaded || m_inputLines.Num() > 0)
 	{
 		bFileLoaded = false;
 		LoadedFile = TEXT("");
 		m_inputLines.Empty();
-		//ErrorMessage = NSLOCTEXT("PdbParser", "ClearSuccess", "PdbFile was cleared successfully").ToString();
 	}
 }
 
@@ -102,16 +99,34 @@ bool ProteinBuilder::GetLineOfFirstAminoAcid(int& out_LineOfFirstAminoAcid)
 	return foundLineOfAminoAcidInformation;
 }
 
-void ProteinBuilder::PreProcessInput(TArray<FString>& Input)
-{}
+GHProtein::ProteinModel* ProteinBuilder::CreateCustomChain(TArray<AAminoAcid*>& residues, float aminoAcidSize,
+	float distanceScale, float linkWidth, float linkHeight, float betaStrandLinkWidth, float helixLinkWidth,
+	float hydrogenBondLinkWidth, FColor& normalColor, FColor& helixColor, FColor& betaStrandColor,
+	FColor& hydrogenBondColor, UClass* defaultHydrogenBondClass, UWorld* proteinWorld)
+{
+	GHProtein::ProteinModel* customChainModel = nullptr;
 
-GHProtein::ProteinModel* ProteinBuilder::GetCurrentProteinModel()
+	if (residues.Num() != 0)
+	{
+		customChainModel = new GHProtein::ProteinModel(proteinWorld);
+
+		customChainModel->UpdateRenderProperties(normalColor, helixColor, betaStrandColor, hydrogenBondColor,
+			linkWidth, linkHeight, helixLinkWidth, betaStrandLinkWidth, hydrogenBondLinkWidth, aminoAcidSize,
+			defaultHydrogenBondClass);
+
+		customChainModel->BuildCustomChain(distanceScale, residues);
+	}
+
+	return customChainModel;
+}
+
+GHProtein::ProteinModel* ProteinBuilder::GetCurrentProteinModel(UWorld* proteinWorld)
 {
 	GHProtein::ProteinModel* localProteinModel = nullptr;
 
 	if (bFileLoaded)
 	{
-		localProteinModel = new GHProtein::ProteinModel();
+		localProteinModel = new GHProtein::ProteinModel(proteinWorld);
 
 		/** search through the lines of the dssp file in order to find where
 		*	the information of the amino acids is located

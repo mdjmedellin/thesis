@@ -31,4 +31,14 @@ namespace GHProtein
 		out_substringDestination = lineToReadFrom.Mid(startingIndex, charactersToRead);
 		startingIndex += charactersToRead;
 	}
+
+	double RandZeroToN(double maxValue)
+	{
+		return (rand() * INVERSE_RAND_MAX * maxValue);
+	}
+
+	double RandNToN(double maxValue, double minValue)
+	{
+		return (rand() * INVERSE_RAND_MAX * (maxValue - minValue)) + minValue;
+	}
 }

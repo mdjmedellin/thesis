@@ -1,19 +1,19 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 
 #include "ThesisTest.h"
+#include "ProteinUtilities.h"
+#include "Residue.h"
 #include "CameraCharacter.h"
 #include "CameraPlayerController.h"
 #include "CustomMovementComponent.h"
 #include "ThesisTestGameMode.h"
 #include "AminoAcid.h"
 #include "ProteinModel.h"
-#include "ThesisStaticLibrary.h"
 
 ACameraCharacter::ACameraCharacter(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
-	, m_rotateProteinPitch(false)
-	, m_rotateProteinYaw(false)
 	, m_rotationSpeedDegreesPerSecond(0.f)
+	, m_movementSpeedPerSecond(0.f)
 	, m_maxPickDistance(0.f)
 	, m_allowCameraRotation(true)
 	, m_selectedAminoAcid(nullptr)
@@ -22,6 +22,14 @@ ACameraCharacter::ACameraCharacter(const class FPostConstructInitializePropertie
 	, m_zoomDirection(0.f)
 	, m_zoomStep(100.f)
 	, m_zoomBuffer(100.f)
+	, m_xDirection(0.f)
+	, m_yDirection(0.f)
+	, m_rotateProteinPitch(0.f)
+	, m_rotateProteinYaw(0.f)
+	, m_allowInput(true)
+	, m_proteinModel(nullptr)
+	, m_customChainModel(nullptr)
+	, m_indexOfCustomChainResidueCurrentlyFocusedOn(0)
 {
 	// Set size for collision capsule
 	// We actually want the  player to be a floating camera
@@ -56,11 +64,7 @@ void ACameraCharacter::SetupPlayerInputComponent(class UInputComponent* InputCom
 	// set up gameplay key bindings
 	check(InputComponent);
 
-	//InputComponent->BindAction( "Jump" , IE_Pressed, this, &ACameraCharacter::MoveUp);
-	//InputComponent->BindAction("Jump", IE_Released, this, &ACameraCharacter::MoveUp);
-
 	InputComponent->BindAction("Fire", IE_Pressed, this, &ACameraCharacter::OnFire);
-	//InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AThesisTestCharacter::TouchStarted);
 
 	InputComponent->BindAxis("MoveForward", this, &ACameraCharacter::MoveForward);
 	InputComponent->BindAxis("MoveRight", this, &ACameraCharacter::MoveRight);
@@ -74,19 +78,19 @@ void ACameraCharacter::SetupPlayerInputComponent(class UInputComponent* InputCom
 	InputComponent->BindAxis("LookUp", this, &ACameraCharacter::HandleControllerPitchInput);
 	InputComponent->BindAxis("LookUpRate", this, &ACameraCharacter::LookUpAtRate);
 
-
-	//Custom protein rotation input
-	InputComponent->BindAction("RotateProteinYaw", IE_Pressed, this, &ACameraCharacter::ToggleProteinYawRotation);
-	InputComponent->BindAction("RotateProteinYaw", IE_Released, this, &ACameraCharacter::ToggleProteinYawRotation);
-	InputComponent->BindAction("RotateProteinPitch", IE_Pressed, this, &ACameraCharacter::ToggleProteinPitchRotation);
-	InputComponent->BindAction("RotateProteinPitch", IE_Released, this, &ACameraCharacter::ToggleProteinPitchRotation);
-
-	//Pick the structure
-	InputComponent->BindAction("StartInteraction", IE_Pressed, this, &ACameraCharacter::StartInteraction);
-	InputComponent->BindAction("StartInteraction", IE_Released, this, &ACameraCharacter::StopInteraction);
-
 	//Custom protein zoom
 	InputComponent->BindAxis("ZoomIn", this, &ACameraCharacter::Zoom);
+
+	//Temperature
+	InputComponent->BindAxis("ModifyTemperature", this, &ACameraCharacter::ModifyTemperatureInModel);
+
+	//Custom protein translation
+	InputComponent->BindAxis("TranslateModelX", this, &ACameraCharacter::TranslateModelX);
+	InputComponent->BindAxis("TranslateModelY", this, &ACameraCharacter::TranslateModelY);
+
+	//Custom Protein rotation
+	InputComponent->BindAxis("RotateProteinYaw", this, &ACameraCharacter::RotateProteinYaw);
+	InputComponent->BindAxis("RotateProteinPitch", this, &ACameraCharacter::RotateProteinPitch);
 }
 
 void ACameraCharacter::HandleControllerYawInput(float deltaYaw)
@@ -101,40 +105,6 @@ void ACameraCharacter::HandleControllerPitchInput(float deltaPitch)
 	Super::AddControllerPitchInput(deltaPitch);
 }
 
-void ACameraCharacter::StartInteraction()
-{
-	//only do this if we have a max pick distance greater than 0
-	if (m_maxPickDistance > 0.f)
-	{
-		const FVector Start = GetActorLocation();
-		FRotator facingRotation = GetActorRotation();
-
-		FVector forwardVector = GetControlRotation().Vector();
-		const FVector End = (Start + (forwardVector * m_maxPickDistance));
-
-		FHitResult HitData(ForceInit);
-
-		if (UThesisStaticLibrary::Trace(this, Start, End, HitData))
-		{
-			m_selectedAminoAcid = (AAminoAcid*)(HitData.GetActor());
-			if (m_selectedAminoAcid)
-			{
-				m_allowCameraRotation = false;
-				GetMovementComponent()->StopMovementImmediately();
-
-				//attempt to highlight the secondary structure this amino acid belongs to
-				m_proteinModel->HighlightSecondaryStructure(m_selectedAminoAcid);
-			}
-		}
-	}
-}
-
-void ACameraCharacter::StopInteraction()
-{
-	m_selectedAminoAcid = nullptr;
-	m_allowCameraRotation = true;
-}
-
 void ACameraCharacter::ClearJumpInput()
 {
 	//Do Nothing, this is in order to prevent the controller from resetting the move up command from some weird place
@@ -144,16 +114,6 @@ void ACameraCharacter::ClearJumpInput()
 void ACameraCharacter::CustomClearJumpInput()
 {
 	Super::ClearJumpInput();
-}
-
-void ACameraCharacter::ToggleProteinYawRotation()
-{
-	m_rotateProteinYaw = !m_rotateProteinYaw;
-}
-
-void ACameraCharacter::ToggleProteinPitchRotation()
-{
-	m_rotateProteinPitch = !m_rotateProteinPitch;
 }
 
 void ACameraCharacter::OnFire()
@@ -169,10 +129,40 @@ void ACameraCharacter::OnFire()
 	}
 }
 
+void ACameraCharacter::TranslateModelX(float x_direction)
+{
+	if (m_allowInput)
+	{
+		m_xDirection = x_direction;
+	}
+}
+
+void ACameraCharacter::TranslateModelY(float y_direction)
+{
+	if (m_allowInput)
+	{
+		m_yDirection = y_direction;
+	}
+}
+
+void ACameraCharacter::RotateProteinYaw(float yawRotation)
+{
+	if (m_allowInput)
+	{
+		m_rotateProteinYaw = yawRotation;
+	}
+}
+
+void ACameraCharacter::RotateProteinPitch(float pitchRotation)
+{
+	if (m_allowInput)
+	{
+		m_rotateProteinPitch = pitchRotation;
+	}
+}
+
 void ACameraCharacter::Zoom(float Value)
 {
-	static bool wasPreviouslyZero = (Value == 0.f);
-
 	if (Value != 0.f)
 	{
 		m_zoomDirection = Value;
@@ -182,8 +172,6 @@ void ACameraCharacter::Zoom(float Value)
 	{
 		m_enableZoom = false;
 	}
-
-	wasPreviouslyZero = (Value == 0.f);
 }
 
 void ACameraCharacter::MoveUp(float Value)
@@ -301,60 +289,52 @@ void ACameraCharacter::Restart()
 	AThesisTestGameMode* gameMode = (AThesisTestGameMode*)GetWorld()->GetAuthGameMode();
 
 	m_proteinModel = gameMode->m_proteinModel;
+	m_customChainModel = gameMode->m_customChainModel;
+
+	//translate the custom chain model to the start
+	if (m_customChainModel)
+	{
+		TranslateCustomChainToSpecifiedResidue(m_indexOfCustomChainResidueCurrentlyFocusedOn);
+	}
+}
+
+void ACameraCharacter::UpdateModelRotation(float DeltaSeconds)
+{
+	float deltaDegrees = m_rotationSpeedDegreesPerSecond * DeltaSeconds;
+	FVector degreesRotated(m_rotateProteinPitch, m_rotateProteinYaw, 0.f);
+	
+	if (degreesRotated != FVector::ZeroVector)
+	{
+		degreesRotated.Normalize();
+		degreesRotated *= deltaDegrees;
+		m_proteinModel->RotateModel(degreesRotated);
+	}
+}
+
+void ACameraCharacter::UpdateModelLocation(float DeltaSeconds)
+{
+	float translationDistance = m_movementSpeedPerSecond * DeltaSeconds;
+	FVector translationVector(m_xDirection, m_yDirection, 0.f);
+
+	if (translationVector != FVector::ZeroVector)
+	{
+		translationVector.Normalize();
+		translationVector *= translationDistance;
+		m_proteinModel->TranslateModel(translationVector);
+	}
 }
 
 void ACameraCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	float deltaDegrees = m_rotationSpeedDegreesPerSecond * DeltaSeconds;
-	FVector degreesRotated((deltaDegrees * m_rotateProteinPitch), (deltaDegrees * m_rotateProteinYaw), 0.f);
-
-	if (degreesRotated != FVector::ZeroVector)
-	{
-		m_proteinModel->RotateModel(degreesRotated);
-	}
-
-	FVector currentLocation = GetActorLocation();
-
-	//check if the model is zooming in or out
-	if (m_enableZoom)
-	{
-		FVector direction = m_proteinModel->GetDirectionFromCenter(currentLocation);
-
-		//check if we should some in more
-		FVector halfDimensions = m_proteinModel->GetBoundingBoxDimensions() * 0.5f;
-		float maxDimension = halfDimensions.GetMax() + m_zoomBuffer;
-
-		maxDimension *= maxDimension;
-
-		if (direction.SizeSquared() > maxDimension
-			|| m_zoomDirection < 0.f)
-		{
-			direction.Normalize();
-			direction *= m_zoomDirection;
-			direction *= m_zoomStep;
-			m_proteinModel->TranslateModel(direction);
-		}
-	}
-
-	//check if we have something we want to drag
-	if (m_selectedAminoAcid)
-	{
-		//compare the current location to the one that we are currently moving
-		FVector deltaLocation = currentLocation - m_prevLocation;
-		if (deltaLocation != FVector::ZeroVector)
-		{
-			m_selectedAminoAcid->Translate(deltaLocation);
-		}
-	}
-
-	m_prevLocation = currentLocation;
+	UpdateModelRotation(DeltaSeconds);
+	UpdateModelLocation(DeltaSeconds);
 }
 
-void ACameraCharacter::TranslateProteinModel(const FVector& translation)
+void ACameraCharacter::TranslateProteinModel(const FVector& translation, bool interpolate, float speedMultiplier)
 {
-	m_proteinModel->TranslateModel(translation);
+	m_proteinModel->TranslateModel(translation, interpolate, speedMultiplier);
 }
 
 FVector ACameraCharacter::GetProteinModelLocation()
@@ -370,7 +350,6 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 	if (world)
 	{
 		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
-
 		if (gameMode)
 		{
 			FVector dimensions = FVector::ZeroVector;
@@ -419,8 +398,198 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 			newAminoAcid->SetAminoAcidType(residueType);
 			newAminoAcid->SetAminoAcidSize(m_customChainResidueDiameter);
 
-			//
-			m_customChain.Add(newAminoAcid);
+			//Handles edge case where the index given is not valid
+			if (index < 0 
+				|| (index + 1 >= m_customChain.Num()))
+			{
+				m_customChain.Add(newAminoAcid);
+			}
+			else
+			{
+				m_customChain.Insert(newAminoAcid, index+1);
+			}
+		}
+	}
+}
+
+void ACameraCharacter::EraseCustomChain()
+{
+	for (int i = 0; i < m_customChain.Num(); ++i)
+	{
+		m_customChain[i]->Destroy();
+	}
+
+	m_customChain.Empty();
+}
+
+void ACameraCharacter::RemoveResidueFromCustomChain(int32 index)
+{
+	if (m_customChain.Num() > 0)
+	{
+		AAminoAcid* residueToDestroy = nullptr;
+		//any negative number removes the residue at the end of the chain
+		if (index < 0
+			|| index == (m_customChain.Num() - 1) )
+		{
+			residueToDestroy = m_customChain.Last();
+			SlideCustomChain(-1);
+			m_customChain.RemoveAt(m_customChain.Num() - 1);
+		}
+		else if (index == 0)
+		{
+			residueToDestroy = m_customChain[0];
+			SlideCustomChain(1);
+			m_customChain.RemoveAt(0);
+		}
+		else if (index < m_customChain.Num())
+		{
+			residueToDestroy = m_customChain[index];
+			m_customChain.RemoveAt(index);
+			SlideCustomChain(-1, index);
+		}
+
+		residueToDestroy->Destroy();
+	}
+}
+
+void ACameraCharacter::EscapeFromPredictionMode()
+{
+	if (m_customChainModel)
+	{
+		delete m_customChainModel;
+		m_customChainModel = nullptr;
+	}
+
+	//align the amino acids in a single row
+	UWorld* world = GetWorld();
+	AThesisTestGameMode* gameMode = nullptr;
+	if (world)
+	{
+		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+		if (gameMode)
+		{
+			//if the chain is empty, then we spawn the custom peptyde chain at the best spawn point
+			AProteinModelSpawnPoint* bestSpawnPoint = gameMode->GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_CustomPolypeptide);
+			FVector spawnLocation = FVector::ZeroVector;
+
+			if (bestSpawnPoint)
+			{
+				spawnLocation = bestSpawnPoint->GetActorLocation();
+			}
+
+			FVector aminoAcidLocation = FVector::ZeroVector;
+			float offsetDistance = m_customChainResidueDiameter;
+
+			for (int i = 0; i < m_customChain.Num(); ++i)
+			{
+				aminoAcidLocation = spawnLocation + (offsetDistance * i * m_customChainSlidingAxis);
+				m_customChain[i]->SetActorLocation(aminoAcidLocation);
+				m_customChain[i]->SetAminoAcidSize(m_customChainResidueDiameter);
+			}
+		}
+
+		//slide chain to focus on the residue we were looking at before we exited prediction mode
+		SlideCustomChain(m_indexOfCustomChainResidueCurrentlyFocusedOn);
+	}
+}
+
+void ACameraCharacter::PredictSecondaryStructureOfCustomChain(int32 indexOfResidueToFocusOn)
+{
+	UWorld* world = GetWorld();
+	AThesisTestGameMode* gameMode = nullptr;
+
+	if (world 
+		&& m_customChain.Num() > 0)
+	{
+		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+
+		m_customChainModel = gameMode->PredictSecondaryStructure(m_customChain);
+
+		//check if we have a valid model from the chain
+		if (m_customChainModel)
+		{
+			TranslateCustomChainToSpecifiedResidue(indexOfResidueToFocusOn);
+		}
+	}
+}
+
+void ACameraCharacter::TranslateCustomChainToSpecifiedResidue(int32 indexOfResidueToFocusOn)
+{
+	UWorld* world = GetWorld();
+	AThesisTestGameMode* gameMode = nullptr;
+	if (world
+		&& m_customChain.Num() > 0)
+	{
+		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+		if (gameMode)
+		{
+			//translate the chain to focus on the residue at the specified index
+			if (indexOfResidueToFocusOn < 0)
+			{
+				m_indexOfCustomChainResidueCurrentlyFocusedOn = 0;
+			}
+			else if (indexOfResidueToFocusOn >= m_customChain.Num())
+			{
+				m_indexOfCustomChainResidueCurrentlyFocusedOn = m_customChain.Num() - 1;
+			}
+			else
+			{
+				m_indexOfCustomChainResidueCurrentlyFocusedOn = indexOfResidueToFocusOn;
+			}
+
+			//get the location of the residue to focus on
+			FVector locationOfResidueToFocusOn = m_customChain[m_indexOfCustomChainResidueCurrentlyFocusedOn]->GetActorLocation();
+			//calculate the displacement needed to translate the desired residue into the focus point
+			AProteinModelSpawnPoint* bestSpawnPoint = gameMode->GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_CustomPolypeptide);
+			if (bestSpawnPoint)
+			{
+				FVector displacement = bestSpawnPoint->GetActorLocation() - locationOfResidueToFocusOn;
+				//we only want to displace along the y axis
+				displacement.X = 0.f;
+				displacement.Z = 0.f;
+
+				//displace the entire chain
+				TranslateCustomChain(displacement);
+			}
+		}
+	}
+}
+
+void ACameraCharacter::AddResiduesInFileToCustomChain(const FString& fileLocation)
+{
+	//check the extension of the file
+	int index = 0;
+
+	if (fileLocation.FindLastChar('.', index))
+	{
+		//get a substring in order to compare the externsion of the file
+		FString fileExtension = "";
+		fileExtension = fileLocation.RightChop(index + 1);
+
+		//check what type of file it is
+		//at the moment we only support .jm
+		FString fileDirLocation = FPaths::GameContentDir() + fileLocation;
+
+		if (fileExtension == "jm")
+		{
+			TArray<FString> stringArray;
+			FFileHelper::LoadANSITextFileToStrings(*(fileDirLocation), NULL, stringArray);
+			FString currentString = "";
+
+			for (int i = 0; i < stringArray.Num(); i+=3)
+			{
+				currentString = stringArray[i];
+
+				for (int j = 0; j < currentString.Len(); ++j)
+				{
+					if (!GHProtein::IsWhiteSpace(currentString[j]))
+					{
+						//
+						EResidueType::Type residueType = MapResidue(currentString[j]);
+						AddResidueToCustomChain(residueType);
+					}
+				}
+			}
 		}
 	}
 }
@@ -440,11 +609,24 @@ void ACameraCharacter::TranslateCustomChain(const FVector& translation, int32 in
 
 void ACameraCharacter::SlideCustomChain(int32 residuesToSlide, int32 index)
 {
-	FVector translationOffset(-m_customChainResidueDiameter, -m_customChainResidueDiameter, -m_customChainResidueDiameter);
-	translationOffset *= m_customChainSlidingAxis;
+	//we only slide the custom chain by the residue's diameter when there is no model produced from it
+	//otherwise we use the location fo the residue we plan on focusing on
+	FVector translationOffset = FVector::ZeroVector;
 
+	translationOffset.Set(-m_customChainResidueDiameter, -m_customChainResidueDiameter, -m_customChainResidueDiameter);
+	translationOffset *= m_customChainSlidingAxis;
 	translationOffset *= residuesToSlide;
-	TranslateCustomChain(translationOffset, index);
+
+	if (m_customChainModel)
+	{
+		m_indexOfCustomChainResidueCurrentlyFocusedOn += residuesToSlide;
+		
+		TranslateCustomChainToSpecifiedResidue(m_indexOfCustomChainResidueCurrentlyFocusedOn);
+	}
+	else
+	{
+		TranslateCustomChain(translationOffset, index);
+	}
 }
 
 AAminoAcid* ACameraCharacter::GetResidueAtSpecifiedIndex(int32 index)
@@ -456,5 +638,49 @@ AAminoAcid* ACameraCharacter::GetResidueAtSpecifiedIndex(int32 index)
 	else
 	{
 		return m_customChain[index];
+	}
+}
+
+void ACameraCharacter::ToggleShake()
+{
+	m_proteinModel->ToggleShake();
+}
+
+void ACameraCharacter::ToggleBreaking()
+{
+	m_proteinModel->ToggleBreaking();
+}
+
+void ACameraCharacter::HideHydrogenBonds()
+{
+	m_proteinModel->HideHydrogenBonds();
+}
+
+void ACameraCharacter::SetModelTemperature(float temperatureCelsius)
+{
+	m_proteinModel->SetTemperature(temperatureCelsius);
+}
+
+void ACameraCharacter::ModifyTemperatureInModel(float temperatureModifierScale)
+{
+	m_proteinModel->ModifyTemperature(temperatureModifierScale);
+}
+
+float ACameraCharacter::GetModelTemperature()
+{
+	return m_proteinModel->GetCurrentTemperature();
+}
+
+void ACameraCharacter::ToggleProteinInputs()
+{
+	m_allowInput = !m_allowInput;
+
+	if (!m_allowInput)
+	{
+		//disable all of the input
+		m_rotateProteinPitch = 0.f;
+		m_rotateProteinYaw = 0.f;
+		m_xDirection = 0.f;
+		m_yDirection = 0.f;
 	}
 }

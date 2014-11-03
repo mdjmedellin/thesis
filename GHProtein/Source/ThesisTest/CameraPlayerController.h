@@ -20,10 +20,8 @@ public:
 
 	/** This function toggles the players ability to pick up stuff */
 	bool TogglePickup(bool CanPickup);
-
 	void ActivatePhysicsOnActor();
 
-
 	/** Begin AActorInterface */
-	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) OVERRIDE;
+	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 };

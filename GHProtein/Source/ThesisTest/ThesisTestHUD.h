@@ -11,7 +11,7 @@ class AThesisTestHUD : public AHUD
 public:
 
 	/** Primary draw call for the HUD */
-	virtual void DrawHUD() OVERRIDE;
+	virtual void DrawHUD() override;
 
 	void ActivateCrosshair();
 	void DeactivateCrosshair();

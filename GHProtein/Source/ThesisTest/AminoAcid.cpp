@@ -1,27 +1,40 @@
 // Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.
 
 #include "ThesisTest.h"
+#include "SecondaryStructure.h"
 #include "AminoAcid.h"
-#include "ThesisStaticLibrary.h"
 #include "LinkFragment.h"
-#include "Residue.h"
+#include "HydrogenBond.h"
 #include "ProteinModel.h"
 
 AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_nextAminoAcid(nullptr)
 	, m_previousAminoAcid(nullptr)
+	, m_dynamicMaterial(nullptr)
+	, m_defaultLinkFragmentClass(nullptr)
 	, m_linkFragment(nullptr)
-	, m_betaPartner1(nullptr)
-	, m_betaPartner2(nullptr)
-	, m_betaPartnerResidue1(nullptr)
-	, m_betaPartnerResidue2(nullptr)
-	, m_secondaryStructure(ESecondaryStructure::ssCount)
+	, m_residueInformation(nullptr)
+	, m_secondaryStructure(nullptr)
+	, m_model(nullptr)
+	, m_secondaryStructureType(ESecondaryStructure::ssCount)
+	, m_normalColor(FColor::White)
 	, m_helixColor(FColor::White)
 	, m_betaStrandColor(FColor::White)
-	, m_residueInformation(nullptr)
-	, m_model(nullptr)
+	, m_hydrogenBondColor(FColor::White)
+	, m_normalHeight(0.f)
+	, m_normalWidth(0.f)
+	, m_helixWidth(0.f)
+	, m_betaStrandWidth(0.f)
+	, m_hydrogenBondLinkWidth(0.f)
+	, m_linkFragmentScalePerUnrealUnit(0.f)
+	, m_isAnimating(false)
+	, m_locationToKeepTrackOf(FVector::ZeroVector)
+	, m_locationInterpolator(Interpolator())
+	, m_locationInterpolationSpeed(1.f)
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	//Create the root SphereComponent to handle collision
 	BaseCollisionComponent = PCIP.CreateDefaultSubobject<USphereComponent>(this, TEXT("BaseSphereComponent"));
 
@@ -34,84 +47,145 @@ AAminoAcid::AAminoAcid(const class FPostConstructInitializeProperties& PCIP)
 	//Attach the static mesh component to the root
 	MeshComponent->AttachTo(RootComponent);
 
+	//Create the text render component
 	TextRenderComponent = PCIP.CreateDefaultSubobject<UTextRenderComponent>(this, TEXT("TextRenderComponent"));
 
+	//attach the text render component to the root
 	TextRenderComponent->AttachTo(RootComponent);
 }
 
-bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(float width, float height)
+void AAminoAcid::Tick(float DeltaSeconds)
+{
+	if (m_locationInterpolator.IsPlaying())
+	{
+		//because the residue is moving independently, we are not going to translate it
+		MoveTo(m_locationInterpolator.Poll());
+	}
+
+	if (m_isAnimating)
+	{
+		//check if it is done animating the residue and the link fragment
+		if (!m_locationInterpolator.IsPlaying()
+			&& !m_linkFragment->IsAnimating())
+		{
+			m_isAnimating = false;
+			m_secondaryStructure->RemoveFromListOfModifiedResidues(this);
+		}
+	}
+}
+
+bool AAminoAcid::SpawnLinkParticleToNextAminoAcid(bool isCustomChainModel)
 {
 	//we only spawn the link particles if we have an amino acid to connect to
 	//and we have not spawned them before
 	if (m_nextAminoAcid && (m_linkFragment == nullptr))
 	{
+		//get the start and end tangent
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
 		FVector endTangent = FVector::ZeroVector;
 		m_nextAminoAcid->GetTangent(endTangent);
 
+		//get the endpoint location of the link fragment
 		FVector linkStartLocation = GetActorLocation();
 		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
+		//spawn the link fragment
 		ALinkFragment* linkFragment = nullptr;
-		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
-		FVector size = linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
-		FVector2D scale(1.f, 1.f);
-		scale.X = width / size.X;
-		scale.Y = height / size.Y;
+		linkFragment = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), m_defaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
+		//set the render properties of this link fragment
+		linkFragment->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor,
+			m_normalWidth, m_helixWidth, m_betaStrandWidth, m_hydrogenBondLinkWidth, m_normalHeight);
 
-		linkFragment->SplineMeshComponent->SetStartScale(scale);
-		linkFragment->SplineMeshComponent->SetEndScale(scale);
+		linkFragment->SetLinkOwner(this);
+
+		if (isCustomChainModel)
+		{
+			linkFragment->ChangeLinkType(m_secondaryStructureType);
+		}
+		else
+		{
+			linkFragment->ChangeLinkType(m_residueInformation->GetSecondaryStructure());
+		}
 
 		linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
 		m_linkFragment = linkFragment;
-
-		//spawn link to partner amino acid on the beta sheet
-		BridgePartner partner = m_residueInformation->GetBetaPartner(0);
-
-		scale *= .5f;
-
-		if (partner.residue)
-		{
-			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
-
-			if (betaPartner)
-			{
-				linkEndLocation = betaPartner->GetActorLocation();
-
-				m_betaPartnerResidue1 = betaPartner;
-				m_betaPartner1 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
-
-				m_betaPartner1->SplineMeshComponent->SetStartScale(scale);
-				m_betaPartner1->SplineMeshComponent->SetEndScale(scale);
-				m_betaPartner1->SplineMeshComponent->SetStartPosition(linkStartLocation);
-				m_betaPartner1->SplineMeshComponent->SetEndPosition(linkEndLocation);
-			}
-		}
-
-		partner = m_residueInformation->GetBetaPartner(1);
-		if (partner.residue)
-		{
-			AAminoAcid* betaPartner = m_model->GetAminoAcidWithSpecifiedId(partner.number);
-
-			if (betaPartner)
-			{
-				linkEndLocation = betaPartner->GetActorLocation();
-
-				m_betaPartnerResidue2 = betaPartner;
-				m_betaPartner2 = UThesisStaticLibrary::SpawnBP<ALinkFragment>(GetWorld(), DefaultLinkFragmentClass, FVector::ZeroVector, FRotator::ZeroRotator);
-
-				m_betaPartner2->SplineMeshComponent->SetStartScale(scale);
-				m_betaPartner2->SplineMeshComponent->SetEndScale(scale);
-				m_betaPartner2->SplineMeshComponent->SetStartPosition(linkStartLocation);
-				m_betaPartner2->SplineMeshComponent->SetEndPosition(linkEndLocation);
-			}
-		}
 
 		return true;
 	}
 
 	return false;
+}
+
+void AAminoAcid::ChangeSecondaryStructureType(ESecondaryStructure::Type typeOfStructure, bool smoothTranslation)
+{
+	if (m_secondaryStructureType != typeOfStructure)
+	{
+		m_secondaryStructureType = typeOfStructure;
+		
+		if (m_linkFragment)
+		{
+			m_linkFragment->ChangeLinkType(m_secondaryStructureType, smoothTranslation);
+		}
+	}
+}
+
+const Residue* AAminoAcid::GetResidueInformation() const
+{
+	return m_residueInformation;
+}
+
+TArray<double> AAminoAcid::GetVectorRepresentationOfResidueType() const
+{
+	TArray<double> vectorRepresentation;
+	vectorRepresentation.Init(0.0, 21);
+	vectorRepresentation[m_residueInformation->GetType()] = 1.0;
+
+	return vectorRepresentation;
+}
+
+void AAminoAcid::AddHydrogenBond(AHydrogenBond* newBond)
+{
+	m_hydrogenBonds.Add(newBond);
+}
+
+void AAminoAcid::RemoveReferencesToHydrogenBond(AHydrogenBond* bondToRemove)
+{
+	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+	{
+		if (m_hydrogenBonds[i] == bondToRemove)
+		{
+			//remove bond and break
+			m_hydrogenBonds.RemoveAt(i);
+			break;
+		}
+	}
+}
+
+void AAminoAcid::RemoveReferenceToLinkFragment(ALinkFragment* linkToRemove)
+{
+	if (m_linkFragment && m_linkFragment == linkToRemove)
+	{
+		m_linkFragment = nullptr;
+	}
+}
+
+bool AAminoAcid::BondWithResidueExists(const AAminoAcid* residue) const
+{
+	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+	{
+		if (m_hydrogenBonds[i]->ContainsSpecifiedResidue(residue))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+UClass* AAminoAcid::GetDetaultLinkFragmentClass()
+{
+	return m_defaultLinkFragmentClass;
 }
 
 void AAminoAcid::GetTangent(FVector& out_vector)
@@ -159,6 +233,11 @@ bool AAminoAcid::GetDistanceToNextAminoAcid(FVector& out_vector)
 void AAminoAcid::SetParentModel(GHProtein::ProteinModel* parentModel)
 {
 	m_model = parentModel;
+}
+
+void AAminoAcid::SetSecondaryStructure(SecondaryStructure* secondaryStructure)
+{
+	m_secondaryStructure = secondaryStructure;
 }
 
 void AAminoAcid::SetResidueInformation(Residue* residueInformation)
@@ -230,7 +309,7 @@ AAminoAcid* AAminoAcid::GetPreviousAminoAcidPtr()
 
 void AAminoAcid::SetAminoAcidSize(float aminoAcidSize)
 {
-	FVector dimensions = GetComponentsBoundingBox().GetSize();
+	static FVector dimensions = GetComponentsBoundingBox().GetSize();
 	if (dimensions.X > 0.f && dimensions.Y > 0.f && dimensions.Z > 0.f)
 	{
 		FVector scale = FVector::ZeroVector;
@@ -245,11 +324,11 @@ void AAminoAcid::BeginPlay()
 {
 	if (m_linkBlueprint)
 	{
-		DefaultLinkFragmentClass = (UClass*)m_linkBlueprint->GeneratedClass;
+		m_defaultLinkFragmentClass = (UClass*)m_linkBlueprint->GeneratedClass;
 	}
 	else
 	{
-		DefaultLinkFragmentClass = nullptr;
+		m_defaultLinkFragmentClass = nullptr;
 	}
 
 	m_linkFragmentScalePerUnrealUnit = 1.0 / m_lengthOfLinkFragment;
@@ -262,160 +341,131 @@ void AAminoAcid::UpdateLinkToNextAminoAcid()
 {
 	if (m_nextAminoAcid && m_linkFragment)
 	{
+		FRotator fragmentRotation = m_linkFragment->GetActorRotation();
+		FVector fragmentLocation = m_linkFragment->GetActorLocation();
+
+		m_linkFragment->SetActorLocation(FVector::ZeroVector);
+		m_linkFragment->SetActorRotation(FRotator::ZeroRotator);
+
 		FVector startTangent = FVector::ZeroVector;
 		GetTangent(startTangent);
+		startTangent = fragmentRotation.UnrotateVector(startTangent);
+		
 		FVector endTangent = FVector::ZeroVector;
 		m_nextAminoAcid->GetTangent(endTangent);
+		endTangent = fragmentRotation.UnrotateVector(endTangent);
 
 		FVector linkStartLocation = GetActorLocation();
 		FVector linkEndLocation = m_nextAminoAcid->GetActorLocation();
 
-		m_linkFragment->SplineMeshComponent->SetStartAndEnd(linkStartLocation, startTangent, linkEndLocation, endTangent);
+		m_linkFragment->SplineMeshComponent->SetStartPosition(fragmentRotation.UnrotateVector(linkStartLocation));
+		m_linkFragment->SplineMeshComponent->SetEndPosition(fragmentRotation.UnrotateVector(linkEndLocation));
+		m_linkFragment->SplineMeshComponent->SetStartTangent(startTangent);
+		m_linkFragment->SplineMeshComponent->SetEndTangent(endTangent);
+		m_linkFragment->SetActorRotation(fragmentRotation);
 	}
-
-	//update Hydrogen bonds here
-	UpdateHydrogenBonds(true);
 }
 
-void AAminoAcid::UpdateHydrogenBonds(bool recurse)
+void AAminoAcid::UpdateLinkFragmentTangents()
 {
-	if (m_betaPartnerResidue1)
-	{
-		m_betaPartner1->SplineMeshComponent->SetStartPosition(GetActorLocation());
-		m_betaPartner1->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue1->GetActorLocation());
+	FRotator rotation = m_linkFragment->GetActorRotation();
+	FVector startTangent = FVector::ZeroVector;
+	GetTangent(startTangent);
+	FVector endTangent = FVector::ZeroVector;
+	m_nextAminoAcid->GetTangent(endTangent);
 
-		if (recurse)
-		{
-			m_betaPartnerResidue1->UpdateHydrogenBonds();
-		}
-	}
-	if (m_betaPartnerResidue2)
-	{
-		m_betaPartner2->SplineMeshComponent->SetStartPosition(GetActorLocation());
-		m_betaPartner2->SplineMeshComponent->SetEndPosition(m_betaPartnerResidue2->GetActorLocation());
-
-		if (recurse)
-		{
-			m_betaPartnerResidue2->UpdateHydrogenBonds();
-		}
-	}
+	m_linkFragment->UpdateTangents(rotation.UnrotateVector(startTangent), rotation.UnrotateVector(endTangent));
 }
 
-void AAminoAcid::Translate(const FVector& deltaLocation)
+void AAminoAcid::HideLinkFragment()
 {
-	SetActorLocation(GetActorLocation() + deltaLocation);
+	m_linkFragment->Hide();
+}
 
-	AAminoAcid* tempResidue = nullptr;
+void AAminoAcid::Translate(const FVector& deltaLocation, bool interpolate, float speedMultiplier)
+{
+	MoveTo(GetActorLocation() + deltaLocation, true, interpolate, speedMultiplier);
+}
 
-	//update the chains of the amino acids
-	if (m_previousAminoAcid)
+void AAminoAcid::TranslateLinkFragment(const FVector& deltaLocation)
+{
+	if (m_linkFragment)
 	{
-		//update the chain handled by the previous amino acid of the previous amino acid
-		tempResidue = m_previousAminoAcid->GetPreviousAminoAcidPtr();
-		if (tempResidue)
-		{
-			tempResidue->UpdateLinkToNextAminoAcid();
-		}
-
-		//update the chain handled by the previous amino acid
-		m_previousAminoAcid->UpdateLinkToNextAminoAcid();
-	}
-
-	//update the cahin handled by this amino acid
-	UpdateLinkToNextAminoAcid();
-
-	//update the chain handled by the next amino acid
-	if (m_nextAminoAcid)
-	{
-		m_nextAminoAcid->UpdateLinkToNextAminoAcid();
+		m_linkFragment->Translate(deltaLocation);
 	}
 }
 
-void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FVector& rotationPoint, const FRotator& rotation)
+void AAminoAcid::RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
 {
 	//rotate the amino acid and the chain
 	FVector distanceFromRotationPoint = GetActorLocation() - rotationPoint;
-	distanceFromRotationPoint = rotation.RotateVector(distanceFromRotationPoint);
+	distanceFromRotationPoint = rotationMatrix.TransformVector(distanceFromRotationPoint);
 
 	SetActorLocation(distanceFromRotationPoint + rotationPoint);
+
+	distanceFromRotationPoint = m_locationToKeepTrackOf - rotationPoint;
+	distanceFromRotationPoint = rotationMatrix.TransformVector(distanceFromRotationPoint);
+	m_locationToKeepTrackOf = distanceFromRotationPoint + rotationPoint;
+
+	//if this amino acid has a link fragment then we rotate it also
+	RotateLinkFragmentAboutSpecifiedPoint(rotationMatrix, rotationPoint);
+
+	//if we are interpolating the location, update the values the interpolator is using
+	if (m_locationInterpolator.IsPlaying())
+	{
+		m_locationInterpolator.RotateValuesFromSpecifiedPoint(rotationMatrix, rotationPoint);
+	}
 }
 
-void AAminoAcid::SetSecondaryStructure(ESecondaryStructure::Type secondaryStructure)
+void AAminoAcid::RotateLinkFragmentAboutSpecifiedPoint(const FRotationMatrix& rotationMatrix, const FVector& rotationPoint)
 {
-	if (secondaryStructure != ESecondaryStructure::ssAlphaHelix
-		&& secondaryStructure != ESecondaryStructure::ssStrand)
+	if (m_linkFragment)
 	{
-		m_secondaryStructure = ESecondaryStructure::ssTurn;
-	}
-	else
-	{
-		m_secondaryStructure = secondaryStructure;
+		FVector distanceFromPivotPoint = m_linkFragment->GetActorLocation() - rotationPoint;
+
+		//rotate the distance
+		distanceFromPivotPoint = rotationMatrix.TransformVector(distanceFromPivotPoint);
+		//now set the new location to the fragment
+		m_linkFragment->SetActorLocation(rotationPoint + distanceFromPivotPoint);
+
+		//rotate the object
+		FRotationMatrix currentRotationMatrix(m_linkFragment->GetActorRotation());
+		currentRotationMatrix *= rotationMatrix;
+		m_linkFragment->SetActorRotation(currentRotationMatrix.Rotator());
 	}
 }
 
 ESecondaryStructure::Type AAminoAcid::GetSecondaryStructure()
 {
-	return m_secondaryStructure;
+	return m_secondaryStructureType;
 }
 
-void AAminoAcid::SetRenderProperties(const FColor& helixColor, const FColor& betaStrandColor, float helixLinkWidth
-	, float betaStrandLinkWidth)
+void AAminoAcid::SetRenderProperties(const FColor& normalColor, const FColor& helixColor, const FColor& betaStrandColor,
+	const FColor& hydrogenBondColor, float normalWidth, float helixLinkWidth, float betaStrandLinkWidth, float hydrogenBondLinkWidth,
+	float normalLinkHeight)
 {
+	m_normalColor = normalColor;
 	m_helixColor = helixColor;
 	m_betaStrandColor = betaStrandColor;
+	m_hydrogenBondColor = hydrogenBondColor;
 
-	UpdateLinkFragmentRenderProperties(helixLinkWidth, betaStrandLinkWidth);
+	m_normalWidth = normalWidth;
+	m_helixWidth = helixLinkWidth;
+	m_betaStrandWidth = betaStrandLinkWidth;
+	m_hydrogenBondLinkWidth = hydrogenBondLinkWidth;
+
+	m_normalHeight = normalLinkHeight;
+
+	UpdateLinkFragmentRenderProperties();
 }
 
-void AAminoAcid::SetLinkFragmentColor(const FColor& fragmentColor)
+void AAminoAcid::UpdateLinkFragmentRenderProperties()
 {
 	if (m_linkFragment)
 	{
-		m_linkFragment->setColor(fragmentColor);
-	}
-}
-
-void AAminoAcid::ResetLinkFragmentColorToDefault()
-{
-	switch (m_secondaryStructure)
-	{
-	case ESecondaryStructure::ssAlphaHelix:
-		SetLinkFragmentColor(m_helixColor);
-		break;
-	case ESecondaryStructure::ssStrand:
-		SetLinkFragmentColor(m_betaStrandColor);
-		break;
-	default:
-		SetLinkFragmentColor(FColor::White);
-		break;
-	}
-}
-
-void AAminoAcid::UpdateLinkFragmentRenderProperties(float helixLinkWidth, float betaStrandLinkWidth)
-{
-	if (m_linkFragment)
-	{
-		FVector size = m_linkFragment->SplineMeshComponent->StaticMesh->GetBounds().GetBox().GetSize();
-		FVector2D scale = m_linkFragment->SplineMeshComponent->GetStartScale();
-		FColor renderColor = FColor::White;
-
-		switch (m_secondaryStructure)
-		{
-		case ESecondaryStructure::ssAlphaHelix:
-			renderColor = m_helixColor;
-			scale.Y = helixLinkWidth / size.Y;
-			break;
-		case ESecondaryStructure::ssStrand:
-			renderColor = m_betaStrandColor;
-			scale.Y = betaStrandLinkWidth / size.Y;
-			break;
-		default:
-			break;
-		}
-		
-		m_linkFragment->SplineMeshComponent->SetStartScale(scale);
-		m_linkFragment->SplineMeshComponent->SetEndScale(scale);
-		m_linkFragment->setColor(renderColor);
+		m_linkFragment->UpdateRenderProperties(m_normalColor, m_helixColor, m_betaStrandColor,
+			m_hydrogenBondColor, m_normalWidth, m_helixWidth, m_betaStrandWidth, m_hydrogenBondLinkWidth,
+			m_normalHeight);
 	}
 }
 
@@ -449,4 +499,139 @@ void AAminoAcid::SetAminoAcidType(TEnumAsByte<EResidueType::Type> aminoAcidType)
 	}
 
 	m_residueInformation->SetType(aminoAcidType);
+}
+
+void AAminoAcid::KeepTrackOfLocation(const FVector& locationToKeepTrackOf)
+{
+	m_locationToKeepTrackOf = locationToKeepTrackOf;
+}
+
+void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment, bool interpolate, float speedMultiplier)
+{
+	if (interpolate)
+	{
+		m_locationInterpolator.ResetInterpolator(GetActorLocation(), finalLocation, 
+			m_locationInterpolationSpeed * speedMultiplier, false, false, 1);
+	}
+	else
+	{
+		//check the displacement
+		FVector displacement = finalLocation - GetActorLocation();
+
+		SetActorLocation(finalLocation);
+
+		//check how we are supposed to update the linkFragment
+		//we translate whenever we are translating the entire protein
+		if (translateLinkFragment)
+		{
+			TranslateLinkFragment(displacement);
+			
+			//if we have a location interpolator, we update it with the new locations we are trying to approach
+			if (m_locationInterpolator.IsPlaying())
+			{
+				m_locationInterpolator.OffsetValues(displacement);
+			}
+			m_locationToKeepTrackOf += displacement;
+		}
+		else
+		{
+			//if we are not translating, then update the link fragments that are affected by
+			//moving this residue
+			UpdateLinkToNextAminoAcid();
+			if (m_previousAminoAcid)
+			{
+				m_previousAminoAcid->UpdateLinkToNextAminoAcid();
+
+				if (m_previousAminoAcid->GetPreviousAminoAcidPtr())
+				{
+					//we do this because the tangent of this link fragment is affected by the change in position of
+					//the current residue
+					m_previousAminoAcid->GetPreviousAminoAcidPtr()->UpdateLinkFragmentTangents();
+				}
+			}
+		}
+
+		//update the hydrogen bonds associated with this residue
+		for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+		{
+			m_hydrogenBonds[i]->ChangeLocationOfAssociatedEnd(this, finalLocation);
+		}
+	}
+}
+
+void AAminoAcid::Stabilize(ESecondaryStructure::Type structureType)
+{
+	//do nothing for the moment
+	//go back to the location we were keeping track of
+	MoveTo(m_locationToKeepTrackOf, false, true);
+	ChangeSecondaryStructureType(structureType, true);
+	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	m_isAnimating = true;
+}
+
+void AAminoAcid::Break(const FVector& newLocation)
+{
+	MoveTo(newLocation, false, true);
+	ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	m_isAnimating = true;
+}
+
+void AAminoAcid::Break()
+{
+	ChangeSecondaryStructureType(ESecondaryStructure::ssLoop, true);
+	m_secondaryStructure->AddToListOfModifiedResidues(this);
+	//make sure it does not move
+	//MoveTo(m_locationToKeepTrackOf, false, true);		//location to keep track of should be the original location
+	m_isAnimating = true;
+}
+
+void AAminoAcid::Shake()
+{
+	//do nothing for the moment
+}
+
+void AAminoAcid::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	//first, make sure to rearrange the linked list so that this actor is dropped from it
+	if (m_nextAminoAcid)
+	m_nextAminoAcid->m_previousAminoAcid = m_previousAminoAcid;
+	
+	if (m_previousAminoAcid)
+	m_previousAminoAcid->m_nextAminoAcid = m_nextAminoAcid;
+
+	//if we have a model
+	//the model will take care of the residue information when it is destroyed
+	if (!m_model)
+	{
+		delete m_residueInformation;
+	}
+
+	if (m_secondaryStructure)
+	{
+		m_secondaryStructure->RemoveReferencesToAminoAcid(this);
+	}
+
+	DestroyLinkFragmentAndHydrogenBonds();
+}
+
+void AAminoAcid::DestroyLinkFragmentAndHydrogenBonds()
+{
+	//destroy the link fragment
+	if (m_linkFragment)
+	{
+		m_linkFragment->SetLinkOwner(nullptr);
+		m_linkFragment->Destroy();
+		m_linkFragment = nullptr;
+	}
+
+	//remove this aminoAcidActor from being referenced in the hydrogen bonds
+	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+	{
+		m_hydrogenBonds[i]->RemoveReferenceToAminoAcid(this);
+	}
+
+	m_hydrogenBonds.Empty();
 }

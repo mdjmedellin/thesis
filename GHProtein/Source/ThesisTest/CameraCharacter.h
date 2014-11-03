@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "ThesisStaticLibrary.h"
 #include "Residue.h"
 #include "CameraCharacter.generated.h"
 
@@ -40,6 +41,9 @@ class ACameraCharacter : public ACharacter
 		float m_rotationSpeedDegreesPerSecond;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
+		float m_movementSpeedPerSecond;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = ProteinModel)
 		float m_maxPickDistance;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = CustomChain)
@@ -49,17 +53,26 @@ class ACameraCharacter : public ACharacter
 		float m_customChainResidueDiameter;
 
 	GHProtein::ProteinModel* m_proteinModel;
-	float m_rotationSpeedSecondsPerDegrees;
-	bool m_rotateProteinYaw;
-	bool m_rotateProteinPitch;
+	GHProtein::ProteinModel* m_customChainModel;
 	bool m_allowCameraRotation;
 	bool m_enableZoom;
+	bool m_allowInput;
+	float m_xDirection;
+	float m_yDirection;
+	float m_rotateProteinYaw;
+	float m_rotateProteinPitch;
 	float m_zoomDirection;
 	float m_zoomStep;
 	float m_zoomBuffer;
 	AAminoAcid* m_selectedAminoAcid;
 	FVector m_prevLocation;
 	TArray<AAminoAcid*> m_customChain;
+	int32 m_indexOfCustomChainResidueCurrentlyFocusedOn;
+
+private:
+	void UpdateModelRotation(float deltaSeconds);
+	void UpdateModelLocation(float deltaSeconds);
+	void TranslateCustomChainToSpecifiedResidue(int32 indexOfResidueToFocusOn);
 
 protected:
 
@@ -96,7 +109,7 @@ protected:
 public:
 	//Functions used to modify the model the player can access
 	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
-		void TranslateProteinModel(const FVector& translation);
+		void TranslateProteinModel(const FVector& translation, bool interpolate = false, float speedMultiplier = 1.f);
 
 	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
 		FVector GetProteinModelLocation();
@@ -110,28 +123,68 @@ public:
 	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
 		void AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> residueType, bool translateOtherResidues = true, int32 index = -1);
 
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void RemoveResidueFromCustomChain(int32 index = -1);
+
+	UFUNCTION(exec)
+		void AddResiduesInFileToCustomChain(const FString& filelocation);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void PredictSecondaryStructureOfCustomChain(int32 indexOfResidueToFocusOn = -1);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void EscapeFromPredictionMode();
+
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void EraseCustomChain();
+
 	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
 		AAminoAcid* GetResidueAtSpecifiedIndex(int32 index = -1);
 
+	UFUNCTION(exec)
+		void ToggleShake();
+
+	UFUNCTION(exec)
+		void ToggleBreaking();
+
+	UFUNCTION(exec)
+		void HideHydrogenBonds();
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinEnviroment")
+		void SetModelTemperature(float temperatureCelsius);
+
+	UFUNCTION(BlueprintCallable, Category = "ProteinEnviroment")
+		float GetModelTemperature();
+
+	UFUNCTION(BlueprintCallable, Category = "ProteinEnviroment")
+		void ModifyTemperatureInModel(float temperatureModifierScale);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void TranslateModelX(float x_direction);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void TranslateModelY(float y_direction);
+	
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void RotateProteinYaw(float yawRotation);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
+		void RotateProteinPitch(float pitchRotation);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "Controls")
+		void ToggleProteinInputs();
+
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();
-	virtual void Tick(float DeltaSeconds) OVERRIDE;
-
-	//Functions used to toggle rotation of the protein
-	virtual void ToggleProteinYawRotation();
-	virtual void ToggleProteinPitchRotation();
-
-	//world interaction functions
-	virtual void StartInteraction();
-	virtual void StopInteraction();
+	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void HandleControllerYawInput(float deltaYaw);
 	virtual void HandleControllerPitchInput(float deltaPitch);
 
 protected:
 	// APawn interface
-	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) OVERRIDE;
-	virtual void PostInitializeComponents() OVERRIDE;
-	virtual void Restart() OVERRIDE;
+	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
+	virtual void PostInitializeComponents() override;
+	virtual void Restart() override;
 	// End of APawn interface
 };

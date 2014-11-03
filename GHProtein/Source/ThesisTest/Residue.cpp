@@ -30,8 +30,8 @@ const ResidueInfo kResidueInfo[] = {
 const char SecondaryStructureInfo[] = {
 	' '
 	, 'H'
-	, 'B'
 	, 'E'
+	, 'B'
 	, 'G'
 	, 'I'
 	, 'T'
@@ -51,7 +51,7 @@ ResidueInfo MapResidueInfo(EResidueType::Type ResidueType)
 	return kResidueInfo[0];
 }
 
-EResidueType::Type MapResidue( FString inName)
+EResidueType::Type MapResidue(FString inName)
 {
 	inName.Trim();
 	inName.TrimTrailing();
@@ -364,7 +364,7 @@ void Residue::SetBridgeLabels(char* inBridgeLabels)
 {
 	//JM
 	//TODO:
-	//This needs to be revisited because we cannot extract all teh information about the
+	//This needs to be revisited because we cannot extract all the information about the
 	//beta partners at this moment
 	BridgePartner* currentBridgePartner;
 
