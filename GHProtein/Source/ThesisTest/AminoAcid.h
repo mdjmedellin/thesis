@@ -116,6 +116,8 @@ private:
 	float m_linkFragmentScalePerUnrealUnit;
 	bool m_isAnimating;
 
+	FVector m_originalDimensions;
+
 	FVector m_locationToKeepTrackOf;
 	Interpolator m_locationInterpolator;
 

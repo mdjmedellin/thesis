@@ -309,7 +309,7 @@ AAminoAcid* AAminoAcid::GetPreviousAminoAcidPtr()
 
 void AAminoAcid::SetAminoAcidSize(float aminoAcidSize)
 {
-	FVector dimensions = GetComponentsBoundingBox().GetSize();
+	static FVector dimensions = GetComponentsBoundingBox().GetSize();
 	if (dimensions.X > 0.f && dimensions.Y > 0.f && dimensions.Z > 0.f)
 	{
 		FVector scale = FVector::ZeroVector;

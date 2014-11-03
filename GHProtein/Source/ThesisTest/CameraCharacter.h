@@ -135,6 +135,9 @@ public:
 	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
 		void EscapeFromPredictionMode();
 
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void EraseCustomChain();
+
 	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
 		AAminoAcid* GetResidueAtSpecifiedIndex(int32 index = -1);
 

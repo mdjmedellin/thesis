@@ -412,6 +412,16 @@ void ACameraCharacter::AddResidueToCustomChain(TEnumAsByte<EResidueType::Type> r
 	}
 }
 
+void ACameraCharacter::EraseCustomChain()
+{
+	for (int i = 0; i < m_customChain.Num(); ++i)
+	{
+		m_customChain[i]->Destroy();
+	}
+
+	m_customChain.Empty();
+}
+
 void ACameraCharacter::RemoveResidueFromCustomChain(int32 index)
 {
 	if (m_customChain.Num() > 0)
@@ -449,12 +459,45 @@ void ACameraCharacter::EscapeFromPredictionMode()
 		delete m_customChainModel;
 		m_customChainModel = nullptr;
 	}
+
+	//align the amino acids in a single row
+	UWorld* world = GetWorld();
+	AThesisTestGameMode* gameMode = nullptr;
+	if (world)
+	{
+		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+		if (gameMode)
+		{
+			//if the chain is empty, then we spawn the custom peptyde chain at the best spawn point
+			AProteinModelSpawnPoint* bestSpawnPoint = gameMode->GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_CustomPolypeptide);
+			FVector spawnLocation = FVector::ZeroVector;
+
+			if (bestSpawnPoint)
+			{
+				spawnLocation = bestSpawnPoint->GetActorLocation();
+			}
+
+			FVector aminoAcidLocation = FVector::ZeroVector;
+			float offsetDistance = m_customChainResidueDiameter;
+
+			for (int i = 0; i < m_customChain.Num(); ++i)
+			{
+				aminoAcidLocation = spawnLocation + (offsetDistance * i * m_customChainSlidingAxis);
+				m_customChain[i]->SetActorLocation(aminoAcidLocation);
+				m_customChain[i]->SetAminoAcidSize(m_customChainResidueDiameter);
+			}
+		}
+
+		//slide chain to focus on the residue we were looking at before we exited prediction mode
+		SlideCustomChain(m_indexOfCustomChainResidueCurrentlyFocusedOn);
+	}
 }
 
 void ACameraCharacter::PredictSecondaryStructureOfCustomChain(int32 indexOfResidueToFocusOn)
 {
 	UWorld* world = GetWorld();
 	AThesisTestGameMode* gameMode = nullptr;
+
 	if (world 
 		&& m_customChain.Num() > 0)
 	{
