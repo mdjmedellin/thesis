@@ -109,7 +109,7 @@ protected:
 public:
 	//Functions used to modify the model the player can access
 	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
-		void TranslateProteinModel(const FVector& translation);
+		void TranslateProteinModel(const FVector& translation, bool interpolate = false, float speedMultiplier = 1.f);
 
 	UFUNCTION(BlueprintCallable, Category = "ProteinModel")
 		FVector GetProteinModelLocation();

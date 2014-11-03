@@ -332,9 +332,9 @@ void ACameraCharacter::Tick(float DeltaSeconds)
 	UpdateModelLocation(DeltaSeconds);
 }
 
-void ACameraCharacter::TranslateProteinModel(const FVector& translation)
+void ACameraCharacter::TranslateProteinModel(const FVector& translation, bool interpolate, float speedMultiplier)
 {
-	m_proteinModel->TranslateModel(translation);
+	m_proteinModel->TranslateModel(translation, interpolate, speedMultiplier);
 }
 
 FVector ACameraCharacter::GetProteinModelLocation()

@@ -55,8 +55,9 @@ public:
 	void UpdateLinkToNextAminoAcid();
 
 	void RotateAminoAcidFromSpecifiedPoint(const FRotationMatrix& rotation, const FVector& rotationPoint);
-	void Translate(const FVector& deltaLocation);
-	void MoveTo(const FVector& finalLocation, bool translateLinkFragment = false, bool interpolate = false);
+	void Translate(const FVector& deltaLocation, bool interpolate = false, float speedMultiplier = 1.f);
+	void MoveTo(const FVector& finalLocation, bool translateLinkFragment = false, bool interpolate = false,
+		float speedMultiplier = 1.f);
 
 	void KeepTrackOfLocation(const FVector& locationToKeepTrackOf);
 

@@ -382,9 +382,9 @@ void AAminoAcid::HideLinkFragment()
 	m_linkFragment->Hide();
 }
 
-void AAminoAcid::Translate(const FVector& deltaLocation)
+void AAminoAcid::Translate(const FVector& deltaLocation, bool interpolate, float speedMultiplier)
 {
-	MoveTo(GetActorLocation() + deltaLocation, true);
+	MoveTo(GetActorLocation() + deltaLocation, true, interpolate, speedMultiplier);
 }
 
 void AAminoAcid::TranslateLinkFragment(const FVector& deltaLocation)
@@ -506,11 +506,12 @@ void AAminoAcid::KeepTrackOfLocation(const FVector& locationToKeepTrackOf)
 	m_locationToKeepTrackOf = locationToKeepTrackOf;
 }
 
-void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment, bool interpolate)
+void AAminoAcid::MoveTo(const FVector& finalLocation, bool translateLinkFragment, bool interpolate, float speedMultiplier)
 {
 	if (interpolate)
 	{
-		m_locationInterpolator.ResetInterpolator(GetActorLocation(), finalLocation, m_locationInterpolationSpeed, false, false, 1);
+		m_locationInterpolator.ResetInterpolator(GetActorLocation(), finalLocation, 
+			m_locationInterpolationSpeed * speedMultiplier, false, false, 1);
 	}
 	else
 	{

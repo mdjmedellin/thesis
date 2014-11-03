@@ -757,7 +757,7 @@ namespace GHProtein
 		return returnVector;
 	}
 
-	void ProteinModel::TranslateModel(const FVector& displacement)
+	void ProteinModel::TranslateModel(const FVector& displacement, bool interpolate, float speedMultiplier)
 	{
 		FVector distanceFromCenter = FVector::ZeroVector;
 
@@ -767,7 +767,7 @@ namespace GHProtein
 		//update position of the amino acids
 		while (currentAminoAcid)
 		{
-			currentAminoAcid->Translate(displacement);
+			currentAminoAcid->Translate(displacement, interpolate, speedMultiplier);
 			currentAminoAcid = currentAminoAcid->GetNextAminoAcidPtr();
 		}
 

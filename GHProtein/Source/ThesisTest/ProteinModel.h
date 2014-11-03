@@ -67,7 +67,7 @@ namespace GHProtein
 		AHydrogenBond* SpawnHydrogenBond(AAminoAcid* residue1, AAminoAcid* residue2);
 		
 		void RotateModel(const FVector& angles);		//x = yaw, y = pitch, z = roll
-		void TranslateModel(const FVector& displacement);
+		void TranslateModel(const FVector& displacement, bool interpolate = false, float speedMultiplier = 1.f);
 
 		Residue* GetResidueWithSpecifiedID(int residueNumber, Residue* partnerResidue = nullptr);
 		AAminoAcid* GetAminoAcidWithSpecifiedId(int sequenceNumber);
