@@ -12,6 +12,12 @@ BetaSheet::BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, G
 	m_strands.Add(strand2);
 }
 
+BetaSheet::~BetaSheet()
+{
+	//hydrogen bonds are deleted when the amino acids that define the endpoints of it are deleted
+	m_hydrogenBonds.Empty();
+}
+
 void BetaSheet::SpawnHydrogenBonds()
 {
 	//we are going to need to iterate through all the strands
@@ -63,6 +69,8 @@ void BetaSheet::SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue)
 			{
 				//if the bond has not yet been created, then we create it
 				AHydrogenBond* hBond = m_proteinModel->SpawnHydrogenBond(residue, betaPartner);
+				if (hBond)
+				m_hydrogenBonds.Add(hBond);
 			}
 		}
 	}
@@ -74,6 +82,7 @@ SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStruct
 	GHProtein::ProteinModel* parentModel)
 	: m_secondaryStructureType(secondaryStructureType)
 	, m_nextSecondaryStructure(nullptr)
+	, m_previousSecondaryStructure(nullptr)
 	, m_headAminoAcid(nullptr)
 	, m_tailAminoAcid(nullptr)
 	, m_parentModel(parentModel)
@@ -86,7 +95,18 @@ SecondaryStructure::SecondaryStructure(ESecondaryStructure::Type secondaryStruct
 {}
 
 SecondaryStructure::~SecondaryStructure()
-{}
+{
+	//even though it would be good to delete the amino acids from here
+	//in the case that it is a custom chain, we do not want to delete the AminoAcid actor
+
+	//hydrogen bonds are deleted when the amino acids that define the endpoints of it are destroyed
+	m_hydrogenBonds.Empty();
+
+	m_modifiedResidues.Empty();
+
+	//amino acids
+	m_parentModel->DestroyAminoAcids(m_headAminoAcid, m_tailAminoAcid, false);
+}
 
 AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 {
@@ -109,16 +129,190 @@ AAminoAcid* SecondaryStructure::GetAminoAcidWithSpecifiedId(int sequenceNumber)
 	return foundResidue;
 }
 
-void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure)
+void SecondaryStructure::SetPreviousSecondaryStructure(SecondaryStructure* previousSecondaryStructure, bool recurse,
+	bool setNextSecondaryStructure)
 {
-	//check if we alreay have a vaird ptr to the next secondary structure
+	//check if we alreay have a valid ptr to the next secondary structure
+	if (m_previousSecondaryStructure)
+	{
+		if (previousSecondaryStructure)
+		{
+			if (setDirectly)
+			{
+				SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
+				m_previousSecondaryStructure = previousSecondaryStructure;
+
+				if (localPreviousSecondaryStructure)
+				{
+					localPreviousSecondaryStructure->m_nextSecondaryStructure = nullptr;
+				}
+			}
+			else if (recurse)
+			{
+				previousSecondaryStructure->SetPreviousSecondaryStructure(m_previousSecondaryStructure, false, setNextSecondaryStructure);
+				m_previousSecondaryStructure = previousSecondaryStructure;
+			}
+			else
+			{
+				SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
+				SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
+
+				m_previousSecondaryStructure = previousSecondaryStructure;
+				m_nextSecondaryStructure = previousSecondaryStructure->m_nextSecondaryStructure;
+				m_previousSecondaryStructure->m_nextSecondaryStructure = this;
+				m_nextSecondaryStructure->m_previousSecondaryStructure = this;
+
+				if (localPreviousSecondaryStructure)
+				localPreviousSecondaryStructure->m_nextSecondaryStructure = localNextSecondaryStructure;
+				
+				if (localNextSecondaryStructure)
+				localNextSecondaryStructure->m_previousSecondaryStructure = localPreviousSecondaryStructure;
+				
+				/*
+				//go to the first secondary structure
+				bool continueTraversing = m_previousSecondaryStructure != nullptr;
+				SecondaryStructure* currentSecondaryStructure = this;
+				while (continueTraversing)
+				{
+					if (!currentSecondaryStructure->m_previousSecondaryStructure)
+					{
+						continueTraversing = false;
+					}
+					else
+					{
+						currentSecondaryStructure = currentSecondaryStructure->m_previousSecondaryStructure;
+					}
+				}
+
+				//now that you have the secondary structure that is at the head
+				//set the previous structure as its previous secondary structure
+				currentSecondaryStructure->m_previousSecondaryStructure = previousSecondaryStructure;
+
+				SecondaryStructure* nextSecondaryStructureOfSecondChain = previousSecondaryStructure->m_nextSecondaryStructure;
+				previousSecondaryStructure->m_nextSecondaryStructure = currentSecondaryStructure;
+
+				if (nextSecondaryStructureOfSecondChain)
+				{
+					nextSecondaryStructureOfSecondChain->m_previousSecondaryStructure = nullptr;
+				}
+				*/
+			}
+		}
+		else if (setNextSecondaryStructure)
+		{
+			m_previousSecondaryStructure->SetNextStructurePtr(nullptr, false, false);
+		}
+		else
+		{
+			m_previousSecondaryStructure = nullptr;
+		}
+	}
+	else
+	{
+		m_previousSecondaryStructure = previousSecondaryStructure;
+
+		if (setNextSecondaryStructure)
+		{
+			m_previousSecondaryStructure->SetNextStructurePtr(this, false, false, true);
+		}
+		else
+		{
+			m_previousSecondaryStructure->m_nextSecondaryStructure = this;
+		}
+	}
+}
+
+void SecondaryStructure::SetNextStructurePtr(SecondaryStructure* nextStructure, bool recurse,
+	bool setPreviousSecondaryStructure)
+{
+	//check if we alreay have a valid ptr to the next secondary structure
 	if (m_nextSecondaryStructure)
 	{
-		SecondaryStructure* tmp = m_nextSecondaryStructure;
-		nextStructure->SetNextStructurePtr(tmp);
+		if (nextStructure)
+		{
+			if (setDirectly)
+			{
+				SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
+				m_nextSecondaryStructure = nextStructure;
+
+				if (localNextSecondaryStructure)
+				{
+					localNextSecondaryStructure->m_previousSecondaryStructure = nullptr;
+				}
+			}
+			else if (recurse)
+			{
+				nextStructure->SetNextStructurePtr(m_nextSecondaryStructure, false, setPreviousSecondaryStructure);
+				m_nextSecondaryStructure = nextStructure;
+			}
+			else
+			{
+				SecondaryStructure* localPreviousSecondaryStructure = m_previousSecondaryStructure;
+				SecondaryStructure* localNextSecondaryStructure = m_nextSecondaryStructure;
+
+				m_nextSecondaryStructure = nextStructure;
+				m_previousSecondaryStructure = nextStructure->m_previousSecondaryStructure;
+				m_previousSecondaryStructure->m_nextSecondaryStructure = this;
+				m_nextSecondaryStructure->m_previousSecondaryStructure = this;
+
+				if (localPreviousSecondaryStructure)
+				localPreviousSecondaryStructure->m_nextSecondaryStructure = localNextSecondaryStructure;
+				
+				if (localNextSecondaryStructure)
+				localNextSecondaryStructure->m_previousSecondaryStructure = localPreviousSecondaryStructure;
+
+
+				/*
+				//go to the last secondary structure connected to this one
+				bool continueTraversing = m_nextSecondaryStructure != nullptr;
+				SecondaryStructure* currentSecondaryStructure = this;
+				while (continueTraversing)
+				{
+					if (!currentSecondaryStructure->m_nextSecondaryStructure)
+					{
+						continueTraversing = false;
+					}
+					else
+					{
+						currentSecondaryStructure = currentSecondaryStructure->m_nextSecondaryStructure;
+					}
+				}
+
+				SecondaryStructure* previousSecondaryStructureOfSecondChain = nextStructure->m_previousSecondaryStructure;
+				nextStructure->m_previousSecondaryStructure = currentSecondaryStructure;
+					
+				currentSecondaryStructure->m_nextSecondaryStructure = nextStructure;
+				SecondaryStructure* previousSecondaryStructureOfFirstChain = m_previousSecondaryStructure;
+				m_previousSecondaryStructure = previousSecondaryStructureOfSecondChain;
+				if (previousSecondaryStructureOfFirstChain)
+				{
+					previousSecondaryStructureOfFirstChain->m_nextSecondaryStructure = nullptr;
+				}
+				*/
+			}
+		}
+		else if (setPreviousSecondaryStructure)
+		{
+			m_nextSecondaryStructure->SetPreviousSecondaryStructure(nullptr, false, false);
+		}
+		else
+		{
+			m_nextSecondaryStructure = nullptr;
+		}
 	}
-	
-	m_nextSecondaryStructure = nextStructure;
+	else
+	{
+		m_nextSecondaryStructure = nextStructure;
+
+		if (setPreviousSecondaryStructure)
+		{
+			m_nextSecondaryStructure->SetPreviousSecondaryStructure(this, false, false, true);
+		}
+		else
+		{
+			m_nextSecondaryStructure->m_previousSecondaryStructure = this;
+		}
+	}
 }
 
 void SecondaryStructure::SetEnviromentalProperties(float currentTemperatureCelsius, float regularTemperatureCelsius,
@@ -284,6 +478,7 @@ void SecondaryStructure::SpawnHydrogenBonds()
 		{
 			//we found a valid partner residue to create a hydrogen bond
 			AHydrogenBond* newlyCreatedBond = m_parentModel->SpawnHydrogenBond(currentResidue, partnerResidue);
+			if (newlyCreatedBond)
 			m_hydrogenBonds.Add(newlyCreatedBond);
 		}
 		else
@@ -702,5 +897,34 @@ void SecondaryStructure::RemoveFromListOfModifiedResidues(AAminoAcid* residueMod
 		//if all the residues finished animating
 		//remove the secondary structure from the list of structures being modified
 		m_parentModel->RemoveFromListOfModifiedSecondaryStructures(this);
+	}
+}
+
+void SecondaryStructure::RemoveReferencesToAminoAcid(AAminoAcid* referenceToRemove)
+{
+	if (referenceToRemove == nullptr)
+	{
+		return;
+	}
+
+	if (m_headAminoAcid == m_tailAminoAcid && m_headAminoAcid == referenceToRemove)
+	{
+		m_headAminoAcid = nullptr;
+		m_tailAminoAcid = nullptr;
+
+		//there are no more residues in this secondary structure
+		//therefore we must remove it from the model
+		if (m_parentModel)
+		{
+			m_parentModel->DestroySecondaryStructure(this);
+		}
+	}
+	else if (m_headAminoAcid == referenceToRemove)
+	{
+		m_headAminoAcid = referenceToRemove->GetNextAminoAcidPtr();
+	}
+	else if (m_tailAminoAcid == referenceToRemove)
+	{
+		m_tailAminoAcid = referenceToRemove->GetPreviousAminoAcidPtr();
 	}
 }

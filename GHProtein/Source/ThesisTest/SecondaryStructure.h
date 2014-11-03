@@ -16,10 +16,12 @@ class BetaSheet
 {
 public:
 	BetaSheet(SecondaryStructure* strand1, SecondaryStructure* strand2, GHProtein::ProteinModel* parentModel);
+	~BetaSheet();
 	void SpawnHydrogenBonds();
 	void SpawnHydrogenBondsOfSpecifiedResidue(AAminoAcid* residue);
 
 public:
+	TArray<AHydrogenBond*> m_hydrogenBonds;
 	TArray<SecondaryStructure*> m_strands;
 	GHProtein::ProteinModel* m_proteinModel;
 };
@@ -33,7 +35,6 @@ public:
 	SecondaryStructure(ESecondaryStructure::Type secondaryStructureType, GHProtein::ProteinModel* parentModel);
 	~SecondaryStructure();
 
-	void SetNextStructurePtr(SecondaryStructure* nextStructure);
 	void SetEnviromentalProperties(float currentTemperatureCelsius, float regularTemperatureCelsius,
 		float breakTemperatureCelsius, float irreversibleChangeTemperatureCelsius);
 	void AppendAminoAcid(AAminoAcid* residue, bool isCustomChain = false);
@@ -50,6 +51,7 @@ public:
 	bool SetTemperature(float temperatureCelsius);
 	void AddToListOfModifiedResidues(AAminoAcid* residueModified);
 	void RemoveFromListOfModifiedResidues(AAminoAcid* residueModified);
+	void RemoveReferencesToAminoAcid(AAminoAcid* referenceToRemove);
 
 	static SecondaryStructure* GetSelectedStructure();
 
@@ -60,11 +62,16 @@ private:
 	void ShakeResidues(TArray<AAminoAcid*>& residues);
 	void StabilizeResidues(TArray<AAminoAcid*>& residues);
 	bool UpdateStructureAccordingToSpecifiedTemperature(float temperatureCelsius);
+	void SetNextStructurePtr(SecondaryStructure* nextStructure, bool recurse,
+		bool setNextSecondaryStructure);
+	void SetPreviousSecondaryStructure(SecondaryStructure* previousSecondaryStructure, bool recurse,
+		bool setNextSecondaryStructure);
 
 private:
 	ETemperatureState::Type m_temperatureState;
 	ESecondaryStructure::Type m_secondaryStructureType;
 	SecondaryStructure* m_nextSecondaryStructure;
+	SecondaryStructure* m_previousSecondaryStructure;
 
 	AAminoAcid* m_headAminoAcid;
 	AAminoAcid* m_tailAminoAcid;

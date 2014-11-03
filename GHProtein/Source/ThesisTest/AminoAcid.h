@@ -32,8 +32,10 @@ public:
 	~AAminoAcid();
 
 	virtual void BeginPlay();
-	virtual void Tick(float DeltaSeconds) OVERRIDE;
+	virtual void Tick(float DeltaSeconds);
+	virtual void BeginDestroy();
 
+	void DestroyLinkFragmentAndHydrogenBonds();
 	bool SpawnLinkParticleToNextAminoAcid(bool isCustomChain = false);
 
 	void SetNextAminoAcid(AAminoAcid* nextAminoAcid);
@@ -79,6 +81,7 @@ public:
 
 	bool BondWithResidueExists(const AAminoAcid* residue) const;
 	void AddHydrogenBond(AHydrogenBond* newBond);
+	void RemoveReferencesToHydrogenBond(AHydrogenBond* bondToRemove);
 
 	UClass* GetDetaultLinkFragmentClass();
 	ResidueInfo GetAminoAcidInfo() const;

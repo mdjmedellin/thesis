@@ -29,7 +29,7 @@ public:
 
 	AProteinModelSpawnPoint* GetBestProteinModelSpawnPoint(EProteinSpawnPointType::Type spawnType);
 
-	bool PredictSecondaryStructure(TArray<AAminoAcid*>& residues);
+	GHProtein::ProteinModel* PredictSecondaryStructure(TArray<AAminoAcid*>& residues);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "ProteinEvents")
 		void FinishedProteinAnimation();
@@ -46,6 +46,7 @@ private:
 
 public:
 	GHProtein::ProteinModel* m_proteinModel;
+	GHProtein::ProteinModel* m_customChainModel;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = GameMode)
 		float m_aminoAcidSize;

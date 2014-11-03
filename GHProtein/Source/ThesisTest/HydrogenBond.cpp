@@ -197,3 +197,49 @@ void AHydrogenBond::Break()
 	m_wasAnimating = true;
 	m_parentModel->AddToListOfModifiedHydrogenBonds(this);
 }
+
+void AHydrogenBond::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	//notify both residues ends of this hydrogen bond that it is about to be destroyed
+	for (int i = 0; i < 2; ++i)
+	{
+		if (m_bondResidues[i])
+		{
+			m_bondResidues[i]->RemoveReferencesToHydrogenBond(this);
+		}
+	}
+}
+
+void AHydrogenBond::RemoveReferenceToAminoAcid(const AAminoAcid* referenceToRemove)
+{
+	int validReferencesRemaningInBond = 0;
+	for (int i = 0; i < 2; ++i)
+	{
+		if (m_bondResidues[i])
+		{
+			if (m_bondResidues[i] == referenceToRemove)
+			{
+				m_bondResidues[i] = nullptr;
+			}
+			else
+			{
+				++validReferencesRemaningInBond;
+			}
+		}
+	}
+
+	if (validReferencesRemaningInBond == 0)
+	{
+		//this hydrogen bond should be destroyed
+		if (m_parentModel)
+		{
+			m_parentModel->DestroyHydrogenBond(this);
+		}
+		else
+		{
+			Destroy();
+		}
+	}
+}

@@ -27,6 +27,9 @@ ACameraCharacter::ACameraCharacter(const class FPostConstructInitializePropertie
 	, m_rotateProteinPitch(0.f)
 	, m_rotateProteinYaw(0.f)
 	, m_allowInput(true)
+	, m_proteinModel(nullptr)
+	, m_customChainModel(nullptr)
+	, m_indexOfCustomChainResidueCurrentlyFocusedOn(0)
 {
 	// Set size for collision capsule
 	// We actually want the  player to be a floating camera
@@ -286,6 +289,13 @@ void ACameraCharacter::Restart()
 	AThesisTestGameMode* gameMode = (AThesisTestGameMode*)GetWorld()->GetAuthGameMode();
 
 	m_proteinModel = gameMode->m_proteinModel;
+	m_customChainModel = gameMode->m_customChainModel;
+
+	//translate the custom chain model to the start
+	if (m_customChainModel)
+	{
+		TranslateCustomChainToSpecifiedResidue(m_indexOfCustomChainResidueCurrentlyFocusedOn);
+	}
 }
 
 void ACameraCharacter::UpdateModelRotation(float DeltaSeconds)
@@ -432,7 +442,16 @@ void ACameraCharacter::RemoveResidueFromCustomChain(int32 index)
 	}
 }
 
-void ACameraCharacter::PredictSecondaryStructureOfCustomChain()
+void ACameraCharacter::EscapeFromPredictionMode()
+{
+	if (m_customChainModel)
+	{
+		delete m_customChainModel;
+		m_customChainModel = nullptr;
+	}
+}
+
+void ACameraCharacter::PredictSecondaryStructureOfCustomChain(int32 indexOfResidueToFocusOn)
 {
 	UWorld* world = GetWorld();
 	AThesisTestGameMode* gameMode = nullptr;
@@ -441,7 +460,55 @@ void ACameraCharacter::PredictSecondaryStructureOfCustomChain()
 	{
 		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
 
-		gameMode->PredictSecondaryStructure(m_customChain);
+		m_customChainModel = gameMode->PredictSecondaryStructure(m_customChain);
+
+		//check if we have a valid model from the chain
+		if (m_customChainModel)
+		{
+			TranslateCustomChainToSpecifiedResidue(indexOfResidueToFocusOn);
+		}
+	}
+}
+
+void ACameraCharacter::TranslateCustomChainToSpecifiedResidue(int32 indexOfResidueToFocusOn)
+{
+	UWorld* world = GetWorld();
+	AThesisTestGameMode* gameMode = nullptr;
+	if (world
+		&& m_customChain.Num() > 0)
+	{
+		gameMode = (AThesisTestGameMode*)world->GetAuthGameMode();
+		if (gameMode)
+		{
+			//translate the chain to focus on the residue at the specified index
+			if (indexOfResidueToFocusOn < 0)
+			{
+				m_indexOfCustomChainResidueCurrentlyFocusedOn = 0;
+			}
+			else if (indexOfResidueToFocusOn >= m_customChain.Num())
+			{
+				m_indexOfCustomChainResidueCurrentlyFocusedOn = m_customChain.Num() - 1;
+			}
+			else
+			{
+				m_indexOfCustomChainResidueCurrentlyFocusedOn = indexOfResidueToFocusOn;
+			}
+
+			//get the location of the residue to focus on
+			FVector locationOfResidueToFocusOn = m_customChain[m_indexOfCustomChainResidueCurrentlyFocusedOn]->GetActorLocation();
+			//calculate the displacement needed to translate the desired residue into the focus point
+			AProteinModelSpawnPoint* bestSpawnPoint = gameMode->GetBestProteinModelSpawnPoint(EProteinSpawnPointType::ESpawn_CustomPolypeptide);
+			if (bestSpawnPoint)
+			{
+				FVector displacement = bestSpawnPoint->GetActorLocation() - locationOfResidueToFocusOn;
+				//we only want to displace along the y axis
+				displacement.X = 0.f;
+				displacement.Z = 0.f;
+
+				//displace the entire chain
+				TranslateCustomChain(displacement);
+			}
+		}
 	}
 }
 
@@ -499,11 +566,24 @@ void ACameraCharacter::TranslateCustomChain(const FVector& translation, int32 in
 
 void ACameraCharacter::SlideCustomChain(int32 residuesToSlide, int32 index)
 {
-	FVector translationOffset(-m_customChainResidueDiameter, -m_customChainResidueDiameter, -m_customChainResidueDiameter);
-	translationOffset *= m_customChainSlidingAxis;
+	//we only slide the custom chain by the residue's diameter when there is no model produced from it
+	//otherwise we use the location fo the residue we plan on focusing on
+	FVector translationOffset = FVector::ZeroVector;
 
+	translationOffset.Set(-m_customChainResidueDiameter, -m_customChainResidueDiameter, -m_customChainResidueDiameter);
+	translationOffset *= m_customChainSlidingAxis;
 	translationOffset *= residuesToSlide;
-	TranslateCustomChain(translationOffset, index);
+
+	if (m_customChainModel)
+	{
+		m_indexOfCustomChainResidueCurrentlyFocusedOn += residuesToSlide;
+		
+		TranslateCustomChainToSpecifiedResidue(m_indexOfCustomChainResidueCurrentlyFocusedOn);
+	}
+	else
+	{
+		TranslateCustomChain(translationOffset, index);
+	}
 }
 
 AAminoAcid* ACameraCharacter::GetResidueAtSpecifiedIndex(int32 index)

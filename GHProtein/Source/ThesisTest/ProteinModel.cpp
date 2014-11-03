@@ -51,6 +51,44 @@ namespace GHProtein
 		{
 			delete m_residueVector[i];
 		}
+
+		//ignore the arrays of m_modifiedHydrogenBonds and m_modifiedSecondaryStructures
+		//they just contain references to secondaryStructures and hydrogenBonds we already have
+		//stored in a separate array
+		m_modifiedSecondaryStructures.Empty();
+		m_modifiedHydrogenBonds.Empty();
+
+		//ignore the beta strands array, we are going to delete it when iterating through the linked list
+		//of secondary structures
+		m_betaStrands.Empty();
+
+		//ignore the map of betaSheets to secondaryStructures
+		m_strandToBetaSheetMap.Empty();
+
+		//delete all the beta sheets
+		for (int i = 0; i < m_betaSheets.Num(); ++i)
+		{
+			delete m_betaSheets[i];
+		}
+
+		//delete all the secondary structures
+		SecondaryStructure* currentSecondaryStructure = m_headSecondaryStructure;
+		SecondaryStructure* nextSecondaryStructure = nullptr;
+
+		//deleting secondary structures also deletes the aminoacids
+		//NOTE: amino acids are not destroyed if the model is a customChainModel
+		bool keepDeleting = currentSecondaryStructure != nullptr;
+		while (keepDeleting)
+		{
+			nextSecondaryStructure = currentSecondaryStructure->GetNextStructurePtr();
+			keepDeleting = currentSecondaryStructure != m_tailSecondaryStructure;
+
+			delete currentSecondaryStructure;
+			currentSecondaryStructure = nextSecondaryStructure;
+		}
+
+		m_headSecondaryStructure = nullptr;
+		m_tailSecondaryStructure = nullptr;
 	}
 
 	bool ProteinModel::AddResidue(Residue* residueAttemptingToInsert)
@@ -855,6 +893,88 @@ namespace GHProtein
 	{
 		m_modifiedHydrogenBonds.Remove(hydrogenBondToRemove);
 		CheckIfEndModificationEventShouldTrigger();
+	}
+
+	void ProteinModel::DestroySecondaryStructure(SecondaryStructure* secondaryStructureToDestroy)
+	{
+		//first we remove it from the modified secondary structures array
+		m_modifiedSecondaryStructures.Remove(secondaryStructureToDestroy);
+
+		//now we check if this is the head or tail of the secondary structures linked list
+		if (m_headSecondaryStructure == m_tailSecondaryStructure && m_headSecondaryStructure == secondaryStructureToDestroy)
+		{
+			//this is the last secondary structure
+			
+		}
+		else if (m_headSecondaryStructure == secondaryStructureToDestroy)
+		{
+			m_headSecondaryStructure = secondaryStructureToDestroy->GetNextStructurePtr();
+		}
+		else if (m_tailSecondaryStructure == secondaryStructureToDestroy)
+		{
+			m_tailSecondaryStructure = secondaryStructureToDestroy->Previous
+		}
+	}
+
+	void ProteinModel::DestroyHydrogenBond(AHydrogenBond* hydrogenBondToDestroy)
+	{
+		//remove all references to the hydrogen bond
+		m_modifiedHydrogenBonds.Remove(hydrogenBondToDestroy);
+		m_hydrogenBonds.Remove(hydrogenBondToDestroy);
+
+		hydrogenBondToDestroy->Destroy();
+	}
+
+	void ProteinModel::DestroyAminoAcids(AAminoAcid* startAminoAcid, AAminoAcid* endAminoAcid, 
+		bool automaticallyDestroySecondaryStructures)
+	{
+		if (m_isCustomChainModel)
+		{
+			//we do not delete residues of custom chain models
+
+			//we do however, destroy the hydrogen bonds and link fragments that are in it
+			AAminoAcid* nextAminoAcid = startAminoAcid;
+			AAminoAcid* aminoAcidToDestroy = nullptr;
+			bool keepDestroying = nextAminoAcid != nullptr;
+			while (keepDestroying)
+			{
+				keepDestroying = nextAminoAcid != endAminoAcid;
+				aminoAcidToDestroy = nextAminoAcid;
+				nextAminoAcid = nextAminoAcid->GetNextAminoAcidPtr();
+				aminoAcidToDestroy->DestroyLinkFragmentAndHydrogenBonds();
+			}
+			return;
+		}
+
+		//check if the start amino acid is the head ptr
+		if (m_headPtr && m_headPtr == startAminoAcid)
+		{
+			if (endAminoAcid)
+			{
+				m_headPtr = endAminoAcid->GetNextAminoAcidPtr();
+			}
+			else
+			{
+				m_headPtr = nullptr;
+			}
+		}
+
+		//iterate from start amino acid to end amino acid and delete the actor
+		AAminoAcid* nextAminoAcid = startAminoAcid;
+		AAminoAcid* aminoAcidToDestroy = nullptr;
+		bool keepDestroying = nextAminoAcid != nullptr;
+		while (keepDestroying)
+		{
+			keepDestroying = nextAminoAcid != endAminoAcid;
+			aminoAcidToDestroy = nextAminoAcid;
+			nextAminoAcid = nextAminoAcid->GetNextAminoAcidPtr();
+
+			if (!automaticallyDestroySecondaryStructures)
+			{
+				aminoAcidToDestroy->SetSecondaryStructure(nullptr);
+			}
+			aminoAcidToDestroy->Destroy();
+		}
 	}
 
 	void ProteinModel::CheckIfEndModificationEventShouldTrigger()

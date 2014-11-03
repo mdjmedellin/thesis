@@ -20,6 +20,8 @@ class THESISTEST_API AHydrogenBond : public ALinkFragment
 	GENERATED_UCLASS_BODY()
 
 public:
+	virtual void BeginDestroy() override;
+
 	void UpdateRenderProperties(const FColor& renderColor, float bondWidth, float bondHeight);
 	void SetEnviromentalProperties(float currentTemperatureCelsius, float regularTemperatureCelsius,
 		float breakTemperatureCelsius, float irreversibleChangeTemperatureCelsius);
@@ -34,6 +36,8 @@ public:
 
 	void Stabilize();
 	void Break();
+
+	void RemoveReferenceToAminoAcid(const AAminoAcid* referenceToRemove);
 
 private:
 	//private functions

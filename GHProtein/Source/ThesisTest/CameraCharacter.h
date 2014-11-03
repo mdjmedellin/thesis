@@ -53,6 +53,7 @@ class ACameraCharacter : public ACharacter
 		float m_customChainResidueDiameter;
 
 	GHProtein::ProteinModel* m_proteinModel;
+	GHProtein::ProteinModel* m_customChainModel;
 	bool m_allowCameraRotation;
 	bool m_enableZoom;
 	bool m_allowInput;
@@ -66,10 +67,12 @@ class ACameraCharacter : public ACharacter
 	AAminoAcid* m_selectedAminoAcid;
 	FVector m_prevLocation;
 	TArray<AAminoAcid*> m_customChain;
+	int32 m_indexOfCustomChainResidueCurrentlyFocusedOn;
 
 private:
 	void UpdateModelRotation(float deltaSeconds);
 	void UpdateModelLocation(float deltaSeconds);
+	void TranslateCustomChainToSpecifiedResidue(int32 indexOfResidueToFocusOn);
 
 protected:
 
@@ -127,7 +130,10 @@ public:
 		void AddResiduesInFileToCustomChain(const FString& filelocation);
 
 	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
-		void PredictSecondaryStructureOfCustomChain();
+		void PredictSecondaryStructureOfCustomChain(int32 indexOfResidueToFocusOn = -1);
+
+	UFUNCTION(exec, BlueprintCallable, Category = "PeptideChainBuilder")
+		void EscapeFromPredictionMode();
 
 	UFUNCTION(BlueprintCallable, Category = "PeptideChainBuilder")
 		AAminoAcid* GetResidueAtSpecifiedIndex(int32 index = -1);
@@ -162,7 +168,7 @@ public:
 	UFUNCTION(exec, BlueprintCallable, Category = "ProteinModel")
 		void RotateProteinPitch(float pitchRotation);
 
-	UFUNCTION(BlueprintCallable, Category = "Controls")
+	UFUNCTION(exec, BlueprintCallable, Category = "Controls")
 		void ToggleProteinInputs();
 
 	void CustomClearJumpInput();

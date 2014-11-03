@@ -117,7 +117,7 @@ GHProtein::ProteinModel* ProteinBuilder::CreateCustomChain(TArray<AAminoAcid*>& 
 		customChainModel->BuildCustomChain(distanceScale, residues);
 	}
 
-	return nullptr;
+	return customChainModel;
 }
 
 GHProtein::ProteinModel* ProteinBuilder::GetCurrentProteinModel(UWorld* proteinWorld)

@@ -147,6 +147,19 @@ void AAminoAcid::AddHydrogenBond(AHydrogenBond* newBond)
 	m_hydrogenBonds.Add(newBond);
 }
 
+void AAminoAcid::RemoveReferencesToHydrogenBond(AHydrogenBond* bondToRemove)
+{
+	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+	{
+		if (m_hydrogenBonds[i] == bondToRemove)
+		{
+			//remove bond and break
+			m_hydrogenBonds.RemoveAt(i);
+			break;
+		}
+	}
+}
+
 bool AAminoAcid::BondWithResidueExists(const AAminoAcid* residue) const
 {
 	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
@@ -567,7 +580,41 @@ void AAminoAcid::Shake()
 	//do nothing for the moment
 }
 
-AAminoAcid::~AAminoAcid()
+void AAminoAcid::BeginDestroy()
 {
-	int x = 1;
+	Super::BeginDestroy();
+
+	//first, make sure to rearrange the linked list so that this actor is dropped from it
+	m_nextAminoAcid->m_previousAminoAcid = m_previousAminoAcid;
+
+	//delete the residue information
+	if (m_residueInformation)
+	{
+		delete m_residueInformation;
+	}
+
+	if (m_secondaryStructure)
+	{
+		m_secondaryStructure->RemoveReferencesToAminoAcid(this);
+	}
+
+	DestroyLinkFragmentAndHydrogenBonds();
+}
+
+void AAminoAcid::DestroyLinkFragmentAndHydrogenBonds()
+{
+	//destroy the link fragment
+	if (m_linkFragment)
+	{
+		m_linkFragment->Destroy();
+		m_linkFragment = nullptr;
+	}
+
+	//remove this aminoAcidActor from being referenced in the hydrogen bonds
+	for (int i = 0; i < m_hydrogenBonds.Num(); ++i)
+	{
+		m_hydrogenBonds[i]->RemoveReferenceToAminoAcid(this);
+	}
+
+	m_hydrogenBonds.Empty();
 }

@@ -88,6 +88,10 @@ namespace GHProtein
 		void AddToListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondBeingModified);
 		void RemoveFromListOfModifiedHydrogenBonds(AHydrogenBond* hydrogenBondToRemove);
 
+		void DestroySecondaryStructure(SecondaryStructure* secondaryStructureToDestroy);
+		void DestroyHydrogenBond(AHydrogenBond* hydrogenBondToDestroy);
+		void DestroyAminoAcids(AAminoAcid* startAminoAcid, AAminoAcid* endAminoAcid);
+
 	public:
 		/** public data members go here */
 

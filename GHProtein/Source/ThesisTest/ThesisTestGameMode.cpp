@@ -15,6 +15,7 @@
 AThesisTestGameMode::AThesisTestGameMode(const class FPostConstructInitializeProperties& PCIP)
 	: Super(PCIP)
 	, m_proteinModel(nullptr)
+	, m_customChainModel(nullptr)
 	, m_aminoAcidSize(0.f)
 	, m_proteinModelCenterLocation(FVector(0.f,0.f,0.f))
 	, DefaultAminoAcidClass(nullptr)
@@ -302,8 +303,9 @@ void AThesisTestGameMode::ApplyChouFasmanAlgorithm(TArray<AAminoAcid*>& residues
 }
 */
 
-bool AThesisTestGameMode::PredictSecondaryStructure(TArray<AAminoAcid*>& residues)
+GHProtein::ProteinModel* AThesisTestGameMode::PredictSecondaryStructure(TArray<AAminoAcid*>& residues)
 {
+	GHProtein::ProteinModel* customChainProteinModel = nullptr;
 	if (m_predictionNeuralNetwork != nullptr)
 	{
 		TArray< TArray<double> > inputValsArray;
@@ -329,15 +331,11 @@ bool AThesisTestGameMode::PredictSecondaryStructure(TArray<AAminoAcid*>& residue
 		FilterSecondaryStructures(residues);
 		//ApplyChouFasmanAlgorithm(residues);
 
-		ProteinBuilder::GetInstance().CreateCustomChain(residues, m_aminoAcidSize, m_distanceScale,
+		customChainProteinModel = ProteinBuilder::GetInstance().CreateCustomChain(residues, m_aminoAcidSize, m_distanceScale,
 			m_linkWidth, m_linkHeight, m_betaStrandLinkWidth, m_helixLinkWidth, m_hydrogenBondLinkWidth,
 			m_normalColor, m_helixColor, m_betaStrandColor, m_hydrogenBondColor, DefaultHydrogenBondClass,
 			GetWorld());
+	}
 
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return customChainProteinModel;
 }
