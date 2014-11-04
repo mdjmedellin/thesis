@@ -172,7 +172,7 @@ public:
 		void RotateProteinPitch(float pitchRotation);
 
 	UFUNCTION(exec, BlueprintCallable, Category = "Controls")
-		void ToggleProteinInputs();
+		void ToggleProteinInputs(bool inputsState);
 
 	void CustomClearJumpInput();
 	virtual void ClearJumpInput();

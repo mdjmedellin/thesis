@@ -671,9 +671,9 @@ float ACameraCharacter::GetModelTemperature()
 	return m_proteinModel->GetCurrentTemperature();
 }
 
-void ACameraCharacter::ToggleProteinInputs()
+void ACameraCharacter::ToggleProteinInputs(bool inputsState)
 {
-	m_allowInput = !m_allowInput;
+	m_allowInput = inputsState;
 
 	if (!m_allowInput)
 	{
