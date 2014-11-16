@@ -29,9 +29,7 @@ void AThesisTestHUD::DrawHUD()
 										   (Center.Y - (CrosshairTex->GetSurfaceHeight() * 0.5f)) );
 
 	// draw the crosshair
-	FCanvasTileItem TileItem( CrosshairDrawPosition, CrosshairTex->Resource, CrosshairColor);
-	TileItem.BlendMode = SE_BLEND_Opaque;
-	Canvas->DrawItem( TileItem );
+	//We no longer need a crosshair
 }
 
 void AThesisTestHUD::ActivateCrosshair()
