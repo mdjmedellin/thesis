@@ -97,13 +97,13 @@ void CalculateCorrelationCoefficients(std::vector<double>& out_correlationCoeffi
 
 int main(int argc, char* argv[])
 {
-	int MAX_TRAINING = 10;
+	int MAX_TRAINING = 500;
 
 	//open the file we are going to write our test results into
 	std::ofstream resultsDataFile;
 	resultsDataFile.open("FINDTESTRESULTS.txt");
 
-	GHProtein::TrainingData trainData("tmp/trainingData.txt");
+	GHProtein::TrainingData trainData("tmp/irisData.txt");
 	GHProtein::NeuralNet* testNet = new GHProtein::NeuralNet(trainData.GetTopology(), true);
 	GHProtein::NeuralNet* testFilter = nullptr;
 
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
 	const GHProtein::NeuralNetDataSet* currentDataSet = nullptr;
 
 	int cyclesBeforeLastTest = 1;
-	const int CYCLES_BETWEEN_TESTS = 1;
+	const int CYCLES_BETWEEN_TESTS = 10;
 
 	for (int trainingPass = 0; trainingPass < MAX_TRAINING; ++trainingPass, ++cyclesBeforeLastTest)
 	{
@@ -138,53 +138,72 @@ int main(int argc, char* argv[])
 			for (int j = 0; j < filesInSet; ++j)
 			{
 				resultsHolder.clear();
-				trainingDataLength = currentDataSet->GetSizeOfTrainingDataAtSpecifiedIndex(j);
 
-				//now that we know the set, the file, and the size of the training data
-				//we iterate over all of the amino acids and train our neural network
-				for (int residueIndex = 0; residueIndex < trainingDataLength; ++residueIndex)
+				//if we are training with protein data we do the following
+				if (trainData.m_dataType == GHProtein::NetDataType::NET_DATA_PROTEIN)
 				{
-					currentDataSet->GetInputValues(j, residueIndex, inputVals, testNet->GetNumberOfRequiredInputs());
+					trainingDataLength = currentDataSet->GetSizeOfTrainingDataAtSpecifiedIndex(j);
+
+					//now that we know the set, the file, and the size of the training data
+					//we iterate over all of the amino acids and train our neural network
+					for (int residueIndex = 0; residueIndex < trainingDataLength; ++residueIndex)
+					{
+						currentDataSet->GetInputValues(j, residueIndex, inputVals, testNet->GetNumberOfRequiredInputs());
+						testNet->FeedForward(inputVals);
+						//save the current results
+						testNet->GetResults(currentResults);
+						resultsHolder.push_back(currentResults);
+
+						currentDataSet->GetOutputValues(j, residueIndex, outputVals);
+						expectedResultsHolder.push_back(outputVals);
+						testNet->BackPropagation(outputVals);
+					}
+
+					//now feed the network for the filter if there is a filter neural network
+					if (testFilter != nullptr)
+					{
+						int requiredInputs = testFilter->GetNumberOfRequiredInputs();
+						int windowWidth = (requiredInputs - 1) * .5f;
+						std::vector<double> emptyResults(3, 0.0);
+
+						for (int currentPredictionIndex = 0; currentPredictionIndex < trainingDataLength; ++currentPredictionIndex)
+						{
+							inputVals.clear();
+
+							for (int currentIndex = currentPredictionIndex - windowWidth;
+								currentIndex <= currentPredictionIndex + windowWidth;
+								++currentIndex)
+							{
+								if (currentIndex < 0
+									|| currentIndex >= trainingDataLength)
+								{
+									inputVals.push_back(emptyResults);
+								}
+								else
+								{
+									inputVals.push_back(resultsHolder[currentIndex]);
+								}
+							}
+
+							//now that i have the inputs, it is time to feed the neural network
+							testFilter->FeedForward(inputVals);
+							testFilter->BackPropagation(expectedResultsHolder[currentPredictionIndex]);
+						}
+					}
+				}
+				else if (trainData.m_dataType == GHProtein::NetDataType::NET_DATA_IRIS)
+				{
+					const GHProtein::IrisData* currentIrisData = nullptr;
+					currentIrisData = currentDataSet->GetIrisData(j);
+					currentIrisData->GetInputValues(inputVals);
 					testNet->FeedForward(inputVals);
 					//save the current results
 					testNet->GetResults(currentResults);
 					resultsHolder.push_back(currentResults);
 
-					currentDataSet->GetOutputValues(j, residueIndex, outputVals);
+					currentIrisData->GetOutputValues(outputVals);
 					expectedResultsHolder.push_back(outputVals);
 					testNet->BackPropagation(outputVals);
-				}
-
-				//now feed the network for the filter if there is a filter neural network
-				if (testFilter != nullptr)
-				{
-					int requiredInputs = testFilter->GetNumberOfRequiredInputs();
-					int windowWidth = (requiredInputs - 1) * .5f;
-					std::vector<double> emptyResults(3, 0.0);
-
-					for (int currentPredictionIndex = 0; currentPredictionIndex < trainingDataLength; ++currentPredictionIndex)
-					{
-						inputVals.clear();
-
-						for (int currentIndex = currentPredictionIndex - windowWidth;
-							currentIndex <= currentPredictionIndex + windowWidth;
-							++currentIndex)
-						{
-							if (currentIndex < 0
-								|| currentIndex >= trainingDataLength)
-							{
-								inputVals.push_back(emptyResults);
-							}
-							else
-							{
-								inputVals.push_back(resultsHolder[currentIndex]);
-							}
-						}
-
-						//now that i have the inputs, it is time to feed the neural network
-						testFilter->FeedForward(inputVals);
-						testFilter->BackPropagation(expectedResultsHolder[currentPredictionIndex]);
-					}
 				}
 			}
 		}
@@ -210,91 +229,35 @@ int main(int argc, char* argv[])
 
 			for (int j = 0; j < filesInSet; ++j)
 			{
-				//before filtering
-				resultsDataFile << "BEFORE FILTERING\n";
-
-				trainingDataLength = currentDataSet->GetSizeOfTrainingDataAtSpecifiedIndex(j);
-
-				//reset all counters
-				std::fill(correctPredictionCounters.begin(), correctPredictionCounters.end(), 0);
-				std::fill(incorrectPredictionCounters.begin(), incorrectPredictionCounters.end(), 0);
-				std::fill(wrongfullyPredictedCounters.begin(), wrongfullyPredictedCounters.end(), 0);
-				resultsHolder.clear();
-				expectedResultsHolder.clear();
-
-				//now that we know the set, the file, and the size of the training data
-				//we iterate over all of the amino acids and train our neural network
-				for (int residueIndex = 0; residueIndex < trainingDataLength; ++residueIndex)
+				if (trainData.m_dataType == GHProtein::NetDataType::NET_DATA_PROTEIN)
 				{
-					currentDataSet->GetInputValues(j, residueIndex, inputVals, testNet->GetNumberOfRequiredInputs());
-					testNet->FeedForward(inputVals);
+					//before filtering
+					resultsDataFile << "BEFORE FILTERING\n";
 
-					testNet->GetResults(predictionResults);
-					resultsHolder.push_back(predictionResults);
-					
-					currentDataSet->GetOutputValues(j, residueIndex, outputVals);
-					expectedResultsHolder.push_back(outputVals);
+					trainingDataLength = currentDataSet->GetSizeOfTrainingDataAtSpecifiedIndex(j);
 
-					predictedStructure = GHProtein::Residue::VectorToSecondaryStructureType(predictionResults);
-					expectedStruccture = GHProtein::Residue::VectorToSecondaryStructureType(outputVals);
-
-					AnalyzePrediction(predictedStructure, expectedStruccture,
-						correctPredictionCounters, incorrectPredictionCounters,
-						wrongfullyPredictedCounters);
-				}
-
-				q3Rate = CalculateQ3(correctPredictionCounters, trainingDataLength);
-				CalculateCorrelationCoefficients(correlationCoefficients, correctPredictionCounters,
-					incorrectPredictionCounters, wrongfullyPredictedCounters);
-
-				//calculate the q3 rate of all coils
-				q3AllCoils = double(correctPredictionCounters[GHProtein::ESecondaryStructure::ssLoop] +
-					incorrectPredictionCounters[GHProtein::ESecondaryStructure::ssLoop]) / trainingDataLength;
-
-				resultsDataFile << "Q3 Rate = " << q3Rate << "\n";
-				resultsDataFile << "Q3 All Coils = " << q3AllCoils << "\n";
-				GHProtein::PrintVectorVals("COEFFICIENTS:", correlationCoefficients, resultsDataFile);
-
-				//now we filter
-				if (testFilter != nullptr)
-				{
-					resultsDataFile << "AFTER FILTERING\n";
-
+					//reset all counters
 					std::fill(correctPredictionCounters.begin(), correctPredictionCounters.end(), 0);
 					std::fill(incorrectPredictionCounters.begin(), incorrectPredictionCounters.end(), 0);
 					std::fill(wrongfullyPredictedCounters.begin(), wrongfullyPredictedCounters.end(), 0);
+					resultsHolder.clear();
+					expectedResultsHolder.clear();
 
-					int requiredInputs = testFilter->GetNumberOfRequiredInputs();
-					int windowWidth = (requiredInputs - 1) * .5f;
-					std::vector<double> emptyResults(3, 0.0);
-
-					for (int currentPredictionIndex = 0; currentPredictionIndex < trainingDataLength; ++currentPredictionIndex)
+					//now that we know the set, the file, and the size of the training data
+					//we iterate over all of the amino acids and train our neural network
+					for (int residueIndex = 0; residueIndex < trainingDataLength; ++residueIndex)
 					{
-						inputVals.clear();
+						currentDataSet->GetInputValues(j, residueIndex, inputVals, testNet->GetNumberOfRequiredInputs());
+						testNet->FeedForward(inputVals);
 
-						for (int currentIndex = currentPredictionIndex - windowWidth;
-							currentIndex <= currentPredictionIndex + windowWidth;
-							++currentIndex)
-						{
-							if (currentIndex < 0
-								|| currentIndex >= trainingDataLength)
-							{
-								inputVals.push_back(emptyResults);
-							}
-							else
-							{
-								inputVals.push_back(resultsHolder[currentIndex]);
-							}
-						}
+						testNet->GetResults(predictionResults);
+						resultsHolder.push_back(predictionResults);
 
-						//now that i have the inputs, it is time to feed the neural network
-						testFilter->FeedForward(inputVals);
-						testFilter->BackPropagation(expectedResultsHolder[currentPredictionIndex]);
-
-						testFilter->GetResults(predictionResults);
+						currentDataSet->GetOutputValues(j, residueIndex, outputVals);
+						expectedResultsHolder.push_back(outputVals);
 
 						predictedStructure = GHProtein::Residue::VectorToSecondaryStructureType(predictionResults);
-						expectedStruccture = GHProtein::Residue::VectorToSecondaryStructureType(expectedResultsHolder[currentPredictionIndex]);
+						expectedStruccture = GHProtein::Residue::VectorToSecondaryStructureType(outputVals);
 
 						AnalyzePrediction(predictedStructure, expectedStruccture,
 							correctPredictionCounters, incorrectPredictionCounters,
@@ -306,12 +269,87 @@ int main(int argc, char* argv[])
 						incorrectPredictionCounters, wrongfullyPredictedCounters);
 
 					//calculate the q3 rate of all coils
-					q3AllCoils = double(correctPredictionCounters[GHProtein::ESecondaryStructure::ssLoop] + 
+					q3AllCoils = double(correctPredictionCounters[GHProtein::ESecondaryStructure::ssLoop] +
 						incorrectPredictionCounters[GHProtein::ESecondaryStructure::ssLoop]) / trainingDataLength;
 
 					resultsDataFile << "Q3 Rate = " << q3Rate << "\n";
 					resultsDataFile << "Q3 All Coils = " << q3AllCoils << "\n";
 					GHProtein::PrintVectorVals("COEFFICIENTS:", correlationCoefficients, resultsDataFile);
+
+					//now we filter
+					if (testFilter != nullptr)
+					{
+						resultsDataFile << "AFTER FILTERING\n";
+
+						std::fill(correctPredictionCounters.begin(), correctPredictionCounters.end(), 0);
+						std::fill(incorrectPredictionCounters.begin(), incorrectPredictionCounters.end(), 0);
+						std::fill(wrongfullyPredictedCounters.begin(), wrongfullyPredictedCounters.end(), 0);
+
+						int requiredInputs = testFilter->GetNumberOfRequiredInputs();
+						int windowWidth = (requiredInputs - 1) * .5f;
+						std::vector<double> emptyResults(3, 0.0);
+
+						for (int currentPredictionIndex = 0; currentPredictionIndex < trainingDataLength; ++currentPredictionIndex)
+						{
+							inputVals.clear();
+
+							for (int currentIndex = currentPredictionIndex - windowWidth;
+								currentIndex <= currentPredictionIndex + windowWidth;
+								++currentIndex)
+							{
+								if (currentIndex < 0
+									|| currentIndex >= trainingDataLength)
+								{
+									inputVals.push_back(emptyResults);
+								}
+								else
+								{
+									inputVals.push_back(resultsHolder[currentIndex]);
+								}
+							}
+
+							//now that i have the inputs, it is time to feed the neural network
+							testFilter->FeedForward(inputVals);
+							testFilter->BackPropagation(expectedResultsHolder[currentPredictionIndex]);
+
+							testFilter->GetResults(predictionResults);
+
+							predictedStructure = GHProtein::Residue::VectorToSecondaryStructureType(predictionResults);
+							expectedStruccture = GHProtein::Residue::VectorToSecondaryStructureType(expectedResultsHolder[currentPredictionIndex]);
+
+							AnalyzePrediction(predictedStructure, expectedStruccture,
+								correctPredictionCounters, incorrectPredictionCounters,
+								wrongfullyPredictedCounters);
+						}
+
+						q3Rate = CalculateQ3(correctPredictionCounters, trainingDataLength);
+						CalculateCorrelationCoefficients(correlationCoefficients, correctPredictionCounters,
+							incorrectPredictionCounters, wrongfullyPredictedCounters);
+
+						//calculate the q3 rate of all coils
+						q3AllCoils = double(correctPredictionCounters[GHProtein::ESecondaryStructure::ssLoop] +
+							incorrectPredictionCounters[GHProtein::ESecondaryStructure::ssLoop]) / trainingDataLength;
+
+						resultsDataFile << "Q3 Rate = " << q3Rate << "\n";
+						resultsDataFile << "Q3 All Coils = " << q3AllCoils << "\n";
+						GHProtein::PrintVectorVals("COEFFICIENTS:", correlationCoefficients, resultsDataFile);
+					}
+				}
+				else if (trainData.m_dataType == GHProtein::NetDataType::NET_DATA_IRIS)
+				{
+					const GHProtein::IrisData* currentIrisData = nullptr;
+					currentIrisData = currentDataSet->GetIrisData(j);
+					currentIrisData->GetInputValues(inputVals);
+					testNet->FeedForward(inputVals);
+					//save the current results
+					testNet->GetResults(currentResults);
+					resultsHolder.push_back(currentResults);
+
+					currentIrisData->GetOutputValues(outputVals);
+					expectedResultsHolder.push_back(outputVals);
+
+					GHProtein::PrintVectorVals("PREDICTED RESULTS:", currentResults, resultsDataFile);
+					GHProtein::PrintVectorVals("EXPECTED RESULTS:", outputVals, resultsDataFile);
 				}
 			}
 

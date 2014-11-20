@@ -7,6 +7,14 @@
 
 namespace GHProtein
 {
+	enum NetDataType
+	{
+		NET_DATA_NONE,
+		NET_DATA_IRIS,
+		NET_DATA_PROTEIN,
+		NET_DATA_COUNT
+	};
+
 	class ProteinBuilder;
 	class ProteinModel;
 
@@ -35,7 +43,7 @@ namespace GHProtein
 		void AddFile(const std::string& fileName);
 		void LoadProteinModels(ProteinBuilder* proteinBuilder, const std::string& dataRootLocation);
 		void LoadIrisData(const std::string& dataRootLocation);
-		IrisData* GetIrisData(int dataIndex);
+		const IrisData* GetIrisData(int dataIndex) const;
 		int GetNumberOfFilesInSet() const;
 		int GetSizeOfTrainingDataAtSpecifiedIndex(int fileIndex) const;
 		void GetInputValues(int fileIndex, int residueIndex, std::vector< std::vector<double> >& out_inputs, int numberOfInputsToExtract) const;
@@ -55,7 +63,7 @@ namespace GHProtein
 		void SetRootLocation(const std::string& rootLocation);
 		std::string GetRootLocation();
 		void AddDataSet(const NeuralNetDataSet& dataSet);
-		IrisData* GetIrisDataFromSet(int dataSetIndex, int dataIndex);
+		const IrisData* GetIrisDataFromSet(int dataSetIndex, int dataIndex) const;
 		int GetNumberOfSets() const;
 		const NeuralNetDataSet* GetDataSetAt(int dataSetIndex);
 
@@ -184,6 +192,9 @@ namespace GHProtein
 		std::vector< std::pair<int, int> > m_filterTopology;
 		NeuralNetData m_data;
 		ProteinBuilder* m_proteinBuilder;
+
+	public:
+		NetDataType m_dataType;
 	};
 }
 

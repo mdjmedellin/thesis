@@ -5,6 +5,7 @@
 #include <cassert>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 namespace GHProtein
 {
@@ -102,7 +103,7 @@ namespace GHProtein
 		m_dataSets.push_back(dataSet);
 	}
 
-	IrisData* NeuralNetData::GetIrisDataFromSet(int dataSetIndex, int dataIndex)
+	const IrisData* NeuralNetData::GetIrisDataFromSet(int dataSetIndex, int dataIndex) const
 	{
 		return m_dataSets[dataSetIndex].GetIrisData(dataIndex);
 	}
@@ -141,7 +142,7 @@ namespace GHProtein
 		m_files.push_back(fileName);
 	}
 
-	IrisData* NeuralNetDataSet::GetIrisData(int dataIndex)
+	const IrisData* NeuralNetDataSet::GetIrisData(int dataIndex) const
 	{
 		if (dataIndex > -1 && dataIndex < m_irisDataContainer.size())
 		{
@@ -234,7 +235,7 @@ namespace GHProtein
 
 	int NeuralNetDataSet::GetNumberOfFilesInSet() const
 	{
-		return m_proteinModels.size();
+		return std::max(m_proteinModels.size(), m_irisDataContainer.size());
 	}
 
 	int NeuralNetDataSet::GetSizeOfTrainingDataAtSpecifiedIndex(int fileIndex) const
@@ -751,6 +752,7 @@ namespace GHProtein
 	//=============================TRAINING DATA==============================
 	TrainingData::TrainingData(const std::string filename)
 		: m_proteinBuilder(new ProteinBuilder())
+		, m_dataType(NET_DATA_NONE)
 	{
 		//open the file
 		m_trainingDataFile.open(filename.c_str());
@@ -905,13 +907,22 @@ namespace GHProtein
 		dataSubstring = results[1];
 		TokenizeString(tokenized_substring, dataSubstring, "|");
 
-		assert(tokenized_substring.size() > 0);
+		assert(tokenized_substring.size() > 2);
+
+		if (tokenized_substring[0] == "IRIS")
+		{
+			m_dataType = NET_DATA_IRIS;
+		}
+		else if (tokenized_substring[0] == "PROTEIN")
+		{
+			m_dataType = NET_DATA_PROTEIN;
+		}
 
 		//save the total number of data sets and the root location of the data sets if it is specified
-		int numberOfSets = std::atoi(tokenized_substring[0].c_str());
+		int numberOfSets = std::atoi(tokenized_substring[1].c_str());
 		if (tokenized_substring.size() > 1)
 		{
-			m_data.SetRootLocation(tokenized_substring[1]);
+			m_data.SetRootLocation(tokenized_substring[2]);
 		}
 
 		//the next line should be empty, thus we skip it
@@ -972,7 +983,14 @@ namespace GHProtein
 		}
 
 		//load the protein models from the information in the data set
-		currentSet.LoadProteinModels(m_proteinBuilder, m_data.GetRootLocation());
+		if (m_dataType = NET_DATA_IRIS)
+		{
+			currentSet.LoadIrisData(m_data.GetRootLocation());
+		}
+		else if (m_dataType == NET_DATA_PROTEIN)
+		{
+			currentSet.LoadProteinModels(m_proteinBuilder, m_data.GetRootLocation());
+		}
 		//currentSet.LoadIrisData(m_data.GetRootLocation());
 
 		m_data.AddDataSet(currentSet);
